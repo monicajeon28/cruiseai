@@ -34,6 +34,7 @@
     "date-fns-tz": "^3.2.0",
     "dayjs": "^1.11.18",
     "framer-motion": "^12.23.14",
+    "googleapis": "^164.1.0",
     "iron-session": "^8.0.4",
     "isomorphic-dompurify": "^2.31.0",
     "jose": "^6.1.0",
