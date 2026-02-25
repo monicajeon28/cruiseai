@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인 테스트</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; text-align: center; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .log {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .log-entry { margin-bottom: 5px; }
+        .log-success { color: #28a745; }
+        .log-error { color: #dc3545; }
+        .log-info { color: #007bff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 로그인 테스트 (F12 가능)</h1>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label>아이디:</label>
+                <input type="text" id="phone" value="user1" required>
+            </div>
+            
+            <div class="form-group">
+                <label>비밀번호:</label>
+                <input type="password" id="password" value="qwe1" required>
+            </div>
+            
+            <button type="submit" id="submitBtn">로그인 테스트</button>
+        </form>
+        
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        const form = document.getElementById('loginForm');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const time = new Date().toLocaleTimeString();
+            entry.textContent = `[${time}] ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+            console.log(`[${type.toUpperCase()}]`, message);
+        }
+        
+        function clearLog() {
+            log.innerHTML = '';
+        }
+        
+        // F12 테스트
+        addLog('✅ F12 개발자 도구가 작동합니다!', 'success');
+        addLog('콘솔에서 이 메시지를 확인할 수 있습니다.', 'info');
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearLog();
+            
+            const phone = document.getElementById('phone').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = '로그인 중...';
+            
+            addLog(`로그인 시도: phone=${phone}`, 'info');
+            
+            try {
+                addLog('1. /api/auth/login 호출 중...', 'info');
+                const loginResponse = await fetch('http://localhost:3001/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ phone, password }),
+                });
+                
+                addLog(`   응답 상태: ${loginResponse.status} ${loginResponse.statusText}`, 'info');
+                
+                const loginText = await loginResponse.text();
+                addLog(`   응답 본문: ${loginText}`, 'info');
+                
+                let loginData;
+                try {
+                    loginData = JSON.parse(loginText);
+                } catch (e) {
+                    addLog(`❌ JSON 파싱 실패: ${e.message}`, 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '로그인 테스트';
+                    return;
+                }
+                
+                if (!loginResponse.ok || !loginData?.ok) {
+                    addLog(`❌ 로그인 실패: ${loginData?.error || '알 수 없는 오류'}`, 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '로그인 테스트';
+                    return;
+                }
+                
+                addLog('✅ 로그인 성공!', 'success');
+                addLog(`   next: ${loginData.next}`, 'info');
+                addLog(`   partnerId: ${loginData.partnerId}`, 'info');
+                
+                addLog('2. /api/auth/me 호출 중...', 'info');
+                const meResponse = await fetch('http://localhost:3001/api/auth/me', { credentials: 'include' });
+                const meText = await meResponse.text();
+                addLog(`   응답 본문: ${meText}`, 'info');
+                
+                let meData;
+                try {
+                    meData = JSON.parse(meText);
+                } catch (e) {
+                    addLog(`❌ JSON 파싱 실패: ${e.message}`, 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '로그인 테스트';
+                    return;
+                }
+                
+                if (meData?.ok && meData?.user?.mallUserId) {
+                    addLog('✅ 사용자 정보 확인 성공!', 'success');
+                    addLog(`   mallUserId: ${meData.user.mallUserId}`, 'info');
+                    
+                    const redirectPath = loginData.next || `/partner/${meData.user.mallUserId}/dashboard`;
+                    addLog(`3. 리다이렉트: ${redirectPath}`, 'info');
+                    addLog('3초 후 리다이렉트합니다...', 'info');
+                    
+                    setTimeout(() => {
+                        window.location.href = redirectPath;
+                    }, 3000);
+                } else {
+                    addLog('❌ mallUserId 없음', 'error');
+                }
+                
+            } catch (error) {
+                addLog(`❌ 오류: ${error.message}`, 'error');
+                console.error('Error:', error);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '로그인 테스트';
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

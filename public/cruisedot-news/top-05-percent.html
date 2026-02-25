@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>크루즈 여행, 상위 1%의 선택</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet" />
+  <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.1/kakao.min.js" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg-main: #f8f9fa;
+      --bg-light: #ffffff;
+      --primary-dark: #0a192f;
+      --accent-gold: #d4af37;
+      --accent-red: #e74c3c;
+      --text-dark: #333333;
+      --text-light: #f0f0f0;
+      --border-light: #eeeeee;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.8; color: var(--text-dark); background-color: var(--bg-main);
+      font-size: 26px; padding-top: 80px; padding-bottom: 80px; word-break: keep-all;
+    }
+    .container { max-width: 800px; margin: 0 auto; padding: 20px; background-color: var(--bg-light); }
+    h1, h2, .banner-title, .cta-title {
+      font-family: 'Noto Serif KR', serif; font-weight: 700; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }
+    .banner-link {
+      display: block; text-decoration: none; margin: 40px 0;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    .banner-link:hover { transform: translateY(-8px); box-shadow: 0 15px 40px rgba(0,0,0,0.15); }
+    .banner {
+      color: var(--text-light); padding: 50px 30px; text-align: center;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+    }
+    .banner-top { background: linear-gradient(135deg, #2c3e50, #34495e); }
+    .banner-bottom { background: linear-gradient(135deg, #0a192f, #172a46); }
+    .kakao-open-chat { background: #FEE500; }
+    .banner-title { font-size: 42px; line-height: 1.4; margin-bottom: 20px; }
+    .kakao-open-chat .banner-title, .kakao-open-chat .banner-subtitle { color: #3C1E1E; }
+    .banner-subtitle {
+      font-size: 28px; background: rgba(255,255,255,0.1); padding: 12px 25px;
+      border-radius: 50px; display: inline-block; font-weight: bold;
+    }
+    .kakao-open-chat .banner-subtitle { background: rgba(60, 30, 30, 0.1); }
+    .main-title {
+      font-size: 52px; text-align: center; margin-bottom: 50px;
+      padding: 40px 20px; background: var(--primary-dark); color: var(--accent-gold);
+      border-radius: 15px; line-height: 1.5;
+    }
+    .section {
+      margin-bottom: 70px; padding: 40px 30px; border-radius: 15px;
+      background-color: var(--bg-light); border: 1px solid var(--border-light);
+    }
+    .section-title {
+      font-size: 42px; margin-bottom: 40px; color: var(--primary-dark);
+      text-align: center; line-height: 1.4;
+    }
+    .video-container, .image-container {
+      width: 100%; margin: 40px 0; text-align: center;
+      border-radius: 15px; overflow: hidden; box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+    .video-container { position: relative; padding-bottom: 56.25%; height: 0; }
+    .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    .image-container img { width: 100%; display: block; }
+    .content { font-size: 28px; line-height: 2; margin-bottom: 30px; text-align: center; }
+    .content p { margin-bottom: 2em; }
+    .highlight {
+      background-color: #fdf8e1; padding: 25px; border-left: 6px solid var(--accent-gold);
+      margin: 30px 0; border-radius: 8px; font-size: 28px; font-weight: 700; text-align: center;
+    }
+    .big-number {
+      font-size: 72px; font-weight: 900; color: var(--accent-red);
+      text-align: center; margin: 20px 0; display: block; line-height: 1;
+    }
+    .quote {
+      font-size: 30px; font-style: italic; text-align: center; color: var(--primary-dark);
+      padding: 30px; background-color: #f0f4f8; border-radius: 10px; margin: 40px 0; line-height: 1.7;
+    }
+    .bullet-points { list-style: none; padding: 0; }
+    .bullet-points li {
+      margin: 25px 0; padding: 25px; background-color: #f8f9fa; border: 1px solid #e9ecef;
+      border-radius: 10px; font-size: 28px; position: relative; padding-left: 60px; line-height: 1.8;
+      text-align: left;
+    }
+    .bullet-points li:before {
+      content: "✓"; color: var(--accent-gold); font-size: 30px; font-weight: bold;
+      position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+    }
+    .text-red { color: var(--accent-red); }
+    .font-bold { font-weight: 700; }
+    .text-highlight {
+      background: linear-gradient(180deg, transparent 60%, rgba(250, 218, 94, 0.7) 60%);
+      padding: 2px 2px; margin: -2px -2px; border-radius: 3px;
+    }
+    .cta-section {
+      background: var(--primary-dark); color: var(--text-light); text-align: center;
+      padding: 50px 30px; border-radius: 15px; margin-top: 50px;
+    }
+    .cta-title { font-size: 45px; margin-bottom: 25px; line-height: 1.4; color: var(--accent-gold); }
+    .cta-text { font-size: 30px; line-height: 1.8; }
+    .fixed-banner {
+      position: fixed; left: 0; width: 100%; z-index: 1000; display: flex;
+      justify-content: center; align-items: center; padding: 15px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.2); font-size: 22px;
+    }
+    .top-banner { top: 0; background-color: var(--bg-light); border-bottom: 1px solid var(--border-light); }
+    .bottom-banner { bottom: 0; background: var(--accent-gold); }
+    .top-banner a, .bottom-banner a {
+      text-decoration: none; font-weight: bold; display: flex;
+      align-items: center; transition: transform 0.2s ease;
+    }
+    .top-banner a:hover, .bottom-banner a:hover { transform: scale(1.05); }
+    .top-banner a { background-color: #000; color: #fff; padding: 10px 20px; border-radius: 50px; }
+    .bottom-banner a { color: var(--primary-dark); font-size: 24px; }
+    @media (max-width: 768px) {
+      body { font-size: 24px; } .container { padding: 15px; }
+      .banner-title { font-size: 36px; } .banner-subtitle { font-size: 24px; }
+      .main-title { font-size: 42px; } .section-title { font-size: 36px; }
+      .content { font-size: 24px; } .big-number { font-size: 60px; }
+      .quote { font-size: 26px; } .bullet-points li { font-size: 24px; }
+      .cta-title { font-size: 38px; } .cta-text { font-size: 26px; }
+    }
+    @media (max-width: 480px) {
+      body { font-size: 22px; padding-top: 70px; padding-bottom: 70px; }
+      .main-title { font-size: 34px; } .section-title { font-size: 30px; }
+      .content { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="fixed-banner top-banner">
+    <a href="javascript:shareOnKakao();">
+      <svg style="width:24px; height:24px; margin-right:8px;" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c1.73 0 3.36-.44 4.79-1.23l3.21 1.23-1.23-3.21c.79-1.43 1.23-3.06 1.23-4.79C22 6.48 17.52 2 12 2zm-1.25 12.01L8.98 14H7.5v-4h3.75l1.77-.99V14.01h-2.27z"></path></svg>
+      <span>카카오톡 친구에게 공유</span>
+    </a>
+  </div>
+  <div class="container">
+    <a href="http://leadz.kr/ydB" class="banner-link" target="_blank">
+      <div class="banner banner-top">
+        <div class="banner-title">이전 글: 크루즈에서만 누릴 수 있는<br>5가지 특별한 경험</div>
+        <div class="banner-subtitle">자세히 보러가기</div>
+      </div>
+    </a>
+    <h1 class="main-title">크루즈 여행,<br>왜 대한민국 상위 1%의<br>선택이었을까?</h1>
+    <div class="video-container">
+      <iframe src="https://www.youtube.com/embed/ZrvHfaWT6ck?si=mJ_cnOYBWtbnRuwJ&autoplay=1&mute=1&controls=0&loop=1&playlist=ZrvHfaWT6ck" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+    </div>
+    <div class="section">
+      <h2 class="section-title">충격적인 현실</h2>
+      <div class="image-container">
+        <img src="https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751702525_3508.jpg" title="크루즈 여행객" onerror="this.onerror=null;this.src='https://placehold.co/800x450/0a192f/d4af37?text=Cruise+Ship';" />
+      </div>
+      <div class="content">
+        <p>2023년까지 크루즈 여행을 다녀온<br>한국인은 단 <span class="big-number">27만 명</span></p>
+        <p>대한민국 인구 5천만 명 중<br>고작 <strong class="text-red font-bold" style="font-size:36px;">0.5%</strong>에 불과했습니다.</p>
+      </div>
+    </div>
+    <div class="section">
+      <h2 class="section-title">왜 아무나 갈 수 없었을까?</h2>
+      <div class="image-container">
+        <img src="https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751702885_5147.jpg" title="달력과 크루즈" onerror="this.onerror=null;this.src='https://placehold.co/800x450/0a192f/d4af37?text=Limited+Schedule';" />
+      </div>
+      <div class="highlight">
+        <strong>진짜 이유는 따로 있었습니다.</strong>
+      </div>
+      <ul class="bullet-points">
+        <li><strong class="font-bold">연간 140척</strong>만 운항 (2023년 기준)</li>
+        <li><strong class="font-bold">정해진 날짜, 정해진 항구</strong>에서만 출발</li>
+        <li>내 휴가와 맞지 않으면 <strong class="text-highlight">포기해야만 했습니다.</strong></li>
+      </ul>
+      <div class="quote">
+        "평범한 사람들은 크루즈 스케줄에<br>내 시간을 맞출 수 없었습니다."
+      </div>
+    </div>
+    <div class="section">
+      <h2 class="section-title">2024년, 3배 증가의 비밀</h2>
+      <div class="video-container">
+        <iframe src="https://www.youtube.com/embed/qieN7DNQqSM?si=CE7EogugbqjXqY_s&autoplay=1&mute=1&controls=0&loop=1&playlist=qieN7DNQqSM" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
+      <div class="image-container">
+        <img src="https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751702973_3052.jpg" title="많은 크루즈선" onerror="this.onerror=null;this.src='https://placehold.co/800x450/0a192f/d4af37?text=Growth';" />
+      </div>
+      <div class="content">
+        <p>2024년 크루즈 여행객은<br><span class="big-number">81만 명으로 폭증!</span></p>
+        <p>하지만 여전히 전체 인구의 <strong class="text-red font-bold" style="font-size:36px;">1.6%</strong>만이<br>경험해 본 특별한 여행입니다.</p>
+      </div>
+    </div>
+    <div class="section">
+      <h2 class="section-title">여전히 특별한 이유</h2>
+      <div class="image-container">
+        <img src="https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751702973_6424.jpg" title="예약 마감" onerror="this.onerror=null;this.src='https://placehold.co/800x450/0a192f/d4af37?text=High+Demand';" />
+      </div>
+      <div class="content">
+        <p>2025년에는 <span class="big-number" style="font-size:60px; color:var(--text-dark);"><strong class="text-red">560척</strong></span>으로 운항이 늘어납니다.</p>
+      </div>
+      <div class="quote">
+        "선택의 폭이 넓어졌지만,<br>좋은 날짜와 객실은 여전히 순식간에 매진됩니다."
+      </div>
+      <div class="highlight">
+        <strong>그 이유는 명확합니다:</strong>
+      </div>
+      <ul class="bullet-points">
+        <li><strong class="text-highlight">휴가철 등 인기 시즌</strong>은 경쟁이 치열</li>
+        <li><strong class="text-highlight">전망 좋은 캐빈</strong>은 몇 달 전 예약 필수</li>
+        <li><strong class="text-highlight">지중해, 알래스카 등 특별 노선</strong>은 더욱 제한적</li>
+      </ul>
+    </div>
+    <div class="section">
+      <h2 class="section-title">크루즈만의 특별함</h2>
+      <div class="image-container">
+        <img src="https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751703119_6523.jpg" title="크루즈 발코니" onerror="this.onerror=null;this.src='https://placehold.co/800x450/0a192f/d4af37?text=Unique+Experience';" />
+      </div>
+      <div class="highlight">
+        <strong>이것은 다른 여행과 완전히 다릅니다.</strong>
+      </div>
+      <ul class="bullet-points">
+        <li>매일 아침, <strong class="text-highlight">다른 나라의 풍경</strong> 속에서 눈을 뜹니다.</li>
+        <li><strong class="text-highlight">짐을 싸고 푸는 번거로움 없이</strong> 여러 도시를 여행합니다.</li>
+        <li>망망대해 위에서만 느낄 수 있는 <strong class="font-bold">완전한 휴식</strong>을 경험합니다.</li>
+        <li><strong class="font-bold">상상 이상의 엔터테인먼트</strong>가 선상에서 펼쳐집니다.</li>
+      </ul>
+      <div class="quote">
+        "움직이는 특급 호텔이자 레스토랑, 그리고 최고의 여행 가이드.<br>이 모든 것이 하나로 완성된 여행입니다."
+      </div>
+    </div>
+    <div class="section">
+      <h2 class="section-title">시간을 내서라도 가야 하는 이유</h2>
+      <div class="image-container">
+        <img src="https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751703183_4147.jpg" title="가족 여행" onerror="this.onerror=null;this.src='https://placehold.co/800x450/0a192f/d4af37?text=Precious+Moments';" />
+      </div>
+      <div class="content">
+        <p>2025년 예상 여행객은 <span class="big-number">109만 명</span></p>
+        <p>이 숫자가 많아 보여도<br>여전히 대한민국 인구의 <strong class="text-red font-bold" style="font-size:36px;">2%</strong>입니다.</p>
+      </div>
+      <div class="highlight">
+        <strong>왜 더 늦기 전에 가야 할까요?</strong>
+      </div>
+      <ul class="bullet-points">
+        <li>일생에 이런 경험을 할 기회는 <strong class="text-highlight">흔치 않습니다.</strong></li>
+        <li><strong class="font-bold">나이가 들수록</strong> 긴 여행은 부담스러워집니다.</li>
+        <li>가장 소중한 사람과 <strong class="font-bold">특별한 추억</strong>을 만들 수 있습니다.</li>
+      </ul>
+    </div>
+    <div class="section">
+      <h2 class="section-title">이제, 당신의 선택입니다</h2>
+      <div class="video-container">
+        <iframe src="https://www.youtube.com/embed/kT5M-1Oivck?si=1pVJgx-Ba21s7u7q&autoplay=1&mute=1&controls=0&loop=1&playlist=kT5M-1Oivck" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
+      <div class="image-container">
+        <img src="https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751703227_6686.jpg" title="크루즈 여행의 선택" onerror="this.onerror=null;this.src='https://placehold.co/800x450/0a192f/d4af37?text=Your+Choice';" />
+      </div>
+      <div class="quote">
+        "크루즈 여행은 여전히<br>아무나 경험할 수 없는 특별한 여행입니다."
+      </div>
+      <div class="highlight">
+        <strong>어떤 여행을 하시겠습니까?</strong>
+      </div>
+      <ul class="bullet-points">
+        <li>언제나처럼 <strong class="font-bold">익숙하고 평범한 여행</strong>을 하시겠습니까?</li>
+        <li style="background-color: #fff3cd;"><strong class="text-red" style="font-size: 30px;">아니면, <span class="text-highlight">상위 2%만이 경험하는 품격있는 여행</span>을 선택하시겠습니까?</strong></li>
+      </ul>
+    </div>
+    <div class="cta-section">
+      <h2 class="cta-title">누구나 갈 수 있다면<br>특별하지 않았을 것입니다</h2>
+      <div class="cta-text">
+        지금이 바로 그 특별한 소수에<br>당신이 함께할 최고의 기회입니다.
+      </div>
+    </div>
+    <a href="https://open.kakao.com/o/plREDDUh" class="banner-link kakao-open-chat" target="_blank">
+      <div class="banner">
+        <div class="banner-title">크루즈닷 회원전용<br>카톡방 초대</div>
+        <div class="banner-subtitle">지금 바로 클릭하여 입장</div>
+      </div>
+    </a>
+    <a href="http://leadz.kr/ydz" class="banner-link" target="_blank">
+      <div class="banner banner-bottom">
+        <div class="banner-title">다음 글: 여행사가 알려주지 않는<br>크루즈 여행의 5가지<br>오해와 진실</div>
+        <div class="banner-subtitle">자세히 보러가기</div>
+      </div>
+    </a>
+  </div>
+  <div class="fixed-banner bottom-banner">
+    <a href="https://www.cruisedot.co.kr/i/6nx" target="_blank">
+      크루즈닷 전문가와 상담 신청하기 &gt;
+    </a>
+  </div>
+  <script>
+    try { Kakao.init('e4d764f905271796dccf37c55a5b84d7'); } catch(e) { console.error("Kakao SDK 초기화에 실패했습니다.", e); }
+    function shareOnKakao() {
+      try {
+        Kakao.Share.sendDefault({
+          objectType: 'feed',
+          content: {
+            title: '크루즈 여행, 대한민국 상위 1%만 갔었던 이유',
+            description: '왜 크루즈 여행은 소수만 경험했을까? 그 비밀을 확인해보세요.',
+            imageUrl: 'https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751702885_5147.jpg',
+            link: { mobileWebUrl: window.location.href, webUrl: window.location.href }
+          },
+          buttons: [ { title: '자세히 보기', link: { mobileWebUrl: window.location.href, webUrl: window.location.href } } ]
+        });
+      } catch(e) { console.error("카카오 공유에 실패했습니다.", e); }
+    }
+  </script>
+</body>
+</html>

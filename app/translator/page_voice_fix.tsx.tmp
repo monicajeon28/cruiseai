@@ -1,0 +1,77 @@
+// 임시 파일: 음성 인식 표시 개선을 위한 코드 스니펫
+
+// 1. 상태 변수 추가 (line 88-92)
+  const [finalText, setFinalText] = useState(''); // 최종 확정된 텍스트
+  const [interimText, setInterimText] = useState(''); // 인식 중인 텍스트 (실시간 업데이트)
+
+// 2. onresult 핸들러 수정 (line 384-390)
+    let accumulatedFinalText = '';
+      
+    r.onresult = (e: SpeechRecognitionEvent) => {
+      let newFinalText = accumulatedFinalText;
+      let newInterimText = '';
+      
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const chunk = e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          newFinalText += chunk + ' ';
+          accumulatedFinalText = newFinalText;
+        } else {
+          newInterimText = chunk;
+        }
+      }
+      
+      // 상태 업데이트 - 인식 과정을 실시간으로 표시
+      setFinalText(newFinalText.trim());
+      setInterimText(newInterimText);
+      
+      // 프리뷰 텍스트 업데이트 (최종 + 중간 합쳐서)
+      const displayText = (newFinalText.trim() + ' ' + newInterimText).trim();
+      setPreview(displayText || '🎤 듣는 중...');
+    };
+
+// 3. UI 개선 (line 752-757)
+        {/* 프리뷰(인식 중) - 개선된 버전: 인식 과정을 실시간으로 표시 */}
+        {listening !== 'none' && (
+          <div className="rounded-xl border-2 border-blue-400 bg-gradient-to-r from-blue-50 to-purple-50 p-6 mb-4 shadow-lg">
+            <div className="flex items-center justify-center gap-3 mb-3">
+              <div className={`w-3 h-3 rounded-full ${listening === 'recording' ? 'bg-red-500 animate-pulse' : 'bg-yellow-500'}`}></div>
+              <span className="text-sm font-semibold text-gray-600">
+                {listening === 'recording' ? '🎤 인식 중...' : '⏳ 준비 중...'}
+              </span>
+            </div>
+            <div className="text-center min-h-[80px] flex flex-col justify-center">
+              {finalText || interimText ? (
+                <div className="space-y-3">
+                  {/* 최종 확정된 텍스트 (검은색, 굵게) */}
+                  {finalText && (
+                    <div className="text-2xl sm:text-3xl font-bold text-gray-900 break-words px-2">
+                      {finalText}
+                    </div>
+                  )}
+                  {/* 인식 중인 텍스트 (회색, 기울임, 깜빡이는 커서) */}
+                  {interimText && (
+                    <div className="text-xl sm:text-2xl font-semibold text-gray-500 italic break-words px-2">
+                      {interimText}
+                      <span className="inline-block w-2 h-6 bg-gray-400 ml-1 animate-pulse">|</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-xl sm:text-2xl font-semibold text-gray-600">
+                  {preview || '🎤 말씀하세요...'}
+                </div>
+              )}
+            </div>
+            {/* 진행 표시 (인식 중일 때만) */}
+            {listening === 'recording' && (
+              <div className="mt-4 flex items-center justify-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              </div>
+            )}
+          </div>
+        )}
+
+

@@ -1,0 +1,45 @@
+{
+  "aliases": {
+    "홍콩 크루즈": "hong_kong_cruise_terminal",
+    "홍콩크루즈": "hong_kong_cruise_terminal",
+    "홍콩 크루즈 터미널": "hong_kong_cruise_terminal",
+    "카이탁": "hong_kong_cruise_terminal",
+    "Kai Tak": "hong_kong_cruise_terminal",
+    "Hong Kong Cruise Terminal": "hong_kong_cruise_terminal",
+
+    "홍콩 국제공항": "hkg",
+    "홍콩공항": "hkg",
+    "HKG": "hkg",
+    "Hong Kong International Airport": "hkg",
+
+    "포트 마이애미": "port_of_miami",
+    "포트마이애미": "port_of_miami",
+    "PortMiami": "port_of_miami",
+    "Port of Miami": "port_of_miami",
+
+    "포트 에버글레이즈": "port_everglades",
+    "에버글레이즈": "port_everglades",
+    "Port Everglades": "port_everglades",
+
+    "포트 커내버럴": "port_canaveral",
+    "커내버럴": "port_canaveral",
+    "Port Canaveral": "port_canaveral",
+
+    "도쿄 국제 크루즈 터미널": "tokyo_cruise_terminal",
+    "도쿄 크루즈 터미널": "tokyo_cruise_terminal",
+    "오다이바": "tokyo_cruise_terminal",
+    "Tokyo International Cruise Terminal": "tokyo_cruise_terminal",
+
+    "오산바시": "osanbashi_terminal",
+    "요코하마 오산바시": "osanbashi_terminal",
+
+    "치비타베키아": "port_of_civitavecchia",
+    "Civitavecchia": "port_of_civitavecchia",
+
+    "바르셀로나 항": "port_of_barcelona",
+    "Barcelona Port": "port_of_barcelona"
+  },
+  "airports": {
+    "hkg": { "name": "Hong Kong International Airport (HKG)", "name_ko": "홍콩 국제공항 (HKG)" }
+  }
+} 

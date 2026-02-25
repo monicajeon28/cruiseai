@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="kakao-js-key" content="YOUR_KAKAO_JS_KEY_HERE" />
+    <title>2025년 크루즈 여행 트렌드, 무엇이 달라졌나? 🚢</title>
+    <style>
+      :root {
+        --news-bg: #f6f8fc;
+        --news-surface: #ffffff;
+        --news-accent: #f43f5e;
+        --news-accent-soft: #fee2e2;
+        --news-text: #1f2937;
+        --news-muted: #6b7280;
+        --news-radius: 28px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background-color: var(--news-bg);
+        color: var(--news-text);
+        line-height: 2.4;
+        font-size: 19px;
+        word-break: keep-all;
+        letter-spacing: -0.01em;
+      }
+      .news-wrapper {
+        max-width: 880px;
+        margin: 0 auto;
+        padding: 54px 32px 120px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.75));
+        border-radius: var(--news-radius);
+        box-shadow: 0 28px 60px rgba(15, 23, 42, 0.12);
+        backdrop-filter: blur(12px);
+      }
+      .news-intro {
+        text-align: center;
+        margin-bottom: 48px;
+      }
+      .news-intro .intro-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        color: var(--news-accent);
+        background: var(--news-accent-soft);
+        border-radius: 999px;
+        padding: 10px 20px;
+        font-weight: 700;
+      }
+      .news-intro .intro-lead {
+        margin-top: 24px;
+        font-size: 22px;
+        font-weight: 600;
+        color: var(--news-text);
+        line-height: 2.0;
+      }
+      .news-highlight {
+        margin: 0 auto 40px;
+        max-width: 720px;
+        padding: 28px 32px;
+        background: linear-gradient(135deg, rgba(244, 63, 94, 0.12), rgba(244, 63, 94, 0.28));
+        border-radius: calc(var(--news-radius) - 6px);
+        border: 1px solid rgba(244, 63, 94, 0.22);
+        color: #be123c;
+        font-weight: 600;
+        text-align: center;
+        line-height: 1.8;
+      }
+      .news-content {
+        display: flex;
+        flex-direction: column;
+        gap: 48px;
+      }
+      .news-section-block h2 {
+        font-family: "Noto Serif KR", serif;
+        font-size: 32px;
+        line-height: 1.5;
+        color: #111827;
+        margin-bottom: 32px;
+        margin-top: 0;
+      }
+      .news-section-block p {
+        margin: 0 0 40px 0;
+        font-size: 19px;
+        color: var(--news-text);
+        line-height: 2.4;
+        max-width: 100%;
+      }
+      .news-section-block p:last-child {
+        margin-bottom: 0;
+      }
+      .news-section-block .highlight-red {
+        background: linear-gradient(180deg, transparent 60%, rgba(239, 68, 68, 0.35) 60%);
+        padding: 3px 8px;
+        font-weight: 700;
+        font-size: 1.3em;
+        color: #dc2626;
+        border-radius: 3px;
+        line-height: 1.4;
+        display: inline-block;
+      }
+      .news-section-block .highlight-blue {
+        background: linear-gradient(180deg, transparent 60%, rgba(59, 130, 246, 0.35) 60%);
+        padding: 3px 8px;
+        font-weight: 700;
+        font-size: 1.3em;
+        color: #2563eb;
+        border-radius: 3px;
+        line-height: 1.4;
+        display: inline-block;
+      }
+      .news-section-block .highlight-yellow {
+        background: linear-gradient(180deg, transparent 60%, rgba(250, 204, 21, 0.55) 60%);
+        padding: 3px 8px;
+        font-weight: 700;
+        font-size: 1.3em;
+        color: #ca8a04;
+        border-radius: 3px;
+        line-height: 1.4;
+        display: inline-block;
+      }
+      .news-section-block .text-bold {
+        font-weight: 700;
+        font-size: 1.25em;
+        color: #111827;
+        line-height: 1.4;
+      }
+      .news-section-block .text-red {
+        color: #dc2626;
+        font-weight: 700;
+        font-size: 1.25em;
+        line-height: 1.4;
+      }
+      .news-section-block .text-blue {
+        color: #2563eb;
+        font-weight: 700;
+        font-size: 1.25em;
+        line-height: 1.4;
+      }
+      .news-image-block {
+        margin: 56px 0;
+        text-align: center;
+      }
+      .news-image-block img {
+        width: 100%;
+        border-radius: calc(var(--news-radius) - 8px);
+        box-shadow: 0 24px 50px rgba(15, 23, 42, 0.16);
+      }
+      .news-image-block figcaption {
+        margin-top: 16px;
+        font-size: 15px;
+        color: var(--news-muted);
+        line-height: 1.8;
+      }
+      .news-summary {
+        margin-top: 64px;
+        padding: 36px 32px;
+        background: rgba(15, 23, 42, 0.03);
+        border-radius: calc(var(--news-radius) - 6px);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+      }
+      .news-summary h3 {
+        margin-bottom: 16px;
+        font-size: 22px;
+        font-weight: 700;
+      }
+      .news-summary p {
+        margin: 0 0 20px 0;
+        color: var(--news-muted);
+        line-height: 2.2;
+      }
+      .news-info-block {
+        margin: 0 auto 48px;
+        max-width: 720px;
+        padding: 28px 32px;
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.05), rgba(15, 23, 42, 0.02));
+        border-radius: calc(var(--news-radius) - 6px);
+        border: 1px solid rgba(15, 23, 42, 0.1);
+      }
+      .news-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 24px;
+      }
+      .news-info-item {
+        text-align: center;
+      }
+      .news-info-label {
+        font-size: 13px;
+        color: var(--news-muted);
+        margin-bottom: 8px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .news-info-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--news-text);
+        margin-bottom: 4px;
+      }
+      .news-info-sub {
+        font-size: 14px;
+        color: var(--news-muted);
+      }
+      .news-info-weather-icon {
+        font-size: 32px;
+        margin-bottom: 8px;
+      }
+      .news-kakao-share {
+        margin-top: 64px;
+        text-align: center;
+      }
+      .news-kakao-share-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 18px 32px;
+        background-color: #FEE500;
+        border: 2px solid #FDD835;
+        border-radius: 16px;
+        color: #3C1E1E;
+        font-size: 18px;
+        font-weight: 700;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        min-width: 280px;
+      }
+      .news-kakao-share-button:hover {
+        background-color: #FDD835;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+      }
+      .news-kakao-share-button:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      .news-kakao-logo {
+        width: 28px;
+        height: 28px;
+        flex-shrink: 0;
+      }
+      .news-kakao-logo svg {
+        width: 100%;
+        height: 100%;
+      }
+      .news-title {
+        font-size: 42px;
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 24px;
+        color: var(--news-text);
+        line-height: 1.4;
+      }
+      @media (max-width: 768px) {
+        body {
+          font-size: 17px;
+        }
+        .news-wrapper {
+          padding: 40px 20px 96px;
+          border-radius: 20px;
+        }
+        .news-section-block h2 {
+          font-size: 26px;
+        }
+        .news-section-block p {
+          line-height: 2.2;
+        }
+        .news-kakao-share-button {
+          padding: 16px 24px;
+          font-size: 16px;
+          min-width: 240px;
+        }
+        .news-kakao-logo {
+          width: 24px;
+          height: 24px;
+        }
+        .news-info-grid {
+          grid-template-columns: 1fr;
+          gap: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="news-wrapper">
+      <header class="news-header">
+        <h1 class="news-title">2025년 크루즈 여행 트렌드, 무엇이 달라졌나? 🚢</h1>
+      </header>
+      
+      <!-- 날씨/환율/증시 정보 블록 -->
+      <section class="news-info-block">
+        <div class="news-info-grid">
+          <div class="news-info-item">
+            <div class="news-info-label">오늘의 날씨</div>
+            <div class="news-info-weather-icon">☀️</div>
+            <div class="news-info-value">15°C</div>
+            <div class="news-info-sub">맑음</div>
+          </div>
+          <div class="news-info-item">
+            <div class="news-info-label">환율</div>
+            <div class="news-info-value">USD 1,380</div>
+            <div class="news-info-sub">EUR 1,500 | JPY 9.2</div>
+          </div>
+          <div class="news-info-item">
+            <div class="news-info-label">증시</div>
+            <div class="news-info-value">KOSPI 2,650</div>
+            <div class="news-info-sub">KOSDAQ 850 | NASDAQ 15,500</div>
+          </div>
+        </div>
+      </section>
+      
+      <div class="news-highlight">올해 크루즈 여행객 수가 전년 대비 <span class="text-bold">30% 증가</span>하며, 새로운 여행 패턴이 주목받고 있습니다. 🌊</div>
+      
+      <main class="news-content">
+        <section class="news-intro">
+          <div class="intro-kicker">🌍 세계 여행 정보</div>
+          <p class="intro-lead">2025년 크루즈 여행 시장의 변화와 트렌드를 분석합니다.<br>독자 여러분께 실질적인 도움이 되는 정보를 전달드립니다.</p>
+        </section>
+        
+        <article class="news-section-block">
+          <h2>1. 최근 크루즈 여행 시장의 변화 📈</h2>
+          <p>2025년 들어 크루즈 여행 시장은 <span class="highlight-red">급격한 성장</span>을 보이고 있습니다.</p>
+          <p>특히 아시아 지역에서의 크루즈 여행 수요가 크게 증가했으며, 젊은 층의 크루즈 여행 참여율도 높아지고 있습니다.</p>
+          <p>이러한 변화는 크루즈 선사들이 제공하는 <span class="highlight-blue">다양한 엔터테인먼트와 편의시설</span> 때문으로 분석됩니다.</p>
+          <p>또한, 코로나19 이후 해외 여행에 대한 갈망이 크루즈 여행으로 이어지고 있으며, <span class="text-red">안전하고 편안한 여행 환경</span>을 제공하는 크루즈의 장점이 부각되고 있습니다.</p>
+          <p>실제로 많은 여행객들이 "크루즈는 이동하는 호텔"이라고 표현하며, 편리함과 안전성을 동시에 만족시킬 수 있는 최적의 여행 방식으로 인식하고 있습니다.</p>
+          <p>크루즈닷 고객센터에도 "크루즈 여행이 이렇게 편할 줄 몰랐다"는 후기가 쇄도하고 있습니다.</p>
+          <p>특히 <span class="highlight-yellow">50대 이상 여행객들</span>이 크루즈 여행의 편리함을 높이 평가하며, 가족 단위 여행에서도 크루즈를 선택하는 비율이 크게 늘어났습니다.</p>
+        </article>
+        
+        <figure class="news-image-block">
+          <img src="/크루즈정보사진/고객 후기 자료/코스타 세레나 앞에서 후기.jpg" alt="코스타세레나 크루즈 선박" />
+          <figcaption>코스타세레나 크루즈 선박의 웅장한 외관. 실제 고객들이 찍은 생생한 후기 사진입니다. 🚢</figcaption>
+        </figure>
+        
+        <article class="news-section-block">
+          <h2>2. 주요 크루즈 선사들의 새로운 서비스 💎</h2>
+          <p>로얄캐리비안, MSC, 코스타 등 주요 크루즈 선사들은 고객 만족도를 높이기 위해 <span class="highlight-yellow">다양한 혁신적인 서비스</span>를 도입하고 있습니다.</p>
+          <p>AI 기반 맞춤형 추천 시스템, 프리미엄 다이닝 옵션, 그리고 다양한 엔터테인먼트 프로그램이 그 예입니다.</p>
+          <p>특히 <span class="text-blue">디지털 기술을 활용한 스마트 크루즈 경험</span>이 주목받고 있으며, 모바일 앱을 통한 예약, 체크인, 서비스 이용이 가능해져 여행객들의 편의성이 크게 향상되었습니다.</p>
+          <p>많은 고객들이 "앱 하나로 모든 게 해결된다"며 만족도를 표현하고 있습니다.</p>
+          <p>또한, 프리미엄 다이닝 패키지와 특별 이벤트 프로그램도 크게 늘어나, 단순한 이동 수단을 넘어 <span class="highlight-red">완전한 휴양 공간</span>으로 진화하고 있습니다.</p>
+          <p>코스타세레나의 경우 <span class="highlight-blue">24시간 뷔페</span>와 다양한 레스토랑을 운영하며, 여행객들이 원하는 시간에 언제든지 식사를 즐길 수 있습니다.</p>
+          <p>MSC벨리시마는 <span class="text-red">레고 키즈 클럽</span>을 운영하여 아이들이 안전하게 즐길 수 있는 공간을 제공하고, 부모들은 그동안 휴식을 취할 수 있습니다.</p>
+        </article>
+        
+        <figure class="news-image-block">
+          <img src="/크루즈정보사진/고객 후기 자료/MSC벨리시마 고객들 후기 2.png" alt="MSC벨리시마 크루즈 경험" />
+          <figcaption>MSC벨리시마에서 즐기는 특별한 경험. 실제 고객들이 남긴 생생한 후기입니다. 🌅</figcaption>
+        </figure>
+        
+        <article class="news-section-block">
+          <h2>3. 크루즈 여행객들이 주목하는 트렌드 🎯</h2>
+          <p>최근 크루즈 여행객들은 단순한 관광을 넘어서 <span class="highlight-blue">체험 중심의 여행</span>을 선호하고 있습니다.</p>
+          <p>현지 문화 체험, 요리 클래스, 웰니스 프로그램 등 다양한 액티비티에 대한 관심이 높아지고 있으며, 이러한 트렌드는 앞으로도 지속될 것으로 예상됩니다.</p>
+          <p>실제로 많은 여행객들이 "크루즈에서 배우는 요리 클래스가 가장 인상 깊었다"고 말하며, 단순히 먹고 자는 것을 넘어 <span class="text-red">새로운 경험</span>을 원하고 있음을 보여줍니다.</p>
+          <p>또한, <span class="highlight-yellow">친환경 크루즈 여행</span>에 대한 관심도 증가하고 있어, 선사들은 친환경 기술 도입과 지속가능한 여행 옵션을 제공하기 위해 노력하고 있습니다.</p>
+          <p>젊은 여행객들을 중심으로 환경을 생각하는 여행이 중요해지고 있으며, 크루즈 선사들도 이에 발맞춰 친환경 선박과 프로그램을 확대하고 있습니다.</p>
+          <p>특히 <span class="highlight-red">웰니스 프로그램</span>에 대한 관심이 높아지고 있어, 요가, 필라테스, 스파 등 건강을 위한 시설과 프로그램이 크게 늘어나고 있습니다.</p>
+          <p>크루즈 여행객들은 "바다 위에서 요가를 하는 경험이 정말 특별했다"며 만족도를 표현하고 있습니다.</p>
+        </article>
+        
+        <article class="news-section-block">
+          <h2>4. 크루즈 여행의 숨겨진 장점들 ✨</h2>
+          <p>크루즈 여행의 가장 큰 장점은 <span class="highlight-blue">모든 것이 한 곳에 모여있다</span>는 점입니다.</p>
+          <p>호텔, 레스토랑, 쇼핑몰, 엔터테인먼트 시설이 모두 선박 안에 있어 이동 시간을 낭비하지 않습니다.</p>
+          <p>특히 <span class="text-red">언팩 없이 여행</span>할 수 있어, 매일 짐을 챙기고 이동할 필요가 없습니다.</p>
+          <p>크루즈닷 고객들도 "한 번 짐 풀고 나면 그게 끝"이라며 편리함을 강조합니다.</p>
+          <p>또한, <span class="highlight-yellow">다양한 식사 옵션</span>이 있어 매일 다른 메뉴를 즐길 수 있으며, 특별한 날에는 프리미엄 레스토랑에서 특별한 식사를 즐길 수 있습니다.</p>
+          <p>많은 여행객들이 "크루즈에서 먹은 음식이 여행 중 가장 맛있었다"고 말하며, 다양한 국가의 요리를 한 번에 즐길 수 있는 점을 높이 평가합니다.</p>
+        </article>
+        
+        <article class="news-section-block">
+          <h2>5. 크루즈 여행을 선택하는 이유 💭</h2>
+          <p>많은 여행객들이 크루즈 여행을 선택하는 이유는 <span class="highlight-red">편리함과 경제성</span>입니다.</p>
+          <p>항공편 예약, 호텔 예약, 식사 계획 등 복잡한 여행 준비 없이도 모든 것이 포함된 패키지로 여행을 즐길 수 있습니다.</p>
+          <p>특히 가족 단위 여행객들은 "아이들도 즐겁고, 어른들도 편하다"며 크루즈 여행의 장점을 강조합니다.</p>
+          <p><span class="text-blue">키즈 클럽과 다양한 엔터테인먼트</span>가 있어 아이들이 즐겁게 지낼 수 있고, 부모들은 그동안 휴식을 취할 수 있기 때문입니다.</p>
+          <p>또한, 여러 도시를 한 번에 둘러볼 수 있어 시간 대비 효율적인 여행이 가능합니다.</p>
+          <p>크루즈닷 고객센터에도 "처음 크루즈 여행인데 생각보다 훨씬 좋았다"는 후기가 많습니다.</p>
+          <p>특히 <span class="highlight-yellow">50대 이상 여행객들</span>이 크루즈 여행의 편리함을 높이 평가하며, 걷기 힘든 관광지도 크루즈에서 쉬었다가 다시 돌아올 수 있어 부담이 적습니다.</p>
+        </article>
+        
+        <article class="news-section-block">
+          <h2>6. 2025년 크루즈 여행 예상 비용 💰</h2>
+          <p>크루즈 여행 비용은 선박, 기간, 객실 등급에 따라 다양하지만, <span class="highlight-yellow">전반적으로 합리적인 가격</span>으로 제공되고 있습니다.</p>
+          <p>일반적으로 4박 5일 크루즈 여행의 경우 인당 <span class="text-red">50만원~150만원</span> 정도이며, 이는 호텔, 식사, 엔터테인먼트가 모두 포함된 가격입니다.</p>
+          <p>프리미엄 크루즈의 경우 더 높은 가격대이지만, 그만큼 <span class="highlight-blue">고급스러운 서비스와 시설</span>을 제공합니다.</p>
+          <p>많은 여행객들이 "생각보다 저렴하다"며 놀라워하는 경우가 많으며, 특히 조기 예약 시 할인 혜택을 받을 수 있어 더욱 경제적입니다.</p>
+          <p>크루즈닷에서는 다양한 크루즈 상품을 비교하고 최적의 가격으로 예약할 수 있도록 도와드리고 있습니다.</p>
+          <p>또한, <span class="highlight-red">가족 할인, 조기 예약 할인, 시즌 오프 할인</span> 등 다양한 혜택을 제공하여 더욱 경제적인 크루즈 여행을 즐길 수 있습니다.</p>
+          <p>실제로 크루즈닷을 통해 예약한 고객들은 평균 <span class="text-blue">20~30% 할인</span> 혜택을 받고 있으며, 이는 다른 여행 방식과 비교해 매우 경제적입니다.</p>
+        </article>
+        
+        <article class="news-section-block">
+          <h2>7. 크루즈 여행 준비 팁 📝</h2>
+          <p>크루즈 여행을 처음 계획하시는 분들을 위해 <span class="highlight-yellow">실용적인 팁</span>을 드립니다.</p>
+          <p>먼저, <span class="text-red">여권 유효기간</span>을 확인하세요. 크루즈 여행은 해외 여행이므로 여권이 6개월 이상 유효해야 합니다.</p>
+          <p>또한, <span class="highlight-blue">비자 필요 여부</span>를 미리 확인하는 것이 중요합니다. 기항지에 따라 비자가 필요할 수 있습니다.</p>
+          <p>크루즈닷에서는 고객 여러분께 필요한 서류와 준비물을 안내해드리고 있습니다.</p>
+          <p>선박 내에서는 <span class="text-red">캐주얼 복장</span>이 기본이지만, 특별한 날에는 정장이나 드레스를 입는 것도 좋습니다.</p>
+          <p>많은 여행객들이 "크루즈에서 입을 옷 고르는 것도 재미있었다"며 여행 준비의 즐거움을 표현합니다.</p>
+        </article>
+        
+        <section class="news-summary">
+          <h3>마무리 ✨</h3>
+          <p>2025년 크루즈 여행 시장은 지속적인 성장을 보이며, 다양한 혁신적인 서비스와 트렌드가 등장하고 있습니다.</p>
+          <p>크루즈 여행을 계획하고 계신다면, 이러한 최신 정보를 참고하여 더욱 풍부한 여행 경험을 즐기시기 바랍니다.</p>
+          <p>크루즈닷에서는 고객 여러분께 최적의 크루즈 여행을 제공하기 위해 항상 노력하고 있습니다. 🚢</p>
+        </section>
+      </main>
+      
+      <!-- 카카오톡 공유 버튼 -->
+      <div class="news-kakao-share">
+        <button class="news-kakao-share-button" onclick="shareOnKakao()">
+          <div class="news-kakao-logo">
+            <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c1.73 0 3.36-.44 4.79-1.23l3.21 1.23-1.23-3.21c.79-1.43 1.23-3.06 1.23-4.79C22 6.48 17.52 2 12 2zm-1.25 12.01L8.98 14H7.5v-4h3.75l1.77-.99V14.01h-2.27z"/>
+            </svg>
+          </div>
+          <span>카카오톡 친구에게 공유</span>
+        </button>
+      </div>
+    </div>
+    
+    <script>
+      (function() {
+        function shareOnKakao() {
+          if (typeof window === 'undefined') return;
+          
+          if (!window.Kakao) {
+            // 카카오톡 SDK 로드
+            const script = document.createElement('script');
+            script.src = 'https://developers.kakao.com/sdk/js/kakao.js';
+            script.async = true;
+            script.onload = function() {
+              initializeAndShare();
+            };
+            document.head.appendChild(script);
+          } else {
+            initializeAndShare();
+          }
+        }
+        
+        function initializeAndShare() {
+          if (!window.Kakao) {
+            alert('카카오톡 SDK가 로드되지 않았습니다.');
+            return;
+          }
+          
+          // 메타 태그에서 카카오 키 가져오기
+          const kakaoKeyElement = document.querySelector('meta[name="kakao-js-key"]');
+          const kakaoKey = kakaoKeyElement ? kakaoKeyElement.getAttribute('content') : null;
+          
+          if (!window.Kakao.isInitialized()) {
+            if (kakaoKey && kakaoKey !== 'YOUR_KAKAO_JS_KEY_HERE') {
+              window.Kakao.init(kakaoKey);
+            } else {
+              alert('카카오톡 공유 기능을 사용할 수 없습니다. 관리자에게 문의해주세요.');
+              console.log('카카오톡 JavaScript 키가 설정되지 않았습니다. 환경 변수 NEXT_PUBLIC_KAKAO_JS_KEY를 확인해주세요.');
+              return;
+            }
+          }
+          
+          const currentUrl = window.location.href;
+          const shareTitle = '2025년 크루즈 여행 트렌드, 무엇이 달라졌나?';
+          const shareDescription = '크루즈뉘우스에서 발행한 크루즈 여행 정보를 확인해보세요!';
+          const imageUrl = window.location.origin + '/images/ai-cruise-logo.png';
+          
+          window.Kakao.Share.sendDefault({
+            objectType: 'feed',
+            content: {
+              title: shareTitle,
+              description: shareDescription,
+              imageUrl: imageUrl,
+              link: {
+                mobileWebUrl: currentUrl,
+                webUrl: currentUrl,
+              },
+            },
+            buttons: [
+              {
+                title: '크루즈뉘우스 보기',
+                link: {
+                  mobileWebUrl: currentUrl,
+                  webUrl: currentUrl,
+                },
+              },
+            ],
+          });
+        }
+        
+        // 전역 함수로 등록
+        window.shareOnKakao = shareOnKakao;
+      })();
+    </script>
+  </body>
+</html>

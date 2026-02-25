@@ -1,0 +1,45 @@
+# 검색 엔진 봇 허용
+User-agent: Googlebot
+Allow: /
+User-agent: Bingbot
+Allow: /
+User-agent: Slurp
+Allow: /
+User-agent: DuckDuckBot
+Allow: /
+
+# 스크래퍼 및 악성 봇 차단
+User-agent: Pinterest
+Disallow: /
+User-agent: Pinterestbot
+Disallow: /
+User-agent: AhrefsBot
+Disallow: /
+User-agent: SemrushBot
+Disallow: /
+User-agent: MJ12bot
+Disallow: /
+User-agent: DotBot
+Disallow: /
+User-agent: BLEXBot
+Disallow: /
+User-agent: YandexBot
+Disallow: /
+User-agent: Baiduspider
+Disallow: /
+User-agent: Sogou
+Disallow: /
+
+# API 엔드포인트 차단
+User-agent: *
+Disallow: /api/
+Disallow: /admin/
+Disallow: /_next/
+Disallow: /private/
+
+# 크루즈 정보 사진 폴더 차단 (선택)
+# User-agent: *
+# Disallow: /크루즈정보사진/
+
+# 크롤링 지연 (선택사항)
+Crawl-delay: 1 

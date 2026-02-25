@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>파트너 로그인 테스트</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+        }
+        .log-success {
+            color: #28a745;
+        }
+        .log-error {
+            color: #dc3545;
+        }
+        .log-info {
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 파트너 로그인 테스트</h1>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label>아이디 / 전화번호:</label>
+                <input type="text" id="phone" value="user1" placeholder="user1" required>
+            </div>
+            
+            <div class="form-group">
+                <label>비밀번호:</label>
+                <input type="password" id="password" value="qwe1" placeholder="qwe1" required>
+            </div>
+            
+            <button type="submit" id="submitBtn">로그인 테스트</button>
+        </form>
+        
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        const form = document.getElementById('loginForm');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const time = new Date().toLocaleTimeString();
+            entry.textContent = `[${time}] ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+            console.log(`[${type.toUpperCase()}]`, message);
+        }
+        
+        function clearLog() {
+            log.innerHTML = '';
+        }
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearLog();
+            
+            const phone = document.getElementById('phone').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = '로그인 중...';
+            
+            addLog(`로그인 시도: phone=${phone}, password=${password.replace(/./g, '*')}`, 'info');
+            
+            try {
+                // 1. 로그인 API 호출
+                addLog('1. /api/auth/login 호출 중...', 'info');
+                const loginResponse = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ phone, password }),
+                });
+                
+                addLog(`   응답 상태: ${loginResponse.status} ${loginResponse.statusText}`, 'info');
+                
+                const loginData = await loginResponse.json();
+                addLog(`   응답 데이터: ${JSON.stringify(loginData, null, 2)}`, 'info');
+                
+                if (!loginResponse.ok || !loginData?.ok) {
+                    addLog(`❌ 로그인 실패: ${loginData?.error || '알 수 없는 오류'}`, 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '로그인 테스트';
+                    return;
+                }
+                
+                addLog('✅ 로그인 성공!', 'success');
+                addLog(`   next 경로: ${loginData.next || '(없음)'}`, 'info');
+                addLog(`   partnerId: ${loginData.partnerId || '(없음)'}`, 'info');
+                
+                // 2. 사용자 정보 확인
+                addLog('2. /api/auth/me 호출 중...', 'info');
+                const meResponse = await fetch('/api/auth/me', { credentials: 'include' });
+                const meData = await meResponse.json();
+                addLog(`   응답 데이터: ${JSON.stringify(meData, null, 2)}`, 'info');
+                
+                if (meData?.ok && meData?.user) {
+                    addLog('✅ 사용자 정보 확인 성공!', 'success');
+                    addLog(`   mallUserId: ${meData.user.mallUserId || '(없음)'}`, 'info');
+                    
+                    if (meData.user.mallUserId) {
+                        const redirectPath = loginData.next || `/partner/${meData.user.mallUserId}/dashboard`;
+                        addLog(`3. 리다이렉트 경로: ${redirectPath}`, 'info');
+                        addLog(`✅ 모든 테스트 통과! 3초 후 리다이렉트합니다...`, 'success');
+                        
+                        setTimeout(() => {
+                            window.location.href = redirectPath;
+                        }, 3000);
+                    } else {
+                        addLog('⚠️ mallUserId가 없습니다.', 'error');
+                    }
+                } else {
+                    addLog('❌ 사용자 정보를 가져올 수 없습니다.', 'error');
+                }
+                
+            } catch (error) {
+                addLog(`❌ 오류 발생: ${error.message}`, 'error');
+                console.error('Error:', error);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '로그인 테스트';
+            }
+        });
+        
+        // 페이지 로드 시 현재 세션 확인
+        window.addEventListener('load', async () => {
+            addLog('페이지 로드됨. 현재 세션 확인 중...', 'info');
+            try {
+                const meResponse = await fetch('/api/auth/me', { credentials: 'include' });
+                const meData = await meResponse.json();
+                if (meData?.ok && meData?.user) {
+                    addLog(`✅ 이미 로그인됨: ${meData.user.mallUserId || meData.user.name}`, 'success');
+                    if (meData.user.mallUserId) {
+                        addLog(`리다이렉트 경로: /partner/${meData.user.mallUserId}/dashboard`, 'info');
+                    }
+                } else {
+                    addLog('로그인되지 않음', 'info');
+                }
+            } catch (error) {
+                addLog(`세션 확인 오류: ${error.message}`, 'error');
+            }
+        });
+    </script>
+</body>
+</html>
+

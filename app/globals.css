@@ -1,0 +1,236 @@
+@import url('/fonts/pretendard/pretendard.css');
+
+@tailwind base;
+@tailwind components;
+
+/* 퀵버튼 통일 (시니어 친화) */
+.quickbtn {
+  @apply flex items-center justify-center rounded-lg border bg-white py-4 px-6 text-center text-base font-semibold text-gray-900 shadow-md hover:bg-gray-50 transition-colors;
+  min-height: 52px;
+}
+
+/* 채팅 카드/버튼 기본 패딩/그리드 */
+.cg-v2 .card {
+  @apply rounded-2xl bg-white p-4 shadow;
+}
+
+@tailwind utilities;
+
+/* 모바일 미리보기 전용 스타일 - 항상 1열로 표시 */
+.mobile-preview-wrapper .grid[class*="grid-cols"] {
+  grid-template-columns: 1fr !important;
+}
+
+html,
+body,
+#__next,
+:root {
+  height: 100%;
+}
+
+body {
+  background-color: #ffffff;
+  color: #111827;
+  overflow: auto;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
+  font-size: 1.25rem;
+  line-height: 1.75;
+
+  /* 보안: 텍스트 선택 방지 */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+
+  /* 보안: 모바일 롱프레스 메뉴 방지 */
+  -webkit-touch-callout: none;
+
+  /* 텍스트 줄바꿈 개선 */
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+/* 입력 필드와 버튼은 선택 가능하도록 예외 처리 */
+input,
+textarea,
+button,
+select,
+[contenteditable="true"],
+[role="textbox"] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* 이미지 보안 강화 */
+img {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+  pointer-events: auto;
+}
+
+/* 전역 글씨 크기 설정 */
+:root[data-font-size="sm"] body {
+  font-size: 1rem;
+}
+
+:root[data-font-size="md"] body {
+  font-size: 1.125rem;
+}
+
+:root[data-font-size="lg"] body {
+  font-size: 1.25rem;
+}
+
+/* 글씨 크기별 채팅 말풍선 조정 */
+:root[data-font-size="sm"] .chat-bubble {
+  font-size: 1rem;
+}
+
+:root[data-font-size="md"] .chat-bubble {
+  font-size: 1.125rem;
+}
+
+:root[data-font-size="lg"] .chat-bubble {
+  font-size: 1.25rem;
+}
+
+/* 중요 버튼/칩 최소 높이 56px (50대 이상 사용자 친화) */
+button,
+.button,
+.chip,
+input[type="submit"],
+input[type="button"],
+a.button {
+  min-height: 56px;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  font-weight: 600;
+  font-size: 1.125rem;
+}
+
+/* 입력 필드 가독성 개선 */
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="password"],
+input[type="number"],
+textarea,
+select {
+  font-size: 1.125rem;
+  line-height: 1.75;
+  padding: 0.875rem 1rem;
+  min-height: 56px;
+}
+
+/* 키보드 포커스 링 */
+*:focus-visible {
+  outline: 2px solid #3B82F6;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 챗봇 말풍선 가독성 (50대 이상 사용자 친화) */
+.chat-bubble {
+  line-height: 1.75;
+  font-size: 1.125rem;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* 스크롤바 숨김 */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out forwards;
+}
+
+@keyframes subtle-zoom {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.animate-subtle-zoom {
+  animation: subtle-zoom 20s ease-in-out infinite;
+}
+
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoom-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slide-in-from-bottom {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 3s ease-in-out infinite;
+}
+
+.animate-in {
+  animation-duration: 0.3s;
+  animation-fill-mode: both;
+}
+
+.animate-in.fade-in {
+  animation-name: fade-in;
+}
+
+.animate-in.zoom-in {
+  animation-name: zoom-in;
+}
+
+.animate-in.slide-in-from-bottom-5,
+.animate-in.slide-in-from-bottom-10 {
+  animation-name: slide-in-from-bottom;
+}
+
+/* 애니메이션 딜레이 */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }

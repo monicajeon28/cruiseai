@@ -1,0 +1,7 @@
+[
+  {"code": "JP", "name": "Japan", "name_ko": "일본"},
+  {"code": "KR", "name": "South Korea", "name_ko": "대한민국"},
+  {"code": "US", "name": "United States", "name_ko": "미국"},
+  {"code": "HK", "name": "Hong Kong", "name_ko": "홍콩"},
+  {"code": "CN", "name": "China", "name_ko": "중국"}
+] 

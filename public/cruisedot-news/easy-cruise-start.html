@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>크루즈가 궁금하다면? 가장 쉬운 시작법</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet" />
+  <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.1/kakao.min.js" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg-main: #f8f9fa; --bg-light: #ffffff; --primary-dark: #0a192f;
+      --accent-gold: #d4af37; --accent-red: #e74c3c; --accent-green: #27ae60;
+      --accent-blue: #3498db; --text-dark: #333333; --text-light: #f0f0f0;
+      --border-light: #eeeeee;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.8; color: var(--text-dark); background-color: var(--bg-main);
+      font-size: 26px; padding-top: 80px; padding-bottom: 80px; word-break: keep-all;
+    }
+    .container { max-width: 800px; margin: 0 auto; padding: 20px; background-color: var(--bg-light); }
+    h1, h2, .banner-title, .section-title {
+      font-family: 'Noto Serif KR', serif; font-weight: 700; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }
+    .banner-link {
+      display: block; text-decoration: none; margin: 40px 0;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    .banner-link:hover { transform: translateY(-8px); box-shadow: 0 15px 40px rgba(0,0,0,0.15); }
+    .banner {
+      color: var(--text-light); padding: 50px 30px; text-align: center;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+    }
+    .banner-top { background: linear-gradient(135deg, #2c3e50, #34495e); }
+    .banner-bottom { background: linear-gradient(135deg, #0a192f, #172a46); }
+    .kakao-open-chat { background: #FEE500; }
+    .banner-title { font-size: 42px; line-height: 1.4; margin-bottom: 20px; }
+    .kakao-open-chat .banner-title, .kakao-open-chat .banner-subtitle { color: #3C1E1E; }
+    .banner-subtitle {
+      font-size: 28px; background: rgba(255,255,255,0.1); padding: 12px 25px;
+      border-radius: 50px; display: inline-block; font-weight: bold;
+    }
+    .kakao-open-chat .banner-subtitle { background: rgba(60, 30, 30, 0.1); }
+    .main-title {
+      font-size: 52px; text-align: center; margin-bottom: 50px;
+      padding: 40px 20px; background: var(--primary-dark); color: var(--accent-gold);
+      border-radius: 15px; line-height: 1.5;
+    }
+    .section {
+      margin-bottom: 70px; padding: 40px 30px; border-radius: 15px;
+      background-color: var(--bg-light); border: 1px solid var(--border-light);
+    }
+    .section-title {
+      font-size: 42px; margin-bottom: 40px; color: var(--primary-dark);
+      text-align: center; line-height: 1.4;
+    }
+    .video-container, .image-container {
+      width: 100%; margin: 40px 0; text-align: center;
+      border-radius: 15px; overflow: hidden; box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+    .video-container { position: relative; padding-bottom: 56.25%; height: 0; }
+    .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    .image-container img { width: 100%; display: block; }
+    .content { font-size: 28px; line-height: 2; margin-bottom: 30px; text-align: center; }
+    .content p { margin-bottom: 1.5em; }
+    .bullet-points { list-style: none; padding: 0; }
+    .bullet-points li {
+      margin: 25px 0; padding: 25px; background-color: #f8f9fa; border: 1px solid #e9ecef;
+      border-radius: 10px; font-size: 28px; position: relative; padding-left: 60px; line-height: 1.8;
+      text-align: left;
+    }
+    .bullet-points li:before {
+      content: "✓"; color: var(--accent-gold); font-size: 30px; font-weight: bold;
+      position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+    }
+    .point-box {
+      display: flex; align-items: center; gap: 20px; background: #f8f9ff;
+      border: 1px solid #dde6ff; border-radius: 15px; padding: 20px; margin-bottom: 20px;
+    }
+    .point-icon svg { width: 40px; height: 40px; color: var(--accent-blue); }
+    .point-text h3 { font-size: 26px; font-weight: 700; color: var(--primary-dark); margin-bottom: 8px; }
+    .point-text p { font-size: 22px; color: #4a5568; line-height: 1.6; }
+    .benefit-box {
+      background: linear-gradient(135deg, #fff7e6, #ffe7ba); border-radius: 15px;
+      padding: 30px; margin: 30px 0; border: 1px solid rgba(212, 175, 55, 0.3);
+    }
+    .benefit-box h3 { font-size: 28px; color: #b7791f; margin-bottom: 20px; text-align: center; }
+    .benefit-list { list-style: none; padding: 0; color: #8a5a16; font-size: 24px; line-height: 1.8; }
+    .benefit-list li { margin-bottom: 12px; }
+    .final-cta-button { background: linear-gradient(135deg, #0a192f, #172a46); color: var(--text-light); border-radius: 15px; padding: 30px; }
+    .fixed-banner {
+      position: fixed; left: 0; width: 100%; z-index: 1000; display: flex;
+      justify-content: center; align-items: center; padding: 15px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.2); font-size: 22px;
+    }
+    .top-banner { top: 0; background-color: var(--bg-light); border-bottom: 1px solid var(--border-light); }
+    .bottom-banner { bottom: 0; background: var(--accent-gold); }
+    .top-banner a, .bottom-banner a {
+      text-decoration: none; font-weight: bold; display: flex;
+      align-items: center; transition: transform 0.2s ease;
+    }
+    .top-banner a:hover, .bottom-banner a:hover { transform: scale(1.05); }
+    .top-banner a { background-color: #000; color: #fff; padding: 10px 20px; border-radius: 50px; }
+    .bottom-banner a { color: var(--primary-dark); font-size: 24px; }
+    @media (max-width: 768px) {
+      body { font-size: 24px; } .container { padding: 15px; }
+      .banner-title, .section-title { font-size: 36px; } .banner-subtitle { font-size: 24px; }
+      .main-title { font-size: 42px; } .point-box { flex-direction: column; align-items: flex-start; }
+    }
+    @media (max-width: 480px) {
+      body { font-size: 22px; padding-top: 70px; padding-bottom: 70px; }
+      .main-title { font-size: 34px; } .section-title { font-size: 30px; }
+      .content { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="fixed-banner top-banner">
+    <a href="javascript:shareOnKakao();">
+      <svg style="width:24px; height:24px; margin-right:8px;" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c1.73 0 3.36-.44 4.79-1.23l3.21 1.23-1.23-3.21c.79-1.43 1.23-3.06 1.23-4.79C22 6.48 17.52 2 12 2zm-1.25 12.01L8.98 14H7.5v-4h3.75l1.77-.99V14.01h-2.27z"></path></svg>
+      <span>카카오톡 친구에게 공유</span>
+    </a>
+  </div>
+  <div class="container">
+    <a href="http://leadz.kr/x6i" class="banner-link" target="_blank">
+      <div class="banner banner-top">
+        <div class="banner-title">실제보다 더 생생한<br>고객 후기 보러가기</div>
+        <div class="banner-subtitle">지금 바로 클릭</div>
+      </div>
+    </a>
+    <h1 class="main-title">크루즈가 궁금하다면?<br>가장 쉬운 시작법</h1>
+    <div class="video-container">
+      <iframe src="https://www.youtube.com/embed/QkC4Ymf7CR8?autoplay=1&mute=1&controls=0&loop=1&playlist=QkC4Ymf7CR8" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" title="크루즈가 궁금하다면? 가장 쉬운 시작법"></iframe>
+    </div>
+    <div class="section">
+      <h2 class="section-title">혹시, 당신도<br>이런 고민 중이신가요?</h2>
+      <div class="image-container">
+        <img src="https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751702523_3041.jpg" title="고민하는 사람 이미지" alt="고민하는 사람 이미지" />
+      </div>
+      <div class="content">
+        <p class="special-quote" style="background:linear-gradient(135deg,#fdf2f8,#fef9c3); border-radius:12px; padding:30px;">
+          "크루즈, 가고는 싶은데...<br>어디서부터 알아봐야 할지 막막해요."
+        </p>
+        <p>지금 망설이는 이유는 명확합니다.</p>
+      </div>
+      <ul class="bullet-points">
+        <li>어떤 선사와 배를 골라야 할지</li>
+        <li>광고에 숨겨진 추가 비용은 없을지</li>
+        <li>한국인에게 맞는 서비스가 있을지</li>
+      </ul>
+    </div>
+    <div class="section">
+      <h2 class="section-title">왜 '크루즈닷'이어야 할까요?</h2>
+      <div class="image-container">
+        <img src="https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751702525_0586.jpg" title="전문가 이미지" alt="전문가 이미지" />
+      </div>
+      <div class="content">
+        <p>저희는 단순한 여행사가 아닌,<br>당신의 <strong class="text-highlight">'인생 여행'</strong>을 책임질 전문가 그룹입니다.</p>
+        <p>10년 이상 경력의 전문 MD팀이 <strong class="text-highlight">전 세계 300여 척의 배를 매주 분석</strong>하고 선사와 직접 소통하며, 한국 고객에게 가장 완벽한 여행만을 골라냅니다.</p>
+        <p><strong class="font-black">'전문성, 정직한 가격, 한국인 맞춤 케어'</strong><br>이 세 가지 원칙으로 당신의 모든 걱정을 해결합니다.</p>
+      </div>
+    </div>
+    <div class="section">
+      <h2 class="section-title">하지만, 왜 '지금'<br>상담을 받아야 할까요?</h2>
+      <div class="image-container">
+        <img src="https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751702973_6424.jpg" title="시간의 흐름" alt="시간의 흐름을 나타내는 이미지" />
+      </div>
+      <div class="point-box">
+        <div class="point-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <div class="point-text">
+          <h3>다시는 없을 '최저가'</h3>
+          <p>항공료와 현지 경비는 매년 오릅니다.<br><strong class="text-highlight">여행을 떠나기 가장 저렴한 날은 바로 오늘입니다.</strong></p>
+        </div>
+      </div>
+      <div class="point-box">
+        <div class="point-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"></path></svg>
+        </div>
+        <div class="point-text">
+          <h3>돈으로 못 살 '최상의 경험'</h3>
+          <p>1년 뒤의 체력은 지금과 다릅니다.<br><strong class="text-highlight">가장 건강하고 활기찰 때 떠나야 후회가 없습니다.</strong></p>
+        </div>
+      </div>
+    </div>
+    <div class="section final-cta-section">
+      <h2 class="section-title">더 늦기 전에, 후회 없는 여행을 위한<br>마지막 기회를 잡으세요</h2>
+      <div class="content">
+        5일간의 칼럼을 모두 읽고 용기를 내신<br>
+        <strong>'진짜 여행'</strong>을 원하시는 분들을 위해,<br>
+        크루즈닷이 전례 없는 특별 혜택을 드립니다.
+      </div>
+      <div class="benefit-box">
+        <h3>이번 주 한정! 선착순 20분 특별 혜택</h3>
+        <ul class="benefit-list">
+          <li><strong>혜택 1.</strong> 10년차 이상 전문가 1:1 직통 상담 배정</li>
+          <li><strong>혜택 2.</strong> 상상초월, 크루즈닷에서만 가능한 특가 제공</li>
+        </ul>
+      </div>
+      <div class="content font-black" style="font-size: 32px;">
+        망설이면 기회는<br>다른 사람의 것이 됩니다.
+      </div>
+      <a href="https://leadgeny.kr/i/yog" target="_blank" class="banner-link">
+        <div class="banner final-cta-button">
+          <div class="banner-title">특별 혜택 신청하고<br>1:1 전문가 상담 받기</div>
+          <div class="banner-subtitle">(선착순 마감 시 혜택 자동 종료)</div>
+        </div>
+      </a>
+    </div>
+    <a href="https://open.kakao.com/o/plREDDUh" class="banner-link kakao-open-chat" target="_blank">
+      <div class="banner">
+        <div class="banner-title">크루즈닷 회원전용<br>카톡방 초대</div>
+        <div class="banner-subtitle">지금 바로 클릭하여 입장</div>
+      </div>
+    </a>
+  </div>
+  <div class="fixed-banner bottom-banner">
+    <a href="https://www.cruisedot.co.kr/i/6nx" target="_blank">
+      크루즈닷 전문가와 상담 신청하기 &gt;
+    </a>
+  </div>
+  <script>
+    try { Kakao.init('e4d764f905271796dccf37c55a5b84d7'); } catch(e) { console.error("Kakao SDK 초기화에 실패했습니다.", e); }
+    function shareOnKakao() {
+      try {
+        Kakao.Share.sendDefault({
+          objectType: 'feed',
+          content: {
+            title: '크루즈가 궁금하다면? 가장 쉬운 시작법',
+            description: '망설이는 이유를 해결하고 지금 바로 상담해야 하는 이유를 정리했습니다.',
+            imageUrl: 'https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751702523_3041.jpg',
+            link: { mobileWebUrl: window.location.href, webUrl: window.location.href }
+          },
+          buttons: [ { title: '상담 신청하기', link: { mobileWebUrl: window.location.href, webUrl: window.location.href } } ]
+        });
+      } catch(e) { console.error("카카오 공유에 실패했습니다.", e); }
+    }
+  </script>
+</body>
+</html>

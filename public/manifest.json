@@ -1,0 +1,45 @@
+{
+  "name": "크루즈몰",
+  "short_name": "크루즈몰",
+  "description": "크루즈 상품을 둘러보고 구매할 수 있는 크루즈몰",
+  "start_url": "/?utm_source=pwa&utm_medium=home_screen",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/mall-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/mall-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/ai-cruise-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "크루즈몰 메인",
+      "short_name": "메인",
+      "description": "크루즈몰 메인 페이지로 이동",
+      "url": "/?utm_source=pwa&utm_medium=shortcut",
+      "icons": [
+        {
+          "src": "/icons/mall-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+// Phase 2: 데이터베이스 스키마 추가 사항
+// 이 파일의 내용을 prisma/schema.prisma 파일에 추가하세요.
+// 위치: User 모델과 UserActivity 모델 사이 (line 2701~2702)
+
+// ===================================
+// 1. Consent 테이블 (개인정보 동의 관리)
+// ===================================
+model Consent {
+  id                Int       @id @default(autoincrement())
+  userId            Int?
+  phone             String?   // AffiliateLead 마이그레이션 시 전화번호로 매칭
+  email             String?
+  consentType       String    // 'PRIVACY', 'MARKETING', 'THIRD_PARTY', 'SYSTEM_CHANGE'
+  isGranted         Boolean   @default(false)
+  grantedAt         DateTime?
+  revokedAt         DateTime?
+  ipAddress         String?
+  userAgent         String?
+  metadata          Json?     // { source: 'web' | 'email' | 'sms', campaign: '...' }
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  User              User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, consentType])
+  @@index([phone, consentType])
+  @@index([email, consentType])
+  @@index([isGranted, createdAt])
+  @@index([consentType, grantedAt])
+}
+
+// ===================================
+// 2. ArchivedAffiliateLead 테이블 (중복 데이터 보관)
+// ===================================
+model ArchivedAffiliateLead {
+  id                   Int       @id @default(autoincrement())
+  originalLeadId       Int       // 원본 AffiliateLead.id
+  customerName         String?
+  customerPhone        String?
+  status               String?
+  source               String?
+  managerId            Int?
+  agentId              Int?
+  linkId               Int?
+  notes                String?
+  metadata             Json?     // 원본 AffiliateLead의 모든 데이터 JSON 저장
+  originalCreatedAt    DateTime
+  originalUpdatedAt    DateTime
+
+  // 마이그레이션 정보
+  mergedIntoUserId     Int?      // User로 통합된 경우
+  mergedIntoLeadId     Int?      // 다른 Lead로 통합된 경우
+  archivedReason       String    // 'MERGED_INTO_USER', 'DUPLICATE', 'DATA_CLEANUP', 'MANUAL'
+  archivedBy           Int?      // 처리한 관리자 ID
+  archivedAt           DateTime  @default(now())
+
+  User                 User?     @relation(fields: [mergedIntoUserId], references: [id])
+  ArchivedBy           User?     @relation("ArchivedBy", fields: [archivedBy], references: [id])
+
+  @@index([customerPhone])
+  @@index([customerPhone, archivedReason])
+  @@index([mergedIntoUserId])
+  @@index([mergedIntoLeadId])
+  @@index([archivedReason, archivedAt])
+  @@index([originalLeadId])
+  @@index([managerId, archivedAt])
+  @@index([agentId, archivedAt])
+}
+
+// ===================================
+// 3. User 모델에 추가할 필드
+// ===================================
+// User 모델 (line 2567~2701)에 다음 필드를 추가하세요:
+//
+//   // Phase 2: AffiliateLead 통합 준비
+//   affiliateSourceId    Int?      // 마케팅 출처 (AffiliateProfile.id)
+//   isB2BLead            Boolean   @default(false) // AffiliateLead에서 이관된 사용자
+//   b2bLeadCreatedAt     DateTime? // 원래 Lead 생성일
+//   consentPrivacy       Boolean   @default(false) // 개인정보 동의
+//   consentMarketing     Boolean   @default(false) // 마케팅 동의
+//   consentThirdParty    Boolean   @default(false) // 제3자 제공 동의
+//
+//   // Phase 2: 새로운 관계
+//   AffiliateSource              AffiliateProfile?       @relation("UserAffiliateSource", fields: [affiliateSourceId], references: [id], onDelete: SetNull)
+//   Consents                     Consent[]
+//   ArchivedAffiliateLeads       ArchivedAffiliateLead[]
+//   ArchivedByLeads              ArchivedAffiliateLead[] @relation("ArchivedBy")
+//
+// User 모델의 @@index 섹션에 추가:
+//   @@index([affiliateSourceId])
+//   @@index([isB2BLead, b2bLeadCreatedAt])
+//   @@index([consentPrivacy, consentMarketing])
+
+// ===================================
+// 4. AffiliateProfile 모델에 추가할 관계
+// ===================================
+// AffiliateProfile 모델 (line 414~492)에 다음 관계를 추가하세요:
+//
+//   // Phase 2: User와의 마케팅 출처 관계
+//   SourcedUsers         User[]    @relation("UserAffiliateSource")
+
+// ===================================
+// 마이그레이션 명령
+// ===================================
+// 1. 스키마 파일 수정 후:
+//    pnpm prisma migrate dev --name add_consent_and_archived_lead --create-only
+//
+// 2. 생성된 SQL 검토:
+//    cat prisma/migrations/[timestamp]_add_consent_and_archived_lead/migration.sql
+//
+// 3. 로컬 테스트:
+//    pnpm prisma migrate dev
+//    pnpm prisma generate
+//
+// 4. 프로덕션 배포 (백업 필수!):
+//    bash scripts/backup-all.sh
+//    pnpm prisma migrate deploy

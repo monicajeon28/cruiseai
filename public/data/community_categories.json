@@ -1,0 +1,22 @@
+[
+  {
+    "id": "travel-tip",
+    "label": "여행팁",
+    "value": "travel-tip"
+  },
+  {
+    "id": "destination",
+    "label": "관광지추천",
+    "value": "destination"
+  },
+  {
+    "id": "qna",
+    "label": "질문 답변",
+    "value": "qna"
+  },
+  {
+    "id": "general",
+    "label": "일반",
+    "value": "general"
+  }
+]

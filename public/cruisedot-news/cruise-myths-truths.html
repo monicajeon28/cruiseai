@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>크루즈 여행에 대한 5가지 오해와 진실</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet" />
+  <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.1/kakao.min.js" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg-main: #f8f9fa; --bg-light: #ffffff; --primary-dark: #0a192f;
+      --accent-gold: #d4af37; --accent-red: #e74c3c; --accent-green: #27ae60;
+      --text-dark: #333333; --text-light: #f0f0f0; --border-light: #eeeeee;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.8; color: var(--text-dark); background-color: var(--bg-main);
+      font-size: 26px; padding-top: 80px; padding-bottom: 80px; word-break: keep-all;
+    }
+    .container { max-width: 800px; margin: 0 auto; padding: 20px; background-color: var(--bg-light); }
+    h1, h2, .banner-title, .conclusion-title {
+      font-family: 'Noto Serif KR', serif; font-weight: 700; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }
+    .banner-link {
+      display: block; text-decoration: none; margin: 40px 0;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    .banner-link:hover { transform: translateY(-8px); box-shadow: 0 15px 40px rgba(0,0,0,0.15); }
+    .banner {
+      color: var(--text-light); padding: 50px 30px; text-align: center;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+    }
+    .banner-top { background: linear-gradient(135deg, #2c3e50, #34495e); }
+    .banner-bottom { background: linear-gradient(135deg, #0a192f, #172a46); }
+    .kakao-open-chat { background: #FEE500; }
+    .banner-title { font-size: 42px; line-height: 1.4; margin-bottom: 20px; }
+    .kakao-open-chat .banner-title, .kakao-open-chat .banner-subtitle { color: #3C1E1E; }
+    .banner-subtitle {
+      font-size: 28px; background: rgba(255,255,255,0.1); padding: 12px 25px;
+      border-radius: 50px; display: inline-block; font-weight: bold;
+    }
+    .kakao-open-chat .banner-subtitle { background: rgba(60, 30, 30, 0.1); }
+    .main-title {
+      font-size: 52px; text-align: center; margin-bottom: 50px;
+      padding: 40px 20px; background: var(--primary-dark); color: var(--accent-gold);
+      border-radius: 15px; line-height: 1.5;
+    }
+    .section {
+      margin-bottom: 70px; padding: 40px 30px; border-radius: 15px;
+      background-color: var(--bg-light); border: 1px solid var(--border-light);
+    }
+    .section-title {
+      font-size: 42px; margin-bottom: 40px; color: var(--primary-dark);
+      text-align: center; line-height: 1.4;
+    }
+    .myth-title, .truth-title {
+      font-family: 'Noto Serif KR', serif; font-size: 38px; font-weight: 700;
+      margin-bottom: 25px; text-align: center; padding: 20px; border-radius: 10px;
+    }
+    .myth-title { color: var(--accent-red); background-color: #fff5f5; border-left: 6px solid var(--accent-red); }
+    .truth-title { color: var(--accent-green); background-color: #f0fff4; border-left: 6px solid var(--accent-green); }
+    .video-container, .image-container {
+      width: 100%; margin: 40px 0; text-align: center;
+      border-radius: 15px; overflow: hidden; box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+    .video-container { position: relative; padding-bottom: 56.25%; height: 0; }
+    .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    .image-container img { width: 100%; display: block; }
+    .content { font-size: 28px; line-height: 2; margin-bottom: 30px; text-align: center; }
+    .content p { margin-bottom: 1.5em; }
+    .quote {
+      font-size: 30px; font-style: italic; text-align: center; color: var(--primary-dark);
+      padding: 30px; background-color: #f0f4f8; border-radius: 10px; margin: 40px 0; line-height: 1.7;
+    }
+    .bullet-points { list-style: none; padding: 0; }
+    .bullet-points li {
+      margin: 25px 0; padding: 25px; background-color: #f8f9fa; border: 1px solid #e9ecef;
+      border-radius: 10px; font-size: 28px; position: relative; padding-left: 60px; line-height: 1.8;
+      text-align: left;
+    }
+    .bullet-points li::before {
+      content: "✓"; color: var(--accent-green); font-size: 30px; font-weight: bold;
+      position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+    }
+    .text-red { color: var(--accent-red); } .text-green { color: var(--accent-green); }
+    .font-bold { font-weight: 700; } .font-black { font-weight: 900; }
+    .text-highlight {
+      background: linear-gradient(to top, rgba(250, 218, 94, 0.6) 50%, transparent 50%);
+      display: inline; padding: 0 4px;
+    }
+    .price-table { width: 100%; border-collapse: collapse; margin: 30px 0; font-size: 24px; }
+    .price-table th, .price-table td { border: 1px solid #ddd; padding: 15px; text-align: center; vertical-align: middle; }
+    .price-table th { background-color: #f2f2f2; font-weight: bold; font-size: 26px; }
+    .price-table .col-us { background-color: #e8f5e8; }
+    .price-table .col-them { background-color: #fff2f2; }
+    .price-table .hidden-cost { color: var(--accent-red); font-weight: bold; }
+    .price-table .final-price { font-size: 30px; font-weight: bold; }
+    .price-table .final-us { color: var(--accent-green); }
+    .price-table .final-them { color: var(--accent-red); }
+    .conclusion-section {
+      background: var(--primary-dark); color: var(--text-light); text-align: center;
+      padding: 50px 30px; border-radius: 15px; margin-top: 50px;
+    }
+    .conclusion-title { font-size: 45px; margin-bottom: 25px; line-height: 1.4; color: var(--accent-gold); }
+    .conclusion-text { font-size: 30px; line-height: 1.8; }
+    .fixed-banner {
+      position: fixed; left: 0; width: 100%; z-index: 1000; display: flex;
+      justify-content: center; align-items: center; padding: 15px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.2); font-size: 22px;
+    }
+    .top-banner { top: 0; background-color: var(--bg-light); border-bottom: 1px solid var(--border-light); }
+    .bottom-banner { bottom: 0; background: var(--accent-gold); }
+    .top-banner a, .bottom-banner a {
+      text-decoration: none; font-weight: bold; display: flex;
+      align-items: center; transition: transform 0.2s ease;
+    }
+    .top-banner a:hover, .bottom-banner a:hover { transform: scale(1.05); }
+    .top-banner a { background-color: #000; color: #fff; padding: 10px 20px; border-radius: 50px; }
+    .bottom-banner a { color: var(--primary-dark); font-size: 24px; }
+    @media (max-width: 768px) {
+      body { font-size: 24px; } .container { padding: 15px; }
+      .banner-title, .conclusion-title { font-size: 36px; } .banner-subtitle { font-size: 24px; }
+      .main-title { font-size: 42px; } .section-title { font-size: 36px; }
+      .myth-title, .truth-title { font-size: 32px; } .content { font-size: 24px; }
+      .quote { font-size: 26px; } .bullet-points li { font-size: 24px; }
+      .conclusion-text { font-size: 26px; } .price-table { font-size: 22px; }
+    }
+    @media (max-width: 480px) {
+      body { font-size: 22px; padding-top: 70px; padding-bottom: 70px; }
+      .main-title { font-size: 34px; } .section-title { font-size: 30px; }
+      .myth-title, .truth-title { font-size: 28px; } .content { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="fixed-banner top-banner">
+    <a href="javascript:shareOnKakao();">
+      <svg style="width:24px; height:24px; margin-right:8px;" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c1.73 0 3.36-.44 4.79-1.23l3.21 1.23-1.23-3.21c.79-1.43 1.23-3.06 1.23-4.79C22 6.48 17.52 2 12 2zm-1.25 12.01L8.98 14H7.5v-4h3.75l1.77-.99V14.01h-2.27z"></path></svg>
+      <span>카카오톡 친구에게 공유</span>
+    </a>
+  </div>
+  <div class="container">
+    <a href="http://leadz.kr/ydB" class="banner-link" target="_blank">
+      <div class="banner banner-top">
+        <div class="banner-title">상위 1%만 가는<br>크루즈 여행이<br>특별한 이유</div>
+        <div class="banner-subtitle">자세히 보러가기</div>
+      </div>
+    </a>
+    <h1 class="main-title">여행사가 절대 알려주지 않는<br>크루즈의 5가지 진실</h1>
+    <div class="video-container">
+      <iframe src="https://www.youtube.com/embed/DjlB_fp-UEY?si=qX8POLcsCiAiGBuk&autoplay=1&mute=1&controls=0&loop=1&playlist=DjlB_fp-UEY" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+    </div>
+    <div class="section">
+      <h2 class="section-title">오해의 시작</h2>
+      <div class="image-container">
+        <img src="https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751702525_0586.jpg" title="크루즈에 대한 편견" alt="크루즈에 대한 편견을 가진 사람 이미지" />
+      </div>
+      <div class="quote">
+        "크루즈 여행? <br><span class="text-red font-bold">답답하고, 위험하고, 어르신들</span>만<br>가는 거 아닌가요?"
+      </div>
+      <div class="content">
+        <p>대부분의 사람들이 갖고 있는<br>크루즈에 대한 <strong class="text-highlight">잘못된 편견</strong>입니다.</p>
+        <p>하지만 <strong class="font-black">2024년 최신 데이터</strong>는<br>완전히 다른 이야기를 보여줍니다.</p>
+      </div>
+    </div>
+    <div class="section">
+      <h2 class="myth-title">오해 1: "배 안은 답답할 것이다"</h2>
+      <div class="image-container">
+        <img src="https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751704824_2319.png" title="초대형 크루즈선" alt="초대형 크루즈선 이미지" />
+      </div>
+      <h2 class="truth-title">진실: 바다 위 <span class="text-highlight">초대형 리조트</span></h2>
+      <div class="content">
+        <p>2024년 운항을 시작한<br><strong class="font-black" style="font-size:32px;">'바다의 아이콘'</strong>호를 아시나요?</p>
+        <p><strong class="text-green font-bold">7개의 풀장, 6개의 워터슬라이드, 40여개의 레스토랑과 바까지. 상상하는 모든 것이 있습니다.</strong></p>
+      </div>
+      <div class="quote">
+        "호텔, 리조트, 테마파크, 교통수단을<br>한 번에 해결하는 <br><strong class="font-bold">움직이는 올인원 리조트</strong>입니다."
+      </div>
+    </div>
+    <div class="section">
+      <h2 class="myth-title">오해 2: "사고나면 가장 위험하다"</h2>
+      <div class="image-container">
+        <img src="https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751704524_6698.jpg" title="안전한 크루즈" alt="안전한 크루즈 운항 이미지" />
+      </div>
+      <h2 class="truth-title">진실: <span class="text-highlight">자동차보다 20배</span> 안전합니다</h2>
+      <div class="content">
+        <p>2024년, 3,710만 명이 이용하는 동안<br>인명사고는 단 19건.</p>
+        <p>사고율은 <strong class="font-black text-green" style="font-size: 38px;">0.000051%</strong>로,<br><span class="text-highlight">벼락 맞을 확률보다 낮습니다.</span></p>
+      </div>
+      <ul class="bullet-points">
+        <li><strong class="font-bold">최첨단 안전장치:</strong> 구명정 100% 이상 확보, 승선 즉시 안전교육, 최신 레이더 시스템 완비</li>
+      </ul>
+    </div>
+    <div class="section">
+      <h2 class="myth-title">오해 3: "어르신들만 가는 여행"</h2>
+      <div class="image-container">
+        <img src="https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751705144_1361.jpg" title="젊은 크루즈 승객" alt="다양한 연령대의 크루즈 승객들" />
+      </div>
+      <h2 class="truth-title">진실: 평균 나이 46세, <span class="text-highlight">젊은 층이 대세</span></h2>
+      <div class="content">
+        <p>승객 평균 연령은 <strong class="font-black text-green" style="font-size: 38px;">46세.<br>40세 미만 승객이 <strong class="font-bold">36%</strong>에 달하며,<br>생애 첫 크루즈 승객이 <strong class="font-bold">31%</strong>나 됩니다.</strong></p>
+      </div>
+      <div class="quote">
+        "할아버지부터 손주까지 <strong class="font-bold">3대가 함께 즐기는 멀티세대 여행</strong>이 새로운 트렌드입니다."
+      </div>
+    </div>
+    <div class="section">
+      <h2 class="myth-title">오해 4: "무조건 싼 게 최고다"</h2>
+      <div class="image-container">
+        <img src="https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751702523_6058.jpg" title="가격 비교" alt="가격표를 보며 고민하는 사람의 이미지" />
+      </div>
+      <h2 class="truth-title">진실: '가짜 크루즈'에 숨겨진 <br><span class="text-highlight">150만원의 함정</span></h2>
+      <div class="content">
+        <p>"<span class="text-highlight font-bold">어? 다른 곳은 550만원인데 여긴 왜 700이에요?</span>"</p>
+        <p class="font-bold">당신의 소중한 여행이 <strong class="text-red">'추가 비용 스트레스'</strong>로 망가지지 않도록, <strong class="font-black">'진짜 총비용'</strong>이 어떻게 다른지 직접 확인해 보십시오.</p>
+      </div>
+      <table class="price-table">
+        <thead>
+          <tr>
+            <th>항목</th>
+            <th class="col-us">크루즈닷 '정직한 여행'</th>
+            <th class="col-them">'가짜' 저가 여행</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>최초 광고 가격</td>
+            <td class="font-bold">700만원</td>
+            <td>550만원</td>
+          </tr>
+          <tr>
+            <td>선상팁 (필수)</td>
+            <td class="text-green font-bold">포함</td>
+            <td class="hidden-cost">+ 25만원</td>
+          </tr>
+          <tr>
+            <td>가이드/기사 경비</td>
+            <td class="text-green font-bold">포함</td>
+            <td class="hidden-cost">+ 20만원</td>
+          </tr>
+          <tr>
+            <td>필수 기항지 관광</td>
+            <td class="text-green font-bold">포함</td>
+            <td class="hidden-cost">+ 60만원</td>
+          </tr>
+          <tr>
+            <td>세금/유류할증료</td>
+            <td class="text-green font-bold">포함</td>
+            <td class="hidden-cost">+ 45만원</td>
+          </tr>
+          <tr>
+            <td class="font-black">최종 예상 비용</td>
+            <td class="final-price final-us">마음 편한 700만원</td>
+            <td class="final-price final-them">스트레스 받는 700만원+@</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="quote" style="background-color: #e8f5e8;">
+        <p style="font-size: 30px; font-weight: bold; text-align: center; line-height: 1.5;">
+          저희의 가격은 '비싼 것'이 아니라,<br>
+          처음부터 끝까지 모든 것을 포함한<br>
+          <span class="text-green text-highlight" style="font-size:34px;">'정직한 가격'</span>입니다.
+        </p>
+      </div>
+    </div>
+    <div class="section">
+      <h2 class="myth-title">오해 5: "멀미하고 불편할 것이다"</h2>
+      <div class="image-container">
+        <img src="https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751705267_3295.jpg" title="편안한 크루즈 내부" alt="안정적인 크루즈선 내부" />
+      </div>
+      <h2 class="truth-title">진실: <span class="text-highlight">최첨단 기술</span>로 해결된 문제</h2>
+      <div class="content">
+        <p>배의 좌우에 날개를 단 듯한 <strong class="font-bold">'스태빌라이저'</strong> 기술이 파도의 흔들림을 <strong class="text-green font-black">90% 이상 상쇄</strong>합니다.</p>
+        <p><strong class="font-bold">한식 셰프, 한국인 직원</strong>은 물론,<br>이제 <strong class="font-bold">한국형 결제 앱</strong>까지 완비되어 있습니다.</p>
+      </div>
+    </div>
+    <div class="section">
+      <h2 class="section-title">30초 최종 결론</h2>
+      <div class="video-container">
+        <iframe src="https://www.youtube.com/embed/ogvEPDBTurU?si=T9j2c76_BfOhUZgc&autoplay=1&mute=1&controls=0&loop=1&playlist=ogvEPDBTurU" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+      </div>
+      <div class="image-container">
+        <img src="https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751704758_1766.jpg" title="크루즈의 모든 것" alt="크루즈 내 다양한 엔터테인먼트 시설" />
+      </div>
+      <ul class="bullet-points">
+        <li><strong class="font-bold">이동·숙박·식사·쇼</strong>를 한 번에 해결</li>
+        <li><strong class="font-bold">시간과 비용</strong>을 아끼며 더 많은 경험</li>
+        <li>안전은 <strong class="text-green">자동차보다 20배 이상</strong> 뛰어남</li>
+        <li><strong class="text-highlight">2030세대와 가족 승객이 60% 이상</strong></li>
+      </ul>
+    </div>
+    <div class="conclusion-section">
+      <h2 class="conclusion-title">"움직이는 올인원 리조트"</h2>
+      <div class="conclusion-text">
+        이제 크루즈에 대한 편견을 버리고,<br>진정한 여행의 가치를 경험할 때입니다.
+      </div>
+    </div>
+    <a href="https://open.kakao.com/o/plREDDUh" class="banner-link kakao-open-chat" target="_blank">
+      <div class="banner">
+        <div class="banner-title">크루즈닷 회원전용<br>카톡방 초대</div>
+        <div class="banner-subtitle">지금 바로 클릭하여 입장</div>
+      </div>
+    </a>
+    <a href="http://leadz.kr/ydA" class="banner-link" target="_blank">
+      <div class="banner banner-bottom">
+        <div class="banner-title">국내 출발이 정말 더 편할까?<br>5가지 진실</div>
+        <div class="banner-subtitle">자세히 보러가기</div>
+      </div>
+    </a>
+  </div>
+  <div class="fixed-banner bottom-banner">
+    <a href="https://www.cruisedot.co.kr/i/6nx" target="_blank">
+      크루즈닷 전문가와 상담 신청하기 &gt;
+    </a>
+  </div>
+  <script>
+    try { Kakao.init('e4d764f905271796dccf37c55a5b84d7'); } catch(e) { console.error("Kakao SDK 초기화 실패:", e); }
+    function shareOnKakao() {
+      try {
+        Kakao.Share.sendDefault({
+          objectType: 'feed',
+          content: {
+            title: '크루즈 여행에 대한 5가지 오해와 진실',
+            description: '크루즈에 대한 편견, 진실은 무엇일까요? 지금 바로 확인해보세요!',
+            imageUrl: 'https://leadgen.kr/data/file/smarteditor2/2025-07-05/ff12faa91cdd44d3c00d9d5631f0d4b4_1751704824_2319.png',
+            link: { mobileWebUrl: window.location.href, webUrl: window.location.href }
+          },
+          buttons: [ { title: '진실 확인하기', link: { mobileWebUrl: window.location.href, webUrl: window.location.href } } ]
+        });
+      } catch(e) { console.error("카카오 공유 실패:", e); }
+    }
+  </script>
+</body>
+</html>
