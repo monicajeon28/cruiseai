@@ -1602,9 +1602,8 @@ export async function POST(req: Request) {
           },
         });
 
-        // 온보딩 완료 && 활성 상태 → /chat, 아니면 → /onboarding
-        // 업데이트 후 customerStatus는 'active'로 설정되므로, onboarded만 확인
-        const next = '/chat'; // 항상 채팅으로 이동
+        // 온보딩 완료 → /chat, 미완료 → /onboarding
+        const next = dormantUser.onboarded ? '/chat' : '/onboarding';
         const userId = dormantUser.id;
 
         // 세션 ID 생성 (32바이트 랜덤 값을 hex 문자열로)
@@ -1819,27 +1818,13 @@ export async function POST(req: Request) {
         days: realProduct?.days,
       });
 
-      // UserTrip이 없거나 REAL-CRUISE-01이 아닌 경우 생성/재생성
-      if ((!existingUserTrip || (existingUserTrip && realProduct && existingUserTrip.productId !== realProduct.id)) && realProduct) {
-        console.log('[Login] 3800: UserTrip 생성 시작');
+      // 유료 고객(3800): 어드민 등록 UserTrip 보존 우선
+      // existingUserTrip이 없을 때만 REAL-CRUISE-01 폴백 생성 (어드민 미등록 케이스)
+      if (!existingUserTrip && realProduct) {
+        console.log('[Login] 3800: UserTrip 없음 — REAL-CRUISE-01 폴백 생성 시작');
 
         try {
           const now = new Date();
-
-          // 기존 UserTrip이 다른 상품이면 삭제
-          if (existingUserTrip && realProduct && existingUserTrip.productId !== realProduct.id) {
-            console.log('[Login] 3800: 기존 UserTrip이 REAL-CRUISE-01이 아님, 삭제 후 재생성');
-
-            await prisma.itinerary.deleteMany({
-              where: { userTripId: existingUserTrip.id },
-            });
-
-            await prisma.userTrip.delete({
-              where: { id: existingUserTrip.id },
-            });
-
-            console.log('[Login] 3800: ✅ 기존 UserTrip 삭제 완료');
-          }
 
           // 출발일: 오늘 + 30일 (D-30)
           const startDate = new Date(now);
@@ -1978,32 +1963,7 @@ export async function POST(req: Request) {
             });
           }
 
-          // 온보딩 완료 상태로 설정
-          console.log('[Login] 3800: 온보딩 완료 상태 설정 시작:', {
-            userId: activeUser.id,
-          });
-
-          await prisma.user.update({
-            where: { id: activeUser.id },
-            data: {
-              onboarded: true,
-              totalTripCount: { increment: 1 },
-            },
-          });
-
-          console.log('[Login] 3800: ✅ 온보딩 완료 상태 설정 완료:', {
-            userId: activeUser.id,
-            onboarded: true,
-          });
-
-          console.log('[Login] 3800: Auto-created trip for user', activeUser.id, 'with product REAL-CRUISE-01', {
-            startDate: startDate.toISOString().split('T')[0],
-            endDate: endDate.toISOString().split('T')[0],
-            nights: realProduct.nights,
-            days: realProduct.days,
-            loginDate: now.toISOString().split('T')[0],
-            dday: Math.ceil((startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
-          });
+          console.log('[Login] 3800: ✅ REAL-CRUISE-01 폴백 UserTrip 생성 완료:', userTrip.id);
         } catch (tripError) {
           console.error('[Login] 3800: Failed to auto-create UserTrip:', tripError);
           console.error('[Login] 3800: UserTrip creation error details:', {
@@ -2016,26 +1976,18 @@ export async function POST(req: Request) {
 
           // UserTrip 생성 실패 시에도 로그인은 계속 진행하되, 에러를 명확히 기록
         }
-      } else if (existingUserTrip && realProduct && existingUserTrip.productId === realProduct.id) {
-        console.log('[Login] 3800: 기존 UserTrip이 REAL-CRUISE-01임, UserTrip 생성 건너뜀:', {
+      } else if (existingUserTrip) {
+        // 어드민이 등록한 UserTrip 보존 — 절대 덮어쓰지 않음
+        console.log('[Login] 3800: 어드민 등록 UserTrip 보존:', {
           userId: activeUser.id,
           tripId: existingUserTrip.id,
           productId: existingUserTrip.productId,
         });
-
-        // 기존 UserTrip이 있으면 온보딩 완료 상태로 설정
-        await prisma.user.update({
-          where: { id: activeUser.id },
-          data: {
-            onboarded: true,
-          },
-        });
       } else if (!realProduct) {
-        console.error('[Login] 3800: ❌ REAL-CRUISE-01 상품을 찾을 수 없습니다!');
-        console.warn('[Login] 3800: REAL-CRUISE-01 product not found');
+        console.warn('[Login] 3800: REAL-CRUISE-01 상품 없음, UserTrip 폴백 생성 건너뜀');
       }
 
-      const next = '/chat'; // 항상 채팅으로 이동
+      const next = activeUser.onboarded ? '/chat' : '/onboarding'; // 온보딩 완료 여부 기반 분기
       const userId = activeUser.id;
 
       try {
