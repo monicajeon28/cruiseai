@@ -28,6 +28,10 @@ const PROTECTED = [
   '/map', '/map-test',
   '/checklist', '/checklist-test',
   '/profile', '/profile-test',
+  '/memories',       // 여행 다이어리
+  '/my-info',        // 내 정보
+  '/schedule',       // 여행 일정
+  '/chat-bot',       // 챗봇
 ];
 
 export async function middleware(req: NextRequest) {
@@ -175,6 +179,10 @@ export const config = {
     '/map/:path*', '/map-test/:path*',
     '/checklist/:path*', '/checklist-test/:path*',
     '/profile/:path*', '/profile-test/:path*',
+    '/memories/:path*',
+    '/my-info/:path*',
+    '/schedule/:path*',
+    '/chat-bot/:path*',
     '/api/:path*',
     '/login',
     '/login-test',
