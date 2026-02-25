@@ -66,6 +66,13 @@ const nextConfig = {
         '**/*.md',
         '**/*.test.*',
         '**/*.spec.*',
+        // 대용량 static 파일들 — Vercel CDN이 서빙하므로 함수 번들에서 제외
+        'public/크루즈정보사진/**',
+        'public/uploads/**',
+        'public/contracts/**',
+        'public/payment-pages/**',
+        'public/images/insurance/**',
+        'public/크루즈세미나.gif',
       ],
     },
   },
