@@ -2244,7 +2244,7 @@ export async function POST(req: Request) {
         loginCount: true,
         role: true,
         customerStatus: true,
-        UserTrip: { select: { id: true }, take: 1 },
+        UserTrip: { select: { id: true, endDate: true }, orderBy: { endDate: 'desc' }, take: 1 },
       },
     });
 
@@ -2288,12 +2288,26 @@ export async function POST(req: Request) {
         data: { loginCount: { increment: 1 } },
       });
 
-      // 온보딩 완료 && 활성 상태 → /chat, 아니면 → /onboarding
-      // 관리자 패널에서 온보딩 등록되어 있고 활성 상태인 고객은 자동으로 채팅으로 이동
-      // customerStatus가 null이면 활성 상태로 간주 (하위 호환성)
       const isActive = existing.customerStatus === 'active' || existing.customerStatus === null;
-      // 비밀번호 3800 = 크루즈 가이드 지니 (일반) → /chat으로 리다이렉트
-      next = '/chat';
+
+      // ── 서비스 만료 체크 (여행 종료 +1일) ──
+      const latestTrip = existing.UserTrip[0];
+      if (latestTrip?.endDate) {
+        const serviceEnd = new Date(latestTrip.endDate);
+        serviceEnd.setDate(serviceEnd.getDate() + 1);
+        serviceEnd.setHours(23, 59, 59, 999);
+        if (new Date() > serviceEnd) {
+          return NextResponse.json({
+            ok: false,
+            error: '크루즈 여행이 종료되어 서비스 이용 기간이 만료되었습니다. 새 크루즈 예약 후 이용 가능합니다.',
+          }, { status: 403 });
+        }
+      }
+
+      // ── 온보딩 여부 기반 리다이렉트 ──
+      // 처음 로그인 (onboarded=false) → /onboarding (여행 일정 확인 + 앱 소개)
+      // 이후 로그인 (onboarded=true)  → /chat (오늘의 브리핑)
+      next = existing.onboarded ? '/chat' : '/onboarding';
 
       console.log('[Login] 리다이렉트 결정:', {
         userId: existing.id,
@@ -2303,7 +2317,7 @@ export async function POST(req: Request) {
         next,
       });
     } else {
-      // 2) 신규 생성 (요구사항: 신규는 온보딩 필요)
+      // 2) 신규 생성 → 온보딩 필요
       const now = new Date();
       const created = await prisma.user.create({
         data: {
@@ -2319,8 +2333,7 @@ export async function POST(req: Request) {
       });
       // @ts-ignore
       userId = created.id as unknown as number;
-      // 비밀번호 3800 = 크루즈 가이드 지니 (일반) → /chat으로 리다이렉트
-      next = '/chat';
+      next = '/onboarding'; // 신규 고객은 항상 온보딩 먼저
     }
 
     // 기존 세션 정리 (동시 로그인 방지 및 세션 테이블 정리)
@@ -2372,15 +2385,16 @@ export async function POST(req: Request) {
     await reactivateUser(userId);
     await updateLastActive(userId);
 
-    // 최종 안전장치: 비밀번호 기반으로 리다이렉트 경로 강제 설정
-    // 비밀번호 1101 = 크루즈 가이드 지니 3일 체험 → /chat-test
-    // 비밀번호 3800 = 크루즈 가이드 지니 (일반) → /chat
+    // 최종 안전장치: 비밀번호 기반 리다이렉트 경로 확인
+    // 비밀번호 1101 = 3일 체험 → /chat-test (강제)
+    // 비밀번호 3800 = 일반 구매자 → onboarded 여부에 따라 /onboarding 또는 /chat (위에서 결정됨)
     if (password === '1101') {
       next = '/chat-test';
-      console.log('[Login] 비밀번호 1101 감지 - /chat-test로 강제 리다이렉트');
+      console.log('[Login] 비밀번호 1101 - /chat-test');
     } else if (password === '3800') {
-      next = '/chat';
-      console.log('[Login] 비밀번호 3800 감지 - /chat으로 리다이렉트');
+      // onboarding 체크는 위에서 이미 결정됨 (next = '/onboarding' or '/chat')
+      // next를 그대로 유지 (override 하지 않음)
+      console.log('[Login] 비밀번호 3800 - 리다이렉트:', next);
     }
 
     return NextResponse.json({
