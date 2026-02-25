@@ -455,7 +455,7 @@ export async function POST(req: Request) {
         path: '/',
         maxAge: 60 * 60 * 24 * 30,
         secure: process.env.NODE_ENV === 'production',
-        domain: process.env.NODE_ENV === 'production' ? '.cruisedot.co.kr' : undefined,
+        domain: process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined,
       });
 
       // 로그인 성공 후 후속 작업들을 병렬로 실행 (속도 개선)
@@ -1122,7 +1122,7 @@ export async function POST(req: Request) {
           path: '/',
           maxAge: 60 * 60 * 24 * 30,
           secure: process.env.NODE_ENV === 'production',
-          domain: process.env.NODE_ENV === 'production' ? '.cruisedot.co.kr' : undefined,
+          domain: process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined,
         });
         // 3일 체험 유저 표시 쿠키 (middleware에서 -test 경로 강제 리다이렉트에 사용)
         cookieStore.set('cg.mode', 'test', {
@@ -1304,7 +1304,7 @@ export async function POST(req: Request) {
           path: '/',
           maxAge: 60 * 60 * 24 * 30, // 30일
           secure: process.env.NODE_ENV === 'production',
-          domain: process.env.NODE_ENV === 'production' ? '.cruisedot.co.kr' : undefined,
+          domain: process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined,
         });
 
         // 로그인 성공 로그
@@ -1508,7 +1508,7 @@ export async function POST(req: Request) {
           path: '/',
           maxAge: 60 * 60 * 24 * 30,
           secure: process.env.NODE_ENV === 'production',
-          domain: process.env.NODE_ENV === 'production' ? '.cruisedot.co.kr' : undefined,
+          domain: process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined,
         });
 
         // 후속 작업들은 백그라운드에서 병렬 실행 (응답 속도 개선)
@@ -1635,7 +1635,7 @@ export async function POST(req: Request) {
           path: '/',
           maxAge: 60 * 60 * 24 * 30, // 30일
           secure: process.env.NODE_ENV === 'production',
-          domain: process.env.NODE_ENV === 'production' ? '.cruisedot.co.kr' : undefined,
+          domain: process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined,
         });
 
         // 로그인 성공 로그
@@ -2030,7 +2030,7 @@ export async function POST(req: Request) {
           path: '/',
           maxAge: 60 * 60 * 24 * 30, // 30일
           secure: process.env.NODE_ENV === 'production',
-          domain: process.env.NODE_ENV === 'production' ? '.cruisedot.co.kr' : undefined,
+          domain: process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined,
         });
 
         // 로그인 성공 로그
@@ -2164,7 +2164,7 @@ export async function POST(req: Request) {
         path: '/',
         maxAge: 60 * 60 * 24 * 30,
         secure: process.env.NODE_ENV === 'production',
-        domain: process.env.NODE_ENV === 'production' ? '.cruisedot.co.kr' : undefined,
+        domain: process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined,
       });
 
       authLogger.loginSuccess(userId, clientIp);
@@ -2327,7 +2327,7 @@ export async function POST(req: Request) {
       path: '/',
       maxAge: 60 * 60 * 24 * 30, // 30일
       secure: process.env.NODE_ENV === 'production',
-      domain: process.env.NODE_ENV === 'production' ? '.cruisedot.co.kr' : undefined,
+      domain: process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined,
     });
 
     // 로그인 성공 로그
