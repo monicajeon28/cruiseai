@@ -8,7 +8,8 @@
     "allowUmdGlobalAccess": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@/vnext/*": ["./src/vnext/*"]
     },
     "resolveJsonModule": true,
     "esModuleInterop": true,

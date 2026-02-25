@@ -1,0 +1,32 @@
+{
+  "configs": [
+    {
+      "contractType": "SALES_AGENT",
+      "label": "판매원 계약서",
+      "price": 3300000,
+      "paymentLink": "http://leadz.kr/yej",
+      "imageUrl": "/payment-pages/payment-page-SALES_AGENT-1763431700628.png"
+    },
+    {
+      "contractType": "BRANCH_MANAGER",
+      "label": "대리점장 계약서",
+      "price": 7500000,
+      "paymentLink": "http://leadz.kr/xWG",
+      "imageUrl": "/payment-pages/payment-page-BRANCH_MANAGER-1763431705712.png"
+    },
+    {
+      "contractType": "CRUISE_STAFF",
+      "label": "크루즈스탭 계약서",
+      "price": 5400000,
+      "paymentLink": "http://leadz.kr/yek",
+      "imageUrl": "/payment-pages/payment-page-CRUISE_STAFF-1763431709264.png"
+    },
+    {
+      "contractType": "PRIMARKETER",
+      "label": "프리마케터 계약서",
+      "price": 1000000,
+      "paymentLink": "http://leadz.kr/ymF",
+      "imageUrl": "/payment-pages/payment-page-PRIMARKETER-1763431713083.png"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+export const AIRPORTS = [
+  { label: '인천국제공항', value: 'ICN' },
+  { label: '김포국제공항', value: 'GMP' },
+  { label: '제주국제공항', value: 'CJU' },
+  { label: '김해국제공항', value: 'PUS' },
+  { label: '대구국제공항', value: 'TAE' },
+  { label: '광주공항', value: 'KWJ' },
+  { label: '청주국제공항', value: 'CJJ' },
+  { label: '무안국제공항', value: 'MWX' },
+  { label: '양양국제공항', value: 'YNY' },
+  { label: '울산공항', value: 'USN' },
+  { label: '여수공항', value: 'RSU' },
+  { label: '포항공항', value: 'KPO' },
+  { label: '사천공항', value: 'HIN' },
+  { label: '군산공항', value: 'KUV' },
+
+  // 주요 국제공항 (크루즈 노선과 관련될 수 있는)
+  { label: 'LA 국제공항', value: 'LAX' },
+  { label: '뉴욕 JFK', value: 'JFK' },
+  { label: '런던 히스로', value: 'LHR' },
+  { label: '파리 샤를 드골', value: 'CDG' },
+  { label: '도쿄 나리타', value: 'NRT' },
+  { label: '도쿄 하네다', value: 'HND' },
+  { label: '싱가포르 창이', value: 'SIN' },
+  { label: '홍콩 국제공항', value: 'HKG' },
+  { label: '두바이 국제공항', value: 'DXB' },
+  { label: '시드니 공항', value: 'SYD' },
+  { label: '밴쿠버 국제공항', value: 'YVR' },
+  { label: '시애틀 타코마 국제공항', value: 'SEA' },
+  { label: '마이애미 국제공항', value: 'MIA' },
+  { label: '바르셀로나 엘 프라트 공항', value: 'BCN' },
+  { label: '로마 피우미치노 공항', value: 'FCO' },
+  { label: '암스테르담 스키폴', value: 'AMS' },
+  { label: '프랑크푸르트 공항', value: 'FRA' },
+  { label: '마드리드 바하라스', value: 'MAD' },
+  { label: '상하이 푸동', value: 'PVG' },
+  { label: '베이징 수도', value: 'PEK' },
+  { label: '타이베이 타오위안', value: 'TPE' },
+];
+
+// Alias for backwards compatibility
+export const airportsByCountry = AIRPORTS;

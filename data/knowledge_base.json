@@ -1,0 +1,72 @@
+[
+  {
+    "category": "궁금증 해결",
+    "title": "상위 0.5%만 가는 크루즈여행이 특별한 이유",
+    "keywords": ["특별한", "상위", "고급", "크루즈", "여행"],
+    "url": "http://leadz.kr/ydy",
+    "description": "크루즈 여행이 왜 특별한지에 대한 상세한 설명"
+  },
+  {
+    "category": "오해와 진실",
+    "title": "크루즈 여행에 대한 5가지 오해와 진실",
+    "keywords": ["오해", "진실", "비용", "안전", "지루함"],
+    "url": "http://leadz.kr/ydz",
+    "description": "크루즈 여행에 대한 흔한 오해들과 실제 진실"
+  },
+  {
+    "category": "준비물 가이드",
+    "title": "크루즈 여행 필수 준비물 체크리스트",
+    "keywords": ["준비물", "체크리스트", "필수", "가방", "옷"],
+    "url": "http://leadz.kr/ydA",
+    "description": "크루즈 여행에 꼭 필요한 준비물들"
+  },
+  {
+    "category": "비용 정보",
+    "title": "크루즈 여행 비용 완전 가이드",
+    "keywords": ["비용", "가격", "예산", "할인", "추가비용"],
+    "url": "http://leadz.kr/ydB",
+    "description": "크루즈 여행의 모든 비용 구조와 절약 방법"
+  },
+  {
+    "category": "안전 정보",
+    "title": "크루즈 여행 안전 수칙과 팁",
+    "keywords": ["안전", "수칙", "팁", "응급상황", "건강"],
+    "url": "http://leadz.kr/ydC",
+    "description": "크루즈 여행 중 안전을 위한 모든 정보"
+  },
+  {
+    "category": "식사 정보",
+    "title": "크루즈 식사 완벽 가이드",
+    "keywords": ["식사", "레스토랑", "메뉴", "음식", "다이닝"],
+    "url": "http://leadz.kr/ydD",
+    "description": "크루즈 내 다양한 식사 옵션과 예약 방법"
+  },
+  {
+    "category": "엔터테인먼트",
+    "title": "크루즈 엔터테인먼트 활동 가이드",
+    "keywords": ["엔터테인먼트", "활동", "쇼", "게임", "스포츠"],
+    "url": "http://leadz.kr/ydE",
+    "description": "크루즈에서 즐길 수 있는 모든 엔터테인먼트"
+  },
+  {
+    "category": "항구 투어",
+    "title": "인기 항구 투어 추천",
+    "keywords": ["항구", "투어", "관광", "명소", "추천"],
+    "url": "http://leadz.kr/ydF",
+    "description": "각 항구별 추천 관광지와 투어 정보"
+  },
+  {
+    "category": "팁과 요령",
+    "title": "크루즈 여행 초보자를 위한 팁",
+    "keywords": ["초보자", "팁", "요령", "첫여행", "조언"],
+    "url": "http://leadz.kr/ydG",
+    "description": "크루즈 여행 초보자가 알아야 할 모든 팁"
+  },
+  {
+    "category": "날씨 정보",
+    "title": "크루즈 여행 최적 시기와 날씨",
+    "keywords": ["날씨", "시기", "계절", "최적", "기후"],
+    "url": "http://leadz.kr/ydH",
+    "description": "각 지역별 크루즈 여행 최적 시기와 날씨 정보"
+  }
+]

@@ -1,0 +1,239 @@
+[
+  {
+    "cruise_line": "코스타 크루즈 (Costa Cruises)",
+    "description": "한국 및 아시아 시장에서 가장 활발하게 운항하며, '바다 위의 이탈리아'를 콘셉트로 유쾌하고 즐거운 분위기를 제공합니다.",
+    "ships": [
+      "코스타 세레나 (Costa Serena)",
+      "코스타 스메랄다 (Costa Smeralda)",
+      "코스타 토스카나 (Costa Toscana)",
+      "코스타 디아데마 (Costa Diadema)",
+      "코스타 파시노사 (Costa Fascinosa)",
+      "코스타 파볼로사 (Costa Favolosa)",
+      "코스타 델리지오사 (Costa Deliziosa)",
+      "코스타 포르투나 (Costa Fortuna)",
+      "코스타 파시피카 (Costa Pacifica)"
+    ]
+  },
+  {
+    "cruise_line": "로얄 캐리비안 인터내셔널 (Royal Caribbean International)",
+    "description": "세계 최대 규모의 크루즈선을 다수 보유하고 있으며, 아이스링크, 암벽등반, 인공 파도타기 등 혁신적이고 압도적인 스케일의 시설로 유명합니다.",
+    "ships": [
+      "스펙트럼 오브 더 시즈 (Spectrum of the Seas)",
+      "앤썸 오브 더 시즈 (Anthem of the Seas)",
+      "아이콘 오브 더 시즈 (Icon of the Seas)",
+      "원더 오브 더 시즈 (Wonder of the Seas)",
+      "심포니 오브 더 시즈 (Symphony of the Seas)",
+      "하모니 오브 더 시즈 (Harmony of the Seas)",
+      "오아시스 오브 더 시즈 (Oasis of the Seas)",
+      "얼루어 오브 더 시즈 (Allure of the Seas)",
+      "오디세이 오브 더 시즈 (Odyssey of the Seas)",
+      "퀀텀 오브 더 시즈 (Quantum of the Seas)",
+      "오베이션 오브 더 시즈 (Ovation of the Seas)",
+      "내비게이터 오브 더 시즈 (Navigator of the Seas)",
+      "마리너 오브 더 시즈 (Mariner of the Seas)",
+      "보이저 오브 더 시즈 (Voyager of the Seas)",
+      "프리덤 오브 더 시즈 (Freedom of the Seas)",
+      "리버티 오브 더 시즈 (Liberty of the Seas)",
+      "인디펜던스 오브 더 시즈 (Independence of the Seas)"
+    ]
+  },
+  {
+    "cruise_line": "MSC 크루즈 (MSC Cruises)",
+    "description": "유럽을 기반으로 한 선사로, 현대적이고 화려한 디자인이 특징입니다. 특히 'MSC 요트 클럽'이라는 프라이빗 공간이 유명합니다.",
+    "ships": [
+      "MSC 벨리시마 (MSC Bellissima)",
+      "MSC 월드 유로파 (MSC World Europa)",
+      "MSC 월드 아메리카 (MSC World America)",
+      "MSC 유리지아 (MSC Euribia)",
+      "MSC 비르투오사 (MSC Virtuosa)",
+      "MSC 그란디오사 (MSC Grandiosa)",
+      "MSC 씨스케이프 (MSC Seascape)",
+      "MSC 씨쇼어 (MSC Seashore)",
+      "MSC 씨뷰 (MSC Seaview)",
+      "MSC 메라비글리아 (MSC Meraviglia)",
+      "MSC 프레치오사 (MSC Preziosa)",
+      "MSC 디비나 (MSC Divina)",
+      "MSC 스플렌디다 (MSC Splendida)",
+      "MSC 판타지아 (MSC Fantasia)",
+      "MSC 마니피카 (MSC Magnifica)",
+      "MSC 포에지아 (MSC Poesia)",
+      "MSC 오케스트라 (MSC Orchestra)",
+      "MSC 무지카 (MSC Musica)"
+    ]
+  },
+  {
+    "cruise_line": "카니발 크루즈 라인 (Carnival Cruise Line)",
+    "description": "",
+    "ships": [
+      "마디 그라 (Mardi Gras)",
+      "카니발 브리즈 (Carnival Breeze)",
+      "카니발 셀러브레이션 (Carnival Celebration)",
+      "카니발 컨퀘스트 (Carnival Conquest)",
+      "카니발 드림 (Carnival Dream)",
+      "카니발 엘레이션 (Carnival Elation)",
+      "카니발 파이어nze (Carnival Firenze)",
+      "카니발 프리덤 (Carnival Freedom)",
+      "카니발 글로리 (Carnival Glory)",
+      "카니발 호라이즌 (Carnival Horizon)",
+      "카니발 주빌리 (Carnival Jubilee)",
+      "카니발 레전드 (Carnival Legend)",
+      "카니발 리버티 (Carnival Liberty)",
+      "카니발 루미노사 (Carnival Luminosa)",
+      "카니발 매직 (Carnival Magic)",
+      "카니발 미라클 (Carnival Miracle)",
+      "카니발 파노라마 (Carnival Panorama)",
+      "카니발 파라다이스 (Carnival Paradise)",
+      "카니발 프라이드 (Carnival Pride)",
+      "카니발 래디언스 (Carnival Radiance)",
+      "카니발 스피릿 (Carnival Spirit)",
+      "카니발 스플렌더 (Carnival Splendor)",
+      "카니발 선라이즈 (Carnival Sunrise)",
+      "카니발 선샤인 (Carnival Sunshine)",
+      "카니발 발러 (Carnival Valor)",
+      "카니발 베네치아 (Carnival Venezia)",
+      "카니발 비스타 (Carnival Vista)"
+    ]
+  },
+  {
+    "cruise_line": "프린세스 크루즈 (Princess Cruises)",
+    "description": "",
+    "ships": [
+      "캐리비안 프린세스 (Caribbean Princess)",
+      "코랄 프린세스 (Coral Princess)",
+      "크라운 프린세스 (Crown Princess)",
+      "다이아몬드 프린세스 (Diamond Princess)",
+      "디스커버리 프린세스 (Discovery Princess)",
+      "에메랄드 프린세스 (Emerald Princess)",
+      "인챈티드 프린세스 (Enchanted Princess)",
+      "그랜드 프린세스 (Grand Princess)",
+      "아일랜드 프린세스 (Island Princess)",
+      "마제스틱 프린세스 (Majestic Princess)",
+      "리갈 프린세스 (Regal Princess)",
+      "로얄 프린세스 (Royal Princess)",
+      "루비 프린세스 (Ruby Princess)",
+      "사파이어 프린세스 (Sapphire Princess)",
+      "스카이 프린세스 (Sky Princess)",
+      "스타 프린세스 (Star Princess)",
+      "선 프린세스 (Sun Princess)"
+    ]
+  },
+  {
+    "cruise_line": "홀랜드 아메리카 라인 (Holland America Line)",
+    "description": "미국을 기반으로 한 프리미엄 크루즈 선사로, 전통적인 크루즈 경험과 현대적인 편의시설을 결합한 서비스를 제공합니다.",
+    "ships": [
+      "뉘우 암스테르담 (Nieuw Amsterdam)",
+      "뉘우 스타텐담 (Nieuw Statendam)",
+      "뉘우 로테르담 (Nieuw Rotterdam)",
+      "코닝스담 (Koningsdam)",
+      "에우로담 (Eurodam)",
+      "오스테르담 (Oosterdam)",
+      "웨스터담 (Westerdam)",
+      "노르담 (Noordam)",
+      "줄렌담 (Zuiderdam)",
+      "볼렌담 (Volendam)",
+      "잔담 (Zaandam)",
+      "마스담 (Maasdam)",
+      "베이담 (Veendam)",
+      "암스테르담 (Amsterdam)",
+      "로테르담 (Rotterdam)"
+    ]
+  },
+  {
+    "cruise_line": "셀러브리티 크루즈 (Celebrity Cruises)",
+    "description": "",
+    "ships": [
+      "셀러브리티 에이펙스 (Celebrity Apex)",
+      "셀러브리티 어센트 (Celebrity Ascent)",
+      "셀러브리티 비욘드 (Celebrity Beyond)",
+      "셀러브리티 컨스텔레이션 (Celebrity Constellation)",
+      "셀러브리티 이클립스 (Celebrity Eclipse)",
+      "셀러브리티 엣지 (Celebrity Edge)",
+      "셀러브리티 이쿼녹스 (Celebrity Equinox)",
+      "셀러브리티 인피니티 (Celebrity Infinity)",
+      "셀러브리티 밀레니엄 (Celebrity Millennium)",
+      "셀러브리티 리플렉션 (Celebrity Reflection)",
+      "셀러브리티 실루엣 (Celebrity Silhouette)",
+      "셀러브리티 솔스티스 (Celebrity Solstice)",
+      "셀러브리티 서밋 (Celebrity Summit)",
+      "셀러브리티 엑셀 (Celebrity Xcel)",
+      "셀러브리티 플로라 (Celebrity Flora)",
+      "셀러브리티 엑스페디션 (Celebrity Xpedition)",
+      "셀러브리티 엑스플로레이션 (Celebrity Xploration)"
+    ]
+  },
+  {
+    "cruise_line": "바이킹 오션 크루즈 (Viking Ocean Cruises)",
+    "description": "",
+    "ships": [
+      "바이킹 주피터 (Viking Jupiter)",
+      "바이킹 마스 (Viking Mars)",
+      "바이킹 머큐리 (Viking Mercury)",
+      "바이킹 넵튠 (Viking Neptune)",
+      "바이킹 오리온 (Viking Orion)",
+      "바이킹 새턴 (Viking Saturn)",
+      "바이킹 씨 (Viking Sea)",
+      "바이킹 스카이 (Viking Sky)",
+      "바이킹 스타 (Viking Star)",
+      "바이킹 비너스 (Viking Venus)",
+      "바이킹 옥탄티스 (Viking Octantis)",
+      "바이킹 폴라리스 (Viking Polaris)"
+    ]
+  },
+  {
+    "cruise_line": "아스트로 오션 크루즈 (Astro Ocean Cruise / 星旅远洋邮轮)",
+    "description": "중국 국영 기업이 합작하여 만든 크루즈 선사로, 중국 내수 시장을 중심으로 운항합니다.",
+    "ships": [
+      "피아노 랜드 (Piano Land / 鼓浪屿号)"
+    ]
+  },
+  {
+    "cruise_line": "리조트 월드 크루즈 (Resorts World Cruises)",
+    "description": "겐팅 홍콩의 드림 크루즈를 계승하여 싱가포르에 본사를 두고 설립된 선사로, 아시아 시장에 특화된 서비스를 제공합니다.",
+    "ships": [
+      "겐팅 드림 (Genting Dream)",
+      "리조트 월드 원 (Resorts World One)"
+    ]
+  },
+  {
+    "cruise_line": "아도라 크루즈 (Adora Cruises / 爱达邮轮)",
+    "description": "카니발 그룹과 중국 국영 조선 그룹이 합작하여 만든 중국 최초의 대형 크루즈 선사입니다.",
+    "ships": [
+      "아도라 매직 시티 (Adora Magic City)",
+      "아도라 플로라 (Adora Flora) - (구 코스타 아틀란티카)"
+    ]
+  },
+  {
+    "cruise_line": "블루 드림 크루즈 (Blue Dream Cruises / 蓝梦邮轮)",
+    "description": "중국 상하이에 기반을 둔 크루즈 선사로, 한-중-일 노선을 주로 운항합니다.",
+    "ships": [
+      "블루 드림 멜로디 (Blue Dream Melody)",
+      "블루 드림 스타 (Blue Dream Star)"
+    ]
+  },
+  {
+    "cruise_line": "NYK 크루즈 (NYK Cruises)",
+    "description": "일본을 대표하는 럭셔리 크루즈 선사로, 일본 내국인들을 위한 고품격 서비스를 제공합니다.",
+    "ships": [
+      "아스카 II (Asuka II)",
+      "아스카 III (Asuka III) - (2025년 취항 예정)"
+    ]
+  },
+  {
+    "cruise_line": "미쓰이 O.S.K. 라인 / 미쓰이 오션 크루즈 (MOL / Mitsui Ocean Cruises)",
+    "description": "일본의 해운 대기업 MOL이 운영하는 크루즈로, 최근 새로운 럭셔리 브랜드를 론칭했습니다.",
+    "ships": [
+      "니폰마루 (Nippon Maru) - (MOL Cruises 소속)",
+      "미쓰이 오션 후지 (Mitsui Ocean Fuji) - (Mitsui Ocean Cruises 소속)"
+    ]
+  },
+  {
+    "cruise_line": "이스턴크루즈",
+    "description": "",
+    "ships": []
+  },
+  {
+    "cruise_line": "팬스타크루즈",
+    "description": "",
+    "ships": []
+  }
+] 

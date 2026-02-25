@@ -1,0 +1,910 @@
+[
+  {
+    "continent": "아시아 (Asia)",
+    "countries": [
+      {
+        "name": "대한민국 (South Korea)",
+        "code": "KR",
+        "regions": [
+          "부산항 (Busan Port)",
+          "인천항 (Incheon Port)",
+          "포항항 (Pohang Port)",
+          "서산항 (Seosan Port)",
+          "목포항 (Mokpo Port)",
+          "거제항 (Geoje Port)",
+          "제주항 (Jeju Port)",
+          "영도 (Yeongdo)",
+          "제주도 (Jeju-do)"
+        ]
+      },
+      {
+        "name": "홍콩 (Hong Kong)",
+        "regions": []
+      },
+      {
+        "name": "네팔 (Nepal)",
+        "regions": []
+      },
+      {
+        "name": "동티모르 (Timor-Leste)",
+        "regions": []
+      },
+      {
+        "name": "라오스 (Laos)",
+        "regions": []
+      },
+      {
+        "name": "레바논 (Lebanon)",
+        "regions": []
+      },
+      {
+        "name": "말레이시아 (Malaysia)",
+        "regions": [
+          "페낭 (Penang)",
+          "랑카위 (Langkawi)"
+        ]
+      },
+      {
+        "name": "몰디브 (Maldives)",
+        "regions": []
+      },
+      {
+        "name": "몽골 (Mongolia)",
+        "regions": []
+      },
+      {
+        "name": "미얀마 (Myanmar)",
+        "regions": []
+      },
+      {
+        "name": "바레인 (Bahrain)",
+        "regions": []
+      },
+      {
+        "name": "방글라데시 (Bangladesh)",
+        "regions": []
+      },
+      {
+        "name": "베트남 (Vietnam)",
+        "regions": []
+      },
+      {
+        "name": "부탄 (Bhutan)",
+        "regions": []
+      },
+      {
+        "name": "브루나이 (Brunei)",
+        "regions": []
+      },
+      {
+        "name": "사우디아라비아 (Saudi Arabia)",
+        "regions": []
+      },
+      {
+        "name": "스리랑카 (Sri Lanka)",
+        "regions": []
+      },
+      {
+        "name": "시리아 (Syria)",
+        "regions": []
+      },
+      {
+        "name": "싱가포르 (Singapore)",
+        "regions": []
+      },
+      {
+        "name": "아랍에미리트 (United Arab Emirates)",
+        "regions": []
+      },
+      {
+        "name": "아르메니아 (Armenia)",
+        "regions": []
+      },
+      {
+        "name": "아제르바이잔 (Azerbaijan)",
+        "regions": []
+      },
+      {
+        "name": "아프가니스탄 (Afghanistan)",
+        "regions": []
+      },
+      {
+        "name": "예멘 (Yemen)",
+        "regions": []
+      },
+      {
+        "name": "오만 (Oman)",
+        "regions": []
+      },
+      {
+        "name": "요르단 (Jordan)",
+        "regions": []
+      },
+      {
+        "name": "우즈베키스탄 (Uzbekistan)",
+        "regions": []
+      },
+      {
+        "name": "이라크 (Iraq)",
+        "regions": []
+      },
+      {
+        "name": "이란 (Iran)",
+        "regions": []
+      },
+      {
+        "name": "이스라엘 (Israel)",
+        "regions": []
+      },
+      {
+        "name": "인도 (India)",
+        "regions": []
+      },
+      {
+        "name": "인도네시아 (Indonesia)",
+        "regions": []
+      },
+      {
+        "name": "일본 (Japan)",
+        "regions": [
+          "홋카이도 (Hokkaido)",
+          "도호쿠 지방 (Tohoku Region)",
+          "아오모리현 (Aomori Prefecture)",
+          "이와테현 (Iwate Prefecture)",
+          "미야기현 (Miyagi Prefecture)",
+          "아키타현 (Akita Prefecture)",
+          "야마가타현 (Yamagata Prefecture)",
+          "후쿠시마현 (Fukushima Prefecture)",
+          "간토 지방 (Kanto Region)",
+          "이바라키현 (Ibaraki Prefecture)",
+          "도치기현 (Tochigi Prefecture)",
+          "군마현 (Gunma Prefecture)",
+          "사이타마현 (Saitama Prefecture)",
+          "지바현 (Chiba Prefecture)",
+          "도쿄도 (Tokyo Metropolis)",
+          "가나가와현 (Kanagawa Prefecture)",
+          "주부 지방 (Chubu Region)",
+          "니가타현 (Niigata Prefecture)",
+          "도야마현 (Toyama Prefecture)",
+          "이시카와현 (Ishikawa Prefecture)",
+          "후쿠이현 (Fukui Prefecture)",
+          "야마나시현 (Yamanashi Prefecture)",
+          "나가노현 (Nagano Prefecture)",
+          "기후현 (Gifu Prefecture)",
+          "시즈오카현 (Shizuoka Prefecture)",
+          "아이치현 (Aichi Prefecture)",
+          "간사이 지방 (Kansai Region)",
+          "미에현 (Mie Prefecture)",
+          "시가현 (Shiga Prefecture)",
+          "교토부 (Kyoto Prefecture)",
+          "오사카부 (Osaka Prefecture)",
+          "효고현 (Hyogo Prefecture)",
+          "나라현 (Nara Prefecture)",
+          "와카야마현 (Wakayama Prefecture)",
+          "주고쿠 지방 (Chugoku Region)",
+          "돗토리현 (Tottori Prefecture)",
+          "시마네현 (Shimane Prefecture)",
+          "오카야마현 (Okayama Prefecture)",
+          "히로시마현 (Hiroshima Prefecture)",
+          "야마구치현 (Yamaguchi Prefecture)",
+          "시코쿠 지방 (Shikoku Region)",
+          "도쿠시마현 (Tokushima Prefecture)",
+          "가가와현 (Kagawa Prefecture)",
+          "에히메현 (Ehime Prefecture)",
+          "고치현 (Kochi Prefecture)",
+          "규슈・오키나와 지방 (Kyushu & Okinawa Region)",
+          "후쿠오카현 (Fukuoka Prefecture)",
+          "사가현 (Saga Prefecture)",
+          "나가사키현 (Nagasaki Prefecture)",
+          "구마모토현 (Kumamoto Prefecture)",
+          "오이타현 (Oita Prefecture)",
+          "미야자키현 (Miyazaki Prefecture)",
+          "가고시마현 (Kagoshima Prefecture)",
+          "오키나와현 (Okinawa Prefecture)",
+          "사세보 (Sasebo)",
+          "미야코지마 (Miyakojima)",
+          "이시가키 (Ishigaki)"
+        ]
+      },
+      {
+        "name": "중국 (China)",
+        "regions": []
+      },
+      {
+        "name": "카자흐스탄 (Kazakhstan)",
+        "regions": []
+      },
+      {
+        "name": "카타르 (Qatar)",
+        "regions": []
+      },
+      {
+        "name": "캄보디아 (Cambodia)",
+        "regions": []
+      },
+      {
+        "name": "쿠웨이트 (Kuwait)",
+        "regions": []
+      },
+      {
+        "name": "키르기스스탄 (Kyrgyzstan)",
+        "regions": []
+      },
+      {
+        "name": "타지키스탄 (Tajikistan)",
+        "regions": []
+      },
+      {
+        "name": "태국 (Thailand)",
+        "regions": [
+          "푸켓 (Phuket)"
+        ]
+      },
+      {
+        "name": "대만 (Taiwan)",
+        "regions": []
+      },
+      {
+        "name": "투르크메니스탄 (Turkmenistan)",
+        "regions": []
+      },
+      {
+        "name": "파키스탄 (Pakistan)",
+        "regions": []
+      },
+      {
+        "name": "필리핀 (Philippines)",
+        "regions": []
+      }
+    ]
+  },
+  {
+    "continent": "유럽 (Europe)",
+    "countries": [
+      {
+        "name": "그리스 (Greece)",
+        "regions": [
+          "미코노스 (Mykonos)",
+          "아테네 (Athens)"
+        ]
+      },
+      {
+        "name": "네덜란드 (Netherlands)",
+        "regions": []
+      },
+      {
+        "name": "노르웨이 (Norway)",
+        "regions": [
+          "앤디콧암도스빙하 (Andenes)"
+        ]
+      },
+      {
+        "name": "덴마크 (Denmark)",
+        "regions": []
+      },
+      {
+        "name": "독일 (Germany)",
+        "regions": []
+      },
+      {
+        "name": "라트비아 (Latvia)",
+        "regions": []
+      },
+      {
+        "name": "러시아 (Russia)",
+        "regions": []
+      },
+      {
+        "name": "루마니아 (Romania)",
+        "regions": []
+      },
+      {
+        "name": "룩셈부르크 (Luxembourg)",
+        "regions": []
+      },
+      {
+        "name": "리투아니아 (Lithuania)",
+        "regions": []
+      },
+      {
+        "name": "리히텐슈타인 (Liechtenstein)",
+        "regions": []
+      },
+      {
+        "name": "모나코 (Monaco)",
+        "regions": []
+      },
+      {
+        "name": "몬테네그로 (Montenegro)",
+        "regions": []
+      },
+      {
+        "name": "몰도바 (Moldova)",
+        "regions": []
+      },
+      {
+        "name": "몰타 (Malta)",
+        "regions": []
+      },
+      {
+        "name": "바티칸 시국 (Vatican City)",
+        "regions": []
+      },
+      {
+        "name": "벨기에 (Belgium)",
+        "regions": []
+      },
+      {
+        "name": "벨라루스 (Belarus)",
+        "regions": []
+      },
+      {
+        "name": "보스니아 헤르체고비나 (Bosnia and Herzegovina)",
+        "regions": []
+      },
+      {
+        "name": "북마케도니아 (North Macedonia)",
+        "regions": []
+      },
+      {
+        "name": "불가리아 (Bulgaria)",
+        "regions": []
+      },
+      {
+        "name": "산마리노 (San Marino)",
+        "regions": []
+      },
+      {
+        "name": "세르비아 (Serbia)",
+        "regions": []
+      },
+      {
+        "name": "스웨덴 (Sweden)",
+        "regions": []
+      },
+      {
+        "name": "스위스 (Switzerland)",
+        "regions": []
+      },
+      {
+        "name": "스페인 (Spain)",
+        "regions": [
+          "이비자 (Ibiza)",
+          "바르셀로나 (Barcelona)"
+        ]
+      },
+      {
+        "name": "슬로바키아 (Slovakia)",
+        "regions": []
+      },
+      {
+        "name": "슬로베니아 (Slovenia)",
+        "regions": []
+      },
+      {
+        "name": "아이슬란드 (Iceland)",
+        "regions": []
+      },
+      {
+        "name": "아일랜드 (Ireland)",
+        "regions": []
+      },
+      {
+        "name": "안도라 (Andorra)",
+        "regions": []
+      },
+      {
+        "name": "알바니아 (Albania)",
+        "regions": []
+      },
+      {
+        "name": "에스토니아 (Estonia)",
+        "regions": []
+      },
+      {
+        "name": "영국 (United Kingdom)",
+        "regions": []
+      },
+      {
+        "name": "오스트리아 (Austria)",
+        "regions": []
+      },
+      {
+        "name": "우크라이나 (Ukraine)",
+        "regions": []
+      },
+      {
+        "name": "이탈리아 (Italy)",
+        "regions": [
+          "팔레르모 (Palermo)",
+          "제노아 (Genoa)",
+          "라벤나 (Ravenna)",
+          "베네치아 (Venice)"
+        ]
+      },
+      {
+        "name": "조지아 (Georgia)",
+        "regions": []
+      },
+      {
+        "name": "체코 (Czech Republic)",
+        "regions": []
+      },
+      {
+        "name": "코소보 (Kosovo)",
+        "regions": []
+      },
+      {
+        "name": "크로아티아 (Croatia)",
+        "regions": [
+          "스플리트 (Split)"
+        ]
+      },
+      {
+        "name": "키프로스 (Cyprus)",
+        "regions": []
+      },
+      {
+        "name": "튀르키예 (Türkiye)",
+        "regions": []
+      },
+      {
+        "name": "포르투갈 (Portugal)",
+        "regions": []
+      },
+      {
+        "name": "폴란드 (Poland)",
+        "regions": []
+      },
+      {
+        "name": "프랑스 (France)",
+        "regions": [
+          "마르세유 (Marseille)"
+        ]
+      },
+      {
+        "name": "핀란드 (Finland)",
+        "regions": []
+      },
+      {
+        "name": "헝가리 (Hungary)",
+        "regions": []
+      }
+    ]
+  },
+  {
+    "continent": "아프리카 (Africa)",
+    "countries": [
+      {
+        "name": "가나 (Ghana)",
+        "regions": []
+      },
+      {
+        "name": "가봉 (Gabon)",
+        "regions": []
+      },
+      {
+        "name": "감비아 (Gambia)",
+        "regions": []
+      },
+      {
+        "name": "기니 (Guinea)",
+        "regions": []
+      },
+      {
+        "name": "기니비사우 (Guinea-Bissau)",
+        "regions": []
+      },
+      {
+        "name": "나미비아 (Namibia)",
+        "regions": []
+      },
+      {
+        "name": "나이지리아 (Nigeria)",
+        "regions": []
+      },
+      {
+        "name": "남수단 (South Sudan)",
+        "regions": []
+      },
+      {
+        "name": "남아프리카 공화국 (South Africa)",
+        "regions": []
+      },
+      {
+        "name": "니제르 (Niger)",
+        "regions": []
+      },
+      {
+        "name": "라이베리아 (Liberia)",
+        "regions": []
+      },
+      {
+        "name": "레소토 (Lesotho)",
+        "regions": []
+      },
+      {
+        "name": "르완다 (Rwanda)",
+        "regions": []
+      },
+      {
+        "name": "리비아 (Libya)",
+        "regions": []
+      },
+      {
+        "name": "마다가스카르 (Madagascar)",
+        "regions": []
+      },
+      {
+        "name": "말라위 (Malawi)",
+        "regions": []
+      },
+      {
+        "name": "말리 (Mali)",
+        "regions": []
+      },
+      {
+        "name": "모로코 (Morocco)",
+        "regions": []
+      },
+      {
+        "name": "모리셔스 (Mauritius)",
+        "regions": []
+      },
+      {
+        "name": "모리타니 (Mauritania)",
+        "regions": []
+      },
+      {
+        "name": "모잠비크 (Mozambique)",
+        "regions": []
+      },
+      {
+        "name": "베냉 (Benin)",
+        "regions": []
+      },
+      {
+        "name": "보츠와나 (Botswana)",
+        "regions": []
+      },
+      {
+        "name": "부룬디 (Burundi)",
+        "regions": []
+      },
+      {
+        "name": "부르키나파소 (Burkina Faso)",
+        "regions": []
+      },
+      {
+        "name": "상투메 프린시페 (Sao Tome and Principe)",
+        "regions": []
+      },
+      {
+        "name": "세네갈 (Senegal)",
+        "regions": []
+      },
+      {
+        "name": "세이셸 (Seychelles)",
+        "regions": []
+      },
+      {
+        "name": "소말리아 (Somalia)",
+        "regions": []
+      },
+      {
+        "name": "수단 (Sudan)",
+        "regions": []
+      },
+      {
+        "name": "시에라리온 (Sierra Leone)",
+        "regions": []
+      },
+      {
+        "name": "알제리 (Algeria)",
+        "regions": []
+      },
+      {
+        "name": "앙골라 (Angola)",
+        "regions": []
+      },
+      {
+        "name": "에리트레아 (Eritrea)",
+        "regions": []
+      },
+      {
+        "name": "에스와티니 (Eswatini)",
+        "regions": []
+      },
+      {
+        "name": "에티오피아 (Ethiopia)",
+        "regions": []
+      },
+      {
+        "name": "우간다 (Uganda)",
+        "regions": []
+      },
+      {
+        "name": "이집트 (Egypt)",
+        "regions": []
+      },
+      {
+        "name": "잠비아 (Zambia)",
+        "regions": []
+      },
+      {
+        "name": "적도 기니 (Equatorial Guinea)",
+        "regions": []
+      },
+      {
+        "name": "중앙아프리카 공화국 (Central African Republic)",
+        "regions": []
+      },
+      {
+        "name": "지부티 (Djibouti)",
+        "regions": []
+      },
+      {
+        "name": "짐바브웨 (Zimbabwe)",
+        "regions": []
+      },
+      {
+        "name": "차드 (Chad)",
+        "regions": []
+      },
+      {
+        "name": "카메룬 (Cameroon)",
+        "regions": []
+      },
+      {
+        "name": "카보베르데 (Cabo Verde)",
+        "regions": []
+      },
+      {
+        "name": "케냐 (Kenya)",
+        "regions": []
+      },
+      {
+        "name": "코모로 (Comoros)",
+        "regions": []
+      },
+      {
+        "name": "코트디부아르 (Côte d'Ivoire)",
+        "regions": []
+      },
+      {
+        "name": "콩고 공화국 (Republic of the Congo)",
+        "regions": []
+      },
+      {
+        "name": "콩고 민주 공화국 (Democratic Republic of the Congo)",
+        "regions": []
+      },
+      {
+        "name": "탄자니아 (Tanzania)",
+        "regions": []
+      },
+      {
+        "name": "토고 (Togo)",
+        "regions": []
+      }
+    ]
+  },
+  {
+    "continent": "북아메리카 (North America)",
+    "countries": [
+      {
+        "name": "캐나다 (Canada)",
+        "regions": [
+          "빅토리아 (Victoria)"
+        ]
+      },
+      {
+        "name": "미국 (United States)",
+        "regions": [
+          "시애틀 (Seattle)",
+          "주노 (Juneau)",
+          "스캐그웨이 (Skagway)",
+          "싯카 (Sitka)"
+        ]
+      },
+      {
+        "name": "멕시코 (Mexico)",
+        "regions": []
+      },
+      {
+        "name": "과테말라 (Guatemala)",
+        "regions": []
+      },
+      {
+        "name": "벨리즈 (Belize)",
+        "regions": []
+      },
+      {
+        "name": "엘살바도르 (El Salvador)",
+        "regions": []
+      },
+      {
+        "name": "온두라스 (Honduras)",
+        "regions": []
+      },
+      {
+        "name": "니카라과 (Nicaragua)",
+        "regions": []
+      },
+      {
+        "name": "코스타리카 (Costa Rica)",
+        "regions": []
+      },
+      {
+        "name": "파나마 (Panama)",
+        "regions": []
+      },
+      {
+        "name": "쿠바 (Cuba)",
+        "regions": []
+      },
+      {
+        "name": "자메이카 (Jamaica)",
+        "regions": []
+      },
+      {
+        "name": "아이티 (Haiti)",
+        "regions": []
+      },
+      {
+        "name": "도미니카 공화국 (Dominican Republic)",
+        "regions": []
+      },
+      {
+        "name": "바하마 (Bahamas)",
+        "regions": []
+      },
+      {
+        "name": "세인트키츠 네비스 (Saint Kitts and Nevis)",
+        "regions": []
+      },
+      {
+        "name": "앤티가 바부다 (Antigua and Barbuda)",
+        "regions": []
+      },
+      {
+        "name": "도미니카 연방 (Dominica)",
+        "regions": []
+      },
+      {
+        "name": "세인트루시아 (Saint Lucia)",
+        "regions": []
+      },
+      {
+        "name": "세인트빈센트 그레나딘 (Saint Vincent and the Grenadines)",
+        "regions": []
+      },
+      {
+        "name": "그레나다 (Grenada)",
+        "regions": []
+      },
+      {
+        "name": "바베이도스 (Barbados)",
+        "regions": []
+      },
+      {
+        "name": "트리니다드 토바고 (Trinidad and Tobago)",
+        "regions": []
+      }
+    ]
+  },
+  {
+    "continent": "남아메리카 (South America)",
+    "countries": [
+      {
+        "name": "콜롬비아 (Colombia)",
+        "regions": []
+      },
+      {
+        "name": "베네수엘라 (Venezuela)",
+        "regions": []
+      },
+      {
+        "name": "가이아나 (Guyana)",
+        "regions": []
+      },
+      {
+        "name": "수리남 (Suriname)",
+        "regions": []
+      },
+      {
+        "name": "에콰도르 (Ecuador)",
+        "regions": []
+      },
+      {
+        "name": "페루 (Peru)",
+        "regions": []
+      },
+      {
+        "name": "브라질 (Brazil)",
+        "regions": []
+      },
+      {
+        "name": "볼리비아 (Bolivia)",
+        "regions": []
+      },
+      {
+        "name": "파라과이 (Paraguay)",
+        "regions": []
+      },
+      {
+        "name": "칠레 (Chile)",
+        "regions": []
+      },
+      {
+        "name": "아르헨티나 (Argentina)",
+        "regions": []
+      },
+      {
+        "name": "우루과이 (Uruguay)",
+        "regions": []
+      }
+    ]
+  },
+  {
+    "continent": "오세아니아 (Oceania)",
+    "countries": [
+      {
+        "name": "오스트레일리아 (호주) (Australia)",
+        "regions": []
+      },
+      {
+        "name": "뉴질랜드 (New Zealand)",
+        "regions": []
+      },
+      {
+        "name": "파푸아뉴기니 (Papua New Guinea)",
+        "regions": []
+      },
+      {
+        "name": "피지 (Fiji)",
+        "regions": []
+      },
+      {
+        "name": "솔로몬 제도 (Solomon Islands)",
+        "regions": []
+      },
+      {
+        "name": "바누아투 (Vanuatu)",
+        "regions": []
+      },
+      {
+        "name": "사모아 (Samoa)",
+        "regions": []
+      },
+      {
+        "name": "키리바시 (Kiribati)",
+        "regions": []
+      },
+      {
+        "name": "통가 (Tonga)",
+        "regions": []
+      },
+      {
+        "name": "미크로네시아 연방 (Micronesia)",
+        "regions": []
+      },
+      {
+        "name": "팔라우 (Palau)",
+        "regions": []
+      },
+      {
+        "name": "마셜 제도 (Marshall Islands)",
+        "regions": []
+      },
+      {
+        "name": "나우루 (Nauru)",
+        "regions": []
+      },
+      {
+        "name": "투발루 (Tuvalu)",
+        "regions": []
+      }
+    ]
+  }
+] 

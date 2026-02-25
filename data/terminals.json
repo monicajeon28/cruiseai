@@ -1,0 +1,1304 @@
+[
+  {
+    "id": "tokyo_narita_airport",
+    "name": "Narita International Airport (NRT)",
+    "name_ko": "나리타 국제공항",
+    "keywords_ko": [
+      "NRT",
+      "도쿄",
+      "나리타"
+    ],
+    "lat": 35.7719,
+    "lng": 140.3929,
+    "city": "Tokyo",
+    "country": "Japan"
+  },
+  {
+    "id": "tokyo_haneda_airport",
+    "name": "Haneda Airport (HND)",
+    "name_ko": "하네다 공항",
+    "keywords_ko": [
+      "HND",
+      "도쿄",
+      "하네다"
+    ],
+    "lat": 35.5494,
+    "lng": 139.7798,
+    "city": "Tokyo",
+    "country": "Japan"
+  },
+  {
+    "id": "osaka_kansai_airport",
+    "name": "Kansai International Airport (KIX)",
+    "name_ko": "간사이 국제공항",
+    "keywords_ko": [
+      "KIX",
+      "오사카",
+      "간사이"
+    ],
+    "lat": 34.4273,
+    "lng": 135.244,
+    "city": "Osaka",
+    "country": "Japan"
+  },
+  {
+    "id": "osak-itami_airport",
+    "name": "Osaka Itami Airport (ITM)",
+    "name_ko": "이타미 공항",
+    "keywords_ko": [
+      "ITM",
+      "오사카",
+      "이타미"
+    ],
+    "lat": 34.7855,
+    "lng": 135.4382,
+    "city": "Osaka",
+    "country": "Japan"
+  },
+  {
+    "id": "nagoya_chubu_airport",
+    "name": "Chubu Centrair International (NGO)",
+    "name_ko": "주부 센트레아 공항",
+    "keywords_ko": [
+      "NGO",
+      "나고야",
+      "주부"
+    ],
+    "lat": 34.8584,
+    "lng": 136.805,
+    "city": "Nagoya",
+    "country": "Japan"
+  },
+  {
+    "id": "fukuoka_airport",
+    "name": "Fukuoka Airport (FUK)",
+    "name_ko": "후쿠오카 공항",
+    "keywords_ko": [
+      "FUK",
+      "후쿠오카",
+      "규슈"
+    ],
+    "lat": 33.5859,
+    "lng": 130.45,
+    "city": "Fukuoka",
+    "country": "Japan"
+  },
+  {
+    "id": "sapporo_new_chitose",
+    "name": "New Chitose Airport (CTS)",
+    "name_ko": "신치토세 공항",
+    "keywords_ko": [
+      "CTS",
+      "삿포로",
+      "치토세"
+    ],
+    "lat": 42.7752,
+    "lng": 141.6923,
+    "city": "Sapporo",
+    "country": "Japan"
+  },
+  {
+    "id": "okinawa_naha_airport",
+    "name": "Naha Airport (OKA)",
+    "name_ko": "나하 공항",
+    "keywords_ko": [
+      "OKA",
+      "오키나와",
+      "나하"
+    ],
+    "lat": 26.1958,
+    "lng": 127.646,
+    "city": "Naha",
+    "country": "Japan"
+  },
+  {
+    "id": "singapore_changi_airport",
+    "name": "Singapore Changi Airport (SIN)",
+    "name_ko": "싱가포르 창이 공항",
+    "keywords_ko": [
+      "SIN",
+      "창이",
+      "싱가포르"
+    ],
+    "lat": 1.3644,
+    "lng": 103.9915,
+    "city": "Singapore",
+    "country": "Singapore"
+  },
+  {
+    "id": "hong_kong_airport",
+    "name": "Hong Kong International Airport (HKG)",
+    "name_ko": "홍콩 국제공항",
+    "keywords_ko": [
+      "HKG",
+      "첵랍콕",
+      "홍콩"
+    ],
+    "lat": 22.308,
+    "lng": 113.918,
+    "city": "Hong Kong",
+    "country": "Hong Kong"
+  },
+  {
+    "id": "taiwan_taoyuan_airport",
+    "name": "Taoyuan International Airport (TPE)",
+    "name_ko": "타이완 타오위안 국제공항",
+    "keywords_ko": [
+      "TPE",
+      "타오위안",
+      "타이완"
+    ],
+    "lat": 25.08,
+    "lng": 121.232,
+    "city": "Taoyuan",
+    "country": "Taiwan"
+  },
+  {
+    "id": "taipei_songshan_airport",
+    "name": "Taipei Songshan Airport (TSA)",
+    "name_ko": "타이베이 쑹산 공항",
+    "keywords_ko": [
+      "TSA",
+      "송산",
+      "쑹산",
+      "타이베이"
+    ],
+    "lat": 25.068,
+    "lng": 121.552,
+    "city": "Taipei",
+    "country": "Taiwan"
+  },
+  {
+    "id": "kaohsiung_airport",
+    "name": "Kaohsiung International Airport (KHH)",
+    "name_ko": "가오슝 국제공항",
+    "keywords_ko": [
+      "KHH",
+      "가오슝",
+      "카오슝"
+    ],
+    "lat": 22.573,
+    "lng": 120.35,
+    "city": "Kaohsiung",
+    "country": "Taiwan"
+  },
+  {
+    "id": "taichung_airport",
+    "name": "Taichung International Airport (RMQ)",
+    "name_ko": "타이중 국제공항",
+    "keywords_ko": [
+      "RMQ",
+      "타이중"
+    ],
+    "lat": 24.264,
+    "lng": 120.621,
+    "city": "Taichung",
+    "country": "Taiwan"
+  },
+  {
+    "id": "beijing_capital_airport",
+    "name": "Beijing Capital International (PEK)",
+    "name_ko": "베이징 수도 국제공항",
+    "keywords_ko": [
+      "PEK",
+      "베이징"
+    ],
+    "lat": 40.0799,
+    "lng": 116.6031,
+    "city": "Beijing",
+    "country": "China"
+  },
+  {
+    "id": "beijing_daxing_airport",
+    "name": "Beijing Daxing International (PKX)",
+    "name_ko": "베이징 다싱 국제공항",
+    "keywords_ko": [
+      "PKX",
+      "다싱",
+      "베이징"
+    ],
+    "lat": 39.5099,
+    "lng": 116.4108,
+    "city": "Beijing",
+    "country": "China"
+  },
+  {
+    "id": "shanghai_pudong_airport",
+    "name": "Shanghai Pudong International (PVG)",
+    "name_ko": "상하이 푸둥 국제공항",
+    "keywords_ko": [
+      "PVG",
+      "푸동",
+      "상하이"
+    ],
+    "lat": 31.1443,
+    "lng": 121.8083,
+    "city": "Shanghai",
+    "country": "China"
+  },
+  {
+    "id": "shanghai_hongqiao_airport",
+    "name": "Shanghai Hongqiao (SHA)",
+    "name_ko": "상하이 훙차오 공항",
+    "keywords_ko": [
+      "SHA",
+      "홍차오",
+      "상하이"
+    ],
+    "lat": 31.1961,
+    "lng": 121.3363,
+    "city": "Shanghai",
+    "country": "China"
+  },
+  {
+    "id": "guangzhou_baiyun_airport",
+    "name": "Guangzhou Baiyun (CAN)",
+    "name_ko": "광저우 바이윈 공항",
+    "keywords_ko": [
+      "CAN",
+      "광저우"
+    ],
+    "lat": 23.3924,
+    "lng": 113.2988,
+    "city": "Guangzhou",
+    "country": "China"
+  },
+  {
+    "id": "shenzhen_baoan_airport",
+    "name": "Shenzhen Bao'an (SZX)",
+    "name_ko": "선전 바오안 공항",
+    "keywords_ko": [
+      "SZX",
+      "심천",
+      "선전"
+    ],
+    "lat": 22.6393,
+    "lng": 113.8107,
+    "city": "Shenzhen",
+    "country": "China"
+  },
+  {
+    "id": "seoul_incheon_airport",
+    "name": "Incheon International Airport (ICN)",
+    "name_ko": "인천 국제공항",
+    "keywords_ko": [
+      "ICN",
+      "서울",
+      "인천"
+    ],
+    "lat": 37.4602,
+    "lng": 126.4407,
+    "city": "Incheon",
+    "country": "South Korea"
+  },
+  {
+    "id": "seoul_gimpo_airport",
+    "name": "Gimpo International Airport (GMP)",
+    "name_ko": "김포 국제공항",
+    "keywords_ko": [
+      "GMP",
+      "서울",
+      "김포"
+    ],
+    "lat": 37.5583,
+    "lng": 126.7906,
+    "city": "Seoul",
+    "country": "South Korea"
+  },
+  {
+    "id": "busan_gimhae_airport",
+    "name": "Gimhae International Airport (PUS)",
+    "name_ko": "김해 국제공항",
+    "keywords_ko": [
+      "PUS",
+      "부산",
+      "김해"
+    ],
+    "lat": 35.1796,
+    "lng": 128.938,
+    "city": "Busan",
+    "country": "South Korea"
+  },
+  {
+    "id": "jeju_airport",
+    "name": "Jeju International Airport (CJU)",
+    "name_ko": "제주 국제공항",
+    "keywords_ko": [
+      "CJU",
+      "제주"
+    ],
+    "lat": 33.5113,
+    "lng": 126.493,
+    "city": "Jeju",
+    "country": "South Korea"
+  },
+  {
+    "id": "jfk_airport",
+    "name": "John F. Kennedy International (JFK)",
+    "name_ko": "존 F 케네디 국제공항",
+    "keywords_ko": [
+      "JFK",
+      "뉴욕",
+      "케네디"
+    ],
+    "lat": 40.6413,
+    "lng": -73.7781,
+    "city": "New York",
+    "country": "USA"
+  },
+  {
+    "id": "lga_airport",
+    "name": "LaGuardia Airport (LGA)",
+    "name_ko": "라과디아 공항",
+    "keywords_ko": [
+      "LGA",
+      "뉴욕"
+    ],
+    "lat": 40.7769,
+    "lng": -73.874,
+    "city": "New York",
+    "country": "USA"
+  },
+  {
+    "id": "lax_airport",
+    "name": "Los Angeles International (LAX)",
+    "name_ko": "로스앤젤레스 국제공항",
+    "keywords_ko": [
+      "LAX",
+      "LA",
+      "엘에이"
+    ],
+    "lat": 33.9416,
+    "lng": -118.4085,
+    "city": "Los Angeles",
+    "country": "USA"
+  },
+  {
+    "id": "sfo_airport",
+    "name": "San Francisco International (SFO)",
+    "name_ko": "샌프란시스코 국제공항",
+    "keywords_ko": [
+      "SFO",
+      "샌프란"
+    ],
+    "lat": 37.6213,
+    "lng": -122.379,
+    "city": "San Francisco",
+    "country": "USA"
+  },
+  {
+    "id": "mia_airport",
+    "name": "Miami International (MIA)",
+    "name_ko": "마이애미 국제공항",
+    "keywords_ko": [
+      "MIA",
+      "마이애미"
+    ],
+    "lat": 25.7959,
+    "lng": -80.287,
+    "city": "Miami",
+    "country": "USA"
+  },
+  {
+    "id": "fll_airport",
+    "name": "Fort Lauderdale–Hollywood (FLL)",
+    "name_ko": "포트로더데일-할리우드 국제공항",
+    "keywords_ko": [
+      "FLL",
+      "포트로더데일"
+    ],
+    "lat": 26.0726,
+    "lng": -80.1527,
+    "city": "Fort Lauderdale",
+    "country": "USA"
+  },
+  {
+    "id": "mco_airport",
+    "name": "Orlando International (MCO)",
+    "name_ko": "올랜도 국제공항",
+    "keywords_ko": [
+      "MCO",
+      "올랜도"
+    ],
+    "lat": 28.4312,
+    "lng": -81.3081,
+    "city": "Orlando",
+    "country": "USA"
+  },
+  {
+    "id": "ord_airport",
+    "name": "Chicago O'Hare International (ORD)",
+    "name_ko": "시카고 오헤어 국제공항",
+    "keywords_ko": [
+      "ORD",
+      "시카고"
+    ],
+    "lat": 41.9742,
+    "lng": -87.9073,
+    "city": "Chicago",
+    "country": "USA"
+  },
+  {
+    "id": "sea_airport",
+    "name": "Seattle–Tacoma International (SEA)",
+    "name_ko": "시애틀 터코마 국제공항",
+    "keywords_ko": [
+      "SEA",
+      "시애틀"
+    ],
+    "lat": 47.4502,
+    "lng": -122.3088,
+    "city": "Seattle",
+    "country": "USA"
+  },
+  {
+    "id": "london_heathrow_airport",
+    "name": "London Heathrow (LHR)",
+    "name_ko": "런던 히스로 공항",
+    "keywords_ko": [
+      "LHR",
+      "런던",
+      "히스로"
+    ],
+    "lat": 51.47,
+    "lng": -0.4543,
+    "city": "London",
+    "country": "United Kingdom"
+  },
+  {
+    "id": "london_gatwick_airport",
+    "name": "London Gatwick (LGW)",
+    "name_ko": "런던 개트윅 공항",
+    "keywords_ko": [
+      "LGW",
+      "런던",
+      "개트윅"
+    ],
+    "lat": 51.1537,
+    "lng": -0.1821,
+    "city": "London",
+    "country": "United Kingdom"
+  },
+  {
+    "id": "paris_cdg_airport",
+    "name": "Paris Charles de Gaulle (CDG)",
+    "name_ko": "파리 샤를 드골 공항",
+    "keywords_ko": [
+      "CDG",
+      "파리"
+    ],
+    "lat": 49.0097,
+    "lng": 2.5479,
+    "city": "Paris",
+    "country": "France"
+  },
+  {
+    "id": "paris_ory_airport",
+    "name": "Paris Orly (ORY)",
+    "name_ko": "파리 오를리 공항",
+    "keywords_ko": [
+      "ORY",
+      "파리"
+    ],
+    "lat": 48.7262,
+    "lng": 2.3652,
+    "city": "Paris",
+    "country": "France"
+  },
+  {
+    "id": "rome_fco_airport",
+    "name": "Rome Fiumicino (FCO)",
+    "name_ko": "로마 피우미치노 공항",
+    "keywords_ko": [
+      "FCO",
+      "로마"
+    ],
+    "lat": 41.7999,
+    "lng": 12.2462,
+    "city": "Rome",
+    "country": "Italy"
+  },
+  {
+    "id": "milan_mxp_airport",
+    "name": "Milan Malpensa (MXP)",
+    "name_ko": "밀라노 말펜사 공항",
+    "keywords_ko": [
+      "MXP",
+      "밀라노"
+    ],
+    "lat": 45.6301,
+    "lng": 8.7231,
+    "city": "Milan",
+    "country": "Italy"
+  },
+  {
+    "id": "madrid_mad_airport",
+    "name": "Madrid Barajas (MAD)",
+    "name_ko": "마드리드 바라하스 공항",
+    "keywords_ko": [
+      "MAD",
+      "마드리드"
+    ],
+    "lat": 40.4983,
+    "lng": -3.5676,
+    "city": "Madrid",
+    "country": "Spain"
+  },
+  {
+    "id": "barcelona_bcn_airport",
+    "name": "Barcelona El Prat (BCN)",
+    "name_ko": "바르셀로나 엘프라트 공항",
+    "keywords_ko": [
+      "BCN",
+      "바르셀로나"
+    ],
+    "lat": 41.2974,
+    "lng": 2.0833,
+    "city": "Barcelona",
+    "country": "Spain"
+  },
+  {
+    "id": "frankfurt_fra_airport",
+    "name": "Frankfurt Airport (FRA)",
+    "name_ko": "프랑크푸르트 공항",
+    "keywords_ko": [
+      "FRA",
+      "프랑크푸르트"
+    ],
+    "lat": 50.0379,
+    "lng": 8.5622,
+    "city": "Frankfurt",
+    "country": "Germany"
+  },
+  {
+    "id": "munich_muc_airport",
+    "name": "Munich Airport (MUC)",
+    "name_ko": "뮌헨 공항",
+    "keywords_ko": [
+      "MUC",
+      "뮌헨"
+    ],
+    "lat": 48.3538,
+    "lng": 11.7861,
+    "city": "Munich",
+    "country": "Germany"
+  },
+  {
+    "id": "amsterdam_ams_airport",
+    "name": "Amsterdam Schiphol (AMS)",
+    "name_ko": "암스테르담 스키폴 공항",
+    "keywords_ko": [
+      "AMS",
+      "암스테르담",
+      "스키폴"
+    ],
+    "lat": 52.3105,
+    "lng": 4.7683,
+    "city": "Amsterdam",
+    "country": "Netherlands"
+  },
+  {
+    "id": "keelung_cruise_terminal",
+    "name": "Keelung (Jilong) Cruise Terminal",
+    "name_ko": "지룽 크루즈 터미널",
+    "keywords_ko": [
+      "지룽 크루즈 터미널", "지룽크루즈터미널", "지룽 터미널",
+      "지룽항", "지룽항구", "지룽 포트", "지룽 포트 크루즈",
+      "기룡", "기룡항", "기룡 크루즈 터미널", "기룡크루즈터미널",
+      "기륭", "기륭항", "기륭 크루즈 터미널", "기륭크루즈터미널",
+      "Keelung Cruise Terminal", "Keelung Port", "Port of Keelung", "Keelung Harbor",
+      "基隆", "基隆港", "基隆客運碼頭", "基隆郵輪碼頭"
+    ],
+    "lat": 25.1552,
+    "lng": 121.7448,
+    "city": "Keelung",
+    "country": "Taiwan"
+  },
+  {
+    "id": "marina_bay_cruise_centre",
+    "name": "Marina Bay Cruise Centre Singapore",
+    "name_ko": "싱가포르 마리나 베이 크루즈 센터",
+    "keywords_ko": [
+      "마리나베이",
+      "싱가포르 크루즈"
+    ],
+    "lat": 1.2712,
+    "lng": 103.8631,
+    "city": "Singapore",
+    "country": "Singapore"
+  },
+  {
+    "id": "port_of_miami",
+    "name": "PortMiami (Dodge Island)",
+    "name_ko": "포트마이애미",
+    "keywords_ko": [
+      "마이애미 크루즈"
+    ],
+    "lat": 25.7781,
+    "lng": -80.1794,
+    "city": "Miami",
+    "country": "USA"
+  },
+  {
+    "id": "port_everglades",
+    "name": "Port Everglades (Fort Lauderdale)",
+    "name_ko": "포트 에버글레이즈",
+    "keywords_ko": [
+      "포트 에버글레이즈", "포트에버글레이즈",
+      "포트 로더데일 크루즈 포트", "Fort Lauderdale Cruise Port",
+      "Port Everglades"
+    ],
+    "lat": 26.094,
+    "lng": -80.114,
+    "city": "Fort Lauderdale",
+    "country": "USA"
+  },
+  {
+    "id": "port_canaveral",
+    "name": "Port Canaveral Cruise Terminal",
+    "name_ko": "포트 커내버럴 크루즈 터미널",
+    "keywords_ko": [
+      "포트 커내버럴", "포트커내버럴", "커내버럴",
+      "올랜도 크루즈 포트", "Orlando Cruise Port",
+      "Port Canaveral"
+    ],
+    "lat": 28.4108,
+    "lng": -80.6188,
+    "city": "Cape Canaveral",
+    "country": "USA"
+  },
+  {
+    "id": "vancouver_canada_place",
+    "name": "Vancouver Canada Place Cruise Terminal",
+    "name_ko": "밴쿠버 캐나다 플레이스",
+    "keywords_ko": [
+      "밴쿠버 크루즈"
+    ],
+    "lat": 49.2886,
+    "lng": -123.1129,
+    "city": "Vancouver",
+    "country": "Canada"
+  },
+  {
+    "id": "barcelona_cruise_port",
+    "name": "Port of Barcelona Cruise Terminal",
+    "name_ko": "바르셀로나 크루즈 터미널",
+    "keywords_ko": [
+      "바르셀로나"
+    ],
+    "lat": 41.3695,
+    "lng": 2.1734,
+    "city": "Barcelona",
+    "country": "Spain"
+  },
+  {
+    "id": "civitavecchia_rome",
+    "name": "Civitavecchia – Port of Rome Cruise Terminal",
+    "name_ko": "치비타베키아(로마) 크루즈 터미널",
+    "keywords_ko": [
+      "로마 크루즈"
+    ],
+    "lat": 42.0931,
+    "lng": 11.79,
+    "city": "Civitavecchia",
+    "country": "Italy"
+  },
+  {
+    "id": "southampton_cruise_terminal",
+    "name": "Port of Southampton Cruise Terminals",
+    "name_ko": "사우샘프턴 크루즈 터미널",
+    "keywords_ko": [
+      "사우샘프턴"
+    ],
+    "lat": 50.8963,
+    "lng": -1.4055,
+    "city": "Southampton",
+    "country": "United Kingdom"
+  },
+  {
+    "id": "hongkong_kai_tak_cruise_terminal",
+    "name": "Hong Kong Kai Tak Cruise Terminal",
+    "name_ko": "홍콩 카이탁 크루즈 터미널",
+    "keywords_ko": [
+      "홍콩 크루즈 터미널", "홍콩크루즈터미널", "카이탁", "Kai Tak",
+      "홍콩 카이탁 크루즈 터미널", "Hong Kong Cruise Terminal"
+    ],
+    "lat": 22.3061,
+    "lng": 114.2151,
+    "city": "Hong Kong",
+    "country": "Hong Kong"
+  },
+  {
+    "id": "shanghai_wusongkou_cruise_terminal",
+    "name": "Shanghai Wusongkou International Cruise Terminal",
+    "name_ko": "상하이 우쑹커우 국제 크루즈 터미널",
+    "keywords_ko": [
+      "상하이 크루즈",
+      "우쑹커우"
+    ],
+    "lat": 31.3979,
+    "lng": 121.5302,
+    "city": "Shanghai",
+    "country": "China"
+  },
+  {
+    "id": "tianjin_international_cruise_home_port",
+    "name": "Tianjin International Cruise Home Port",
+    "name_ko": "톈진 국제 크루즈 모항",
+    "keywords_ko": [
+      "천진 크루즈",
+      "톈진 크루즈"
+    ],
+    "lat": 39.0065,
+    "lng": 117.7188,
+    "city": "Tianjin",
+    "country": "China"
+  },
+  {
+    "id": "xiamen_international_cruise_terminal",
+    "name": "Xiamen International Cruise Terminal",
+    "name_ko": "샤먼 국제 크루즈 터미널",
+    "keywords_ko": [
+      "샤먼 크루즈",
+      "하문"
+    ],
+    "lat": 24.4571,
+    "lng": 118.0848,
+    "city": "Xiamen",
+    "country": "China"
+  },
+  {
+    "id": "singapore_harbourfront_cruise_centre",
+    "name": "Singapore Cruise Centre (HarbourFront)",
+    "name_ko": "싱가포르 크루즈 센터(하버프론트)",
+    "keywords_ko": [
+      "하버프론트"
+    ],
+    "lat": 1.2647,
+    "lng": 103.8205,
+    "city": "Singapore",
+    "country": "Singapore"
+  },
+  {
+    "id": "tokyo_international_cruise_terminal",
+    "name": "Tokyo International Cruise Terminal",
+    "name_ko": "도쿄 국제 크루즈 터미널",
+    "keywords_ko": [
+      "도쿄 국제 크루즈 터미널", "도쿄국제크루즈터미널",
+      "도쿄 크루즈 터미널", "도쿄크루즈터미널",
+      "오다이바", "오다이바 크루즈 터미널", "오다이바크루즈터미널",
+      "TICT", "Tokyo International Cruise Terminal"
+    ],
+    "lat": 35.6184,
+    "lng": 139.7789,
+    "city": "Tokyo",
+    "country": "Japan"
+  },
+  {
+    "id": "yokohama_osanbashi_pier",
+    "name": "Yokohama Osanbashi International Passenger Terminal",
+    "name_ko": "요코하마 오산바시 국제여객터미널",
+    "keywords_ko": [
+      "요코하마 크루즈",
+      "오산바시"
+    ],
+    "lat": 35.4497,
+    "lng": 139.6476,
+    "city": "Yokohama",
+    "country": "Japan"
+  },
+  {
+    "id": "kobe_cruise_terminal",
+    "name": "Kobe Cruise Terminal",
+    "name_ko": "고베 크루즈 터미널",
+    "keywords_ko": [
+      "고베항"
+    ],
+    "lat": 34.6797,
+    "lng": 135.1889,
+    "city": "Kobe",
+    "country": "Japan"
+  },
+  {
+    "id": "osaka_tempozan_cruise_terminal",
+    "name": "Osaka Tempozan Cruise Terminal",
+    "name_ko": "오사카 텐포잔 크루즈 터미널",
+    "keywords_ko": [
+      "오사카 크루즈",
+      "텐포잔"
+    ],
+    "lat": 34.6563,
+    "lng": 135.4309,
+    "city": "Osaka",
+    "country": "Japan"
+  },
+  {
+    "id": "kaohsiung_cruise_terminal",
+    "name": "Kaohsiung Port Cruise Terminal",
+    "name_ko": "가오슝 크루즈 터미널",
+    "keywords_ko": [
+      "카오슝 크루즈"
+    ],
+    "lat": 22.6202,
+    "lng": 120.2832,
+    "city": "Kaohsiung",
+    "country": "Taiwan"
+  },
+  {
+    "id": "busan_international_cruise_terminal",
+    "name": "Busan International Cruise Terminal",
+    "name_ko": "부산 국제여객터미널(크루즈)",
+    "keywords_ko": [
+      "부산항"
+    ],
+    "lat": 35.1154,
+    "lng": 129.0416,
+    "city": "Busan",
+    "country": "South Korea"
+  },
+  {
+    "id": "incheon_international_cruise_terminal",
+    "name": "Incheon International Cruise Terminal (Songdo)",
+    "name_ko": "인천 국제크루즈터미널(송도)",
+    "keywords_ko": [
+      "인천 크루즈",
+      "송도 크루즈"
+    ],
+    "lat": 37.3786,
+    "lng": 126.5986,
+    "city": "Incheon",
+    "country": "South Korea"
+  },
+  {
+    "id": "jeju_international_cruise_terminal",
+    "name": "Jeju International Cruise Terminal",
+    "name_ko": "제주 국제크루즈터미널",
+    "keywords_ko": [
+      "제주항 크루즈",
+      "제주항"
+    ],
+    "lat": 33.5273,
+    "lng": 126.5365,
+    "city": "Jeju",
+    "country": "South Korea"
+  },
+  {
+    "id": "sokcho_cruise_terminal",
+    "name": "Sokcho Cruise Terminal",
+    "name_ko": "속초 크루즈터미널",
+    "keywords_ko": [
+      "속초항",
+      "속초 여객"
+    ],
+    "lat": 38.2078,
+    "lng": 128.5911,
+    "city": "Sokcho",
+    "country": "South Korea"
+  },
+  {
+    "id": "yeosu_expo_cruise_terminal",
+    "name": "Yeosu EXPO Cruise Terminal",
+    "name_ko": "여수 EXPO 크루즈터미널",
+    "keywords_ko": [
+      "여수항",
+      "여수 엑스포"
+    ],
+    "lat": 34.7419,
+    "lng": 127.748,
+    "city": "Yeosu",
+    "country": "South Korea"
+  },
+  {
+    "id": "mokpo_cruise_pier",
+    "name": "Mokpo Cruise Pier",
+    "name_ko": "목포 크루즈 부두",
+    "keywords_ko": [
+      "목포항"
+    ],
+    "lat": 34.7875,
+    "lng": 126.3863,
+    "city": "Mokpo",
+    "country": "South Korea"
+  },
+  {
+    "id": "brooklyn_cruise_terminal",
+    "name": "Brooklyn Cruise Terminal",
+    "name_ko": "브루클린 크루즈 터미널",
+    "keywords_ko": [
+      "뉴욕 브루클린"
+    ],
+    "lat": 40.6816,
+    "lng": -74.0119,
+    "city": "New York",
+    "country": "USA"
+  },
+  {
+    "id": "cape_liberty_cruise_port",
+    "name": "Cape Liberty Cruise Port (Bayonne)",
+    "name_ko": "케이프 리버티 크루즈 포트(베이욘)",
+    "keywords_ko": [
+      "뉴저지 크루즈"
+    ],
+    "lat": 40.6854,
+    "lng": -74.0681,
+    "city": "Bayonne",
+    "country": "USA"
+  },
+  {
+    "id": "la_world_cruise_center",
+    "name": "Los Angeles World Cruise Center (San Pedro)",
+    "name_ko": "로스앤젤레스 월드 크루즈 센터(샌페드로)",
+    "keywords_ko": [
+      "LA 크루즈",
+      "샌페드로"
+    ],
+    "lat": 33.7436,
+    "lng": -118.273,
+    "city": "Los Angeles",
+    "country": "USA"
+  },
+  {
+    "id": "long_beach_cruise_terminal",
+    "name": "Long Beach Cruise Terminal",
+    "name_ko": "롱비치 크루즈 터미널",
+    "keywords_ko": [
+      "롱비치"
+    ],
+    "lat": 33.7529,
+    "lng": -118.1892,
+    "city": "Long Beach",
+    "country": "USA"
+  },
+  {
+    "id": "port_canaveral",
+    "name": "Port Canaveral Cruise Terminal",
+    "name_ko": "포트 커내버럴 크루즈 터미널",
+    "keywords_ko": [
+      "포트 커내버럴", "포트커내버럴", "커내버럴",
+      "올랜도 크루즈 포트", "Orlando Cruise Port",
+      "Port Canaveral"
+    ],
+    "lat": 28.4108,
+    "lng": -80.6188,
+    "city": "Cape Canaveral",
+    "country": "USA"
+  },
+  {
+    "id": "port_everglades",
+    "name": "Port Everglades (Fort Lauderdale)",
+    "name_ko": "포트 에버글레이즈",
+    "keywords_ko": [
+      "포트 에버글레이즈", "포트에버글레이즈",
+      "포트 로더데일 크루즈 포트", "Fort Lauderdale Cruise Port",
+      "Port Everglades"
+    ],
+    "lat": 26.094,
+    "lng": -80.114,
+    "city": "Fort Lauderdale",
+    "country": "USA"
+  },
+  {
+    "id": "port_of_miami",
+    "name": "PortMiami (Dodge Island)",
+    "name_ko": "포트마이애미",
+    "keywords_ko": [
+      "마이애미 크루즈"
+    ],
+    "lat": 25.7781,
+    "lng": -80.1794,
+    "city": "Miami",
+    "country": "USA"
+  },
+  {
+    "id": "tampa_cruise_terminal",
+    "name": "Port Tampa Bay Cruise Terminal",
+    "name_ko": "탬파 크루즈 터미널",
+    "keywords_ko": [
+      "탬파"
+    ],
+    "lat": 27.9446,
+    "lng": -82.4452,
+    "city": "Tampa",
+    "country": "USA"
+  },
+  {
+    "id": "galveston_cruise_terminal",
+    "name": "Port of Galveston Cruise Terminal",
+    "name_ko": "갤버스턴 크루즈 터미널",
+    "keywords_ko": [
+      "휴스턴 크루즈"
+    ],
+    "lat": 29.309,
+    "lng": -94.7902,
+    "city": "Galveston",
+    "country": "USA"
+  },
+  {
+    "id": "new_orleans_erato",
+    "name": "Port NOLA Erato/Julia Street Cruise Terminal",
+    "name_ko": "뉴올리언스 크루즈 터미널(에라토/줄리아)",
+    "keywords_ko": [
+      "뉴올리언스"
+    ],
+    "lat": 29.9429,
+    "lng": -90.0617,
+    "city": "New Orleans",
+    "country": "USA"
+  },
+  {
+    "id": "seattle_pier_91",
+    "name": "Port of Seattle - Smith Cove Cruise Terminal (Pier 91)",
+    "name_ko": "시애틀 스미스 코브 크루즈 터미널(91번 부두)",
+    "keywords_ko": [
+      "시애틀 크루즈"
+    ],
+    "lat": 47.6297,
+    "lng": -122.3777,
+    "city": "Seattle",
+    "country": "USA"
+  },
+  {
+    "id": "vancouver_canada_place",
+    "name": "Vancouver Canada Place Cruise Terminal",
+    "name_ko": "밴쿠버 캐나다 플레이스",
+    "keywords_ko": [
+      "밴쿠버 크루즈"
+    ],
+    "lat": 49.2886,
+    "lng": -123.1129,
+    "city": "Vancouver",
+    "country": "Canada"
+  },
+  {
+    "id": "southampton_cruise_terminal",
+    "name": "Port of Southampton Cruise Terminals",
+    "name_ko": "사우샘프턴 크루즈 터미널",
+    "keywords_ko": [
+      "사우샘프턴"
+    ],
+    "lat": 50.8963,
+    "lng": -1.4055,
+    "city": "Southampton",
+    "country": "United Kingdom"
+  },
+  {
+    "id": "dover_cruise_terminal",
+    "name": "Port of Dover Cruise Terminal",
+    "name_ko": "도버 크루즈 터미널",
+    "keywords_ko": [
+      "도버"
+    ],
+    "lat": 51.1293,
+    "lng": 1.3173,
+    "city": "Dover",
+    "country": "United Kingdom"
+  },
+  {
+    "id": "barcelona_cruise_port",
+    "name": "Port of Barcelona Cruise Terminal",
+    "name_ko": "바르셀로나 크루즈 터미널",
+    "keywords_ko": [
+      "바르셀로나"
+    ],
+    "lat": 41.3695,
+    "lng": 2.1734,
+    "city": "Barcelona",
+    "country": "Spain"
+  },
+  {
+    "id": "civitavecchia_rome",
+    "name": "Civitavecchia – Port of Rome Cruise Terminal",
+    "name_ko": "치비타베키아(로마) 크루즈 터미널",
+    "keywords_ko": [
+      "로마 크루즈"
+    ],
+    "lat": 42.0931,
+    "lng": 11.79,
+    "city": "Civitavecchia",
+    "country": "Italy"
+  },
+  {
+    "id": "venice_marittima",
+    "name": "Venice Cruise Terminal (Stazione Marittima)",
+    "name_ko": "베네치아 크루즈 터미널",
+    "keywords_ko": [
+      "베네치아",
+      "베네치아 크루즈",
+      "베니스 터미널"
+    ],
+    "lat": 45.4359,
+    "lng": 12.3099,
+    "city": "Venice",
+    "country": "Italy"
+  },
+  {
+    "id": "venice_marco_polo_airport",
+    "name": "Venice Marco Polo International Airport",
+    "name_ko": "베네치아 마르코 폴로 국제공항",
+    "keywords_ko": [
+      "베네치아 공항",
+      "마르코 폴로 공항",
+      "VCE",
+      "베니스 공항"
+    ],
+    "lat": 45.5053,
+    "lng": 12.3519,
+    "city": "Venice",
+    "country": "Italy"
+  },
+  {
+    "id": "ravenna_cruise_terminal",
+    "name": "Ravenna Cruise Terminal (Terminal Crociere Ravenna)",
+    "name_ko": "라벤나 크루즈 터미널",
+    "keywords_ko": [
+      "라벤나",
+      "라벤나 크루즈",
+      "라베나"
+    ],
+    "lat": 44.4827,
+    "lng": 12.2668,
+    "city": "Ravenna",
+    "country": "Italy",
+    "mapsUrl": "https://maps.app.goo.gl/hu467ScCjSCnmG8EA"
+  },
+  {
+    "id": "genoa_cruise_terminal",
+    "name": "Genoa Cruise Terminal",
+    "name_ko": "제노바 크루즈 터미널",
+    "keywords_ko": [
+      "제노바"
+    ],
+    "lat": 44.4029,
+    "lng": 8.9248,
+    "city": "Genoa",
+    "country": "Italy"
+  },
+  {
+    "id": "marseille_provence",
+    "name": "Marseille Provence Cruise Terminal (MPCT)",
+    "name_ko": "마르세유 크루즈 터미널",
+    "keywords_ko": [
+      "마르세유"
+    ],
+    "lat": 43.3298,
+    "lng": 5.3387,
+    "city": "Marseille",
+    "country": "France"
+  },
+  {
+    "id": "le_havre_cruise",
+    "name": "Le Havre Cruise Terminal",
+    "name_ko": "르아브르 크루즈 터미널",
+    "keywords_ko": [
+      "르아브르"
+    ],
+    "lat": 49.4857,
+    "lng": 0.1205,
+    "city": "Le Havre",
+    "country": "France"
+  },
+  {
+    "id": "athens_piraeus_cruise",
+    "name": "Piraeus (Athens) Cruise Terminal",
+    "name_ko": "피레우스(아테네) 크루즈 터미널",
+    "keywords_ko": [
+      "아테네"
+    ],
+    "lat": 37.9394,
+    "lng": 23.6261,
+    "city": "Piraeus",
+    "country": "Greece"
+  },
+  {
+    "id": "istanbul_galata_port",
+    "name": "Istanbul Galataport Cruise Terminal",
+    "name_ko": "이스탄불 갈라타포트",
+    "keywords_ko": [
+      "이스탄불"
+    ],
+    "lat": 41.0297,
+    "lng": 28.9836,
+    "city": "Istanbul",
+    "country": "Turkey"
+  },
+  {
+    "id": "copenhagen_oceankaj",
+    "name": "Copenhagen Ocean Quay (Oceankaj)",
+    "name_ko": "코펜하겐 오션카이 크루즈 터미널",
+    "keywords_ko": [
+      "코펜하겐"
+    ],
+    "lat": 55.7204,
+    "lng": 12.6259,
+    "city": "Copenhagen",
+    "country": "Denmark"
+  },
+  {
+    "id": "stockholm_vartahamnen",
+    "name": "Stockholm Värtahamnen / Frihamnen",
+    "name_ko": "스톡홀름 바르타함넨/프리함넨",
+    "keywords_ko": [
+      "스톡홀름"
+    ],
+    "lat": 59.3487,
+    "lng": 18.109,
+    "city": "Stockholm",
+    "country": "Sweden"
+  },
+  {
+    "id": "amsterdam_passenger_terminal",
+    "name": "Passenger Terminal Amsterdam (PTA)",
+    "name_ko": "암스테르담 여객 터미널",
+    "keywords_ko": [
+      "암스테르담"
+    ],
+    "lat": 52.3778,
+    "lng": 4.9147,
+    "city": "Amsterdam",
+    "country": "Netherlands"
+  },
+  {
+    "id": "hamburg_cruise_center",
+    "name": "Hamburg Cruise Center (HafenCity/Steinwerder)",
+    "name_ko": "함부르크 크루즈 센터",
+    "keywords_ko": [
+      "함부르크"
+    ],
+    "lat": 53.5411,
+    "lng": 9.9847,
+    "city": "Hamburg",
+    "country": "Germany"
+  },
+  {
+    "id": "lisbon_santa_apolonia",
+    "name": "Lisbon Santa Apolónia / Jardim do Tabaco",
+    "name_ko": "리스본 산타 아폴로니아 터미널",
+    "keywords_ko": [
+      "리스본"
+    ],
+    "lat": 38.7138,
+    "lng": -9.1185,
+    "city": "Lisbon",
+    "country": "Portugal"
+  },
+  {
+    "id": "santorini_port",
+    "name": "Santorini (Thira) Port",
+    "name_ko": "산토리니",
+    "keywords_ko": ["산토리니", "그리스 산토리니", "시라", "이아", "피라", "Santorini"],
+    "lat": 36.4172,
+    "lng": 25.4615,
+    "city": "Santorini",
+    "country": "Greece"
+  },
+  {
+    "id": "argostoli_port",
+    "name": "Argostoli Port (Kefalonia)",
+    "name_ko": "아르고스톨리",
+    "keywords_ko": ["아르고스톨리", "그리스 아르고스톨리", "케팔로니아", "케팔로니아섬", "Argostoli"],
+    "lat": 38.1732,
+    "lng": 20.4869,
+    "city": "Argostoli",
+    "country": "Greece"
+  }
+]

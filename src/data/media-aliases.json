@@ -1,0 +1,44 @@
+{
+  "aliases": {
+    "크루즈 선박": [
+      "/images/cruise-ship-1.jpg",
+      "/images/cruise-ship-2.jpg",
+      "/images/cruise-ship-3.jpg"
+    ],
+    "마이애미": [
+      "/images/miami-beach.jpg",
+      "/images/miami-port.jpg"
+    ],
+    "객실": [
+      "/images/cabin-suite.jpg",
+      "/images/cabin-balcony.jpg"
+    ],
+    "레스토랑": [
+      "/images/restaurant-fine-dining.jpg",
+      "/images/restaurant-buffet.jpg"
+    ],
+    "수영장": [
+      "/images/pool-deck.jpg",
+      "/images/pool-indoor.jpg"
+    ],
+    "바": [
+      "/images/bar-lounge.jpg",
+      "/images/bar-poolside.jpg"
+    ],
+    "쇼": [
+      "/images/show-theater.jpg",
+      "/images/show-ice-skating.jpg"
+    ],
+    "스파": [
+      "/images/spa-interior.jpg",
+      "/images/spa-treatment.jpg"
+    ],
+    "카지노": [
+      "/images/casino-interior.jpg",
+      "/images/casino-game.jpg"
+    ],
+    "면세점": [
+      "/images/duty-free-shop.jpg"
+    ]
+  }
+}
