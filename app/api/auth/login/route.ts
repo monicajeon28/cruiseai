@@ -2365,13 +2365,13 @@ export async function POST(req: Request) {
       errorCause: e instanceof Error && 'cause' in e ? (e as any).cause : undefined,
     });
 
-    // 개발 환경에서는 더 자세한 에러 정보 제공
+    // TODO: 디버그용 임시 에러 상세 노출 (진단 후 제거)
     return NextResponse.json(
       {
         ok: false,
         error: '로그인 실패',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
-        stack: process.env.NODE_ENV === 'development' ? errorStack : undefined,
+        details: errorMessage,
+        stack: errorStack,
       },
       { status: 500 }
     );
