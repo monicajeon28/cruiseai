@@ -57,6 +57,8 @@ const CITY_NAME_MAP: Record<string, string> = {
   '나폴리': 'Naples, Italy',
   '아테네': 'Athens, Greece',
   '산토리니': 'Santorini, Greece',
+  '아르고스톨리': 'Argostoli, Greece',
+  '케팔로니아': 'Kefalonia, Greece',
   '두브로브니크': 'Dubrovnik, Croatia',
   '마르세유': 'Marseille, France',
   '니스': 'Nice, France',
