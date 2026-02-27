@@ -38,10 +38,10 @@ export async function POST(req: Request) {
 
     // 환경 변수에서 API 키 가져오기 (GEMINI_API_KEY 우선, 형식 검증 후 GOOGLE_GENERATIVE_AI_API_KEY 사용)
     const googleKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-    const isGoogleKeyValid = !!googleKey && googleKey.length >= 30 && googleKey.startsWith('AIza');
+    const isGoogleKeyValid = !!googleKey && googleKey.length >= 30;
 
     if (googleKey && !isGoogleKeyValid) {
-      logger.warn('[Stream API] GOOGLE_GENERATIVE_AI_API_KEY has invalid format, ignoring it:', {
+      logger.warn('[Stream API] GOOGLE_GENERATIVE_AI_API_KEY has invalid format (too short), ignoring it:', {
         GOOGLE_GENERATIVE_AI_API_KEY_length: googleKey.length,
         GEMINI_API_KEY_length: process.env.GEMINI_API_KEY?.length || 0
       });
