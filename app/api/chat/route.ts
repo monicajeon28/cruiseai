@@ -111,9 +111,13 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // 번역 프롬프트 생성 (더 명확하고 강력한 지시사항)
-      const prompt = `You are a professional translator. Translate the following text from ${from} to ${to}.
-
+      // 번역 프롬프트 생성 함수 (재시도 시 강화 가능)
+      const buildPrompt = (attempt: number) => {
+        const urgency = attempt > 1
+          ? `\nWARNING: Previous attempt returned untranslated text. You MUST translate NOW.\n`
+          : '';
+        return `You are a professional translator. Translate the following text from ${from} to ${to}.
+${urgency}
 CRITICAL RULES:
 1. Output ONLY the translated text in ${to}. Nothing else.
 2. Do NOT include the original text.
@@ -133,6 +137,7 @@ ${text}
 <<<END>>>
 
 Now translate and output ONLY the translation in ${to} (no labels, no explanations, just the translation):`;
+      };
 
       try {
         // 번역 시도 (최대 3회 재시도, rate limit 포함)
@@ -146,7 +151,7 @@ Now translate and output ONLY the translation in ${to} (no labels, no explanatio
 
           let translated = '';
           try {
-            const result = await model.generateContent(prompt);
+            const result = await model.generateContent(buildPrompt(attempts));
             translated = result.response.text() || '';
           } catch (genError: any) {
             // Rate limit (429) 에러 처리

@@ -99,14 +99,20 @@ export async function GET(_req: NextRequest) {
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
-    const activeTrip = await prisma.userTrip.findFirst({
-      where: {
-        userId: user.id,
-        startDate: { lte: todayEnd },
-        endDate: { gte: todayStart },
-      },
+    // 앱 레벨 날짜 비교로 타임존 이슈 방지 (briefing/today와 동일한 패턴)
+    const allUserTrips = await prisma.userTrip.findMany({
+      where: { userId: user.id },
       orderBy: { startDate: 'desc' },
     });
+
+    const activeTrip = allUserTrips.find(t => {
+      if (!t.startDate) return false;
+      const s = new Date(t.startDate);
+      s.setHours(0, 0, 0, 0);
+      const e = t.endDate ? new Date(t.endDate) : null;
+      if (e) e.setHours(23, 59, 59, 999);
+      return s <= todayStart && (!e || todayStart <= e);
+    }) ?? null;
 
     if (!activeTrip) {
       return NextResponse.json({ ok: true, hasTrip: false });

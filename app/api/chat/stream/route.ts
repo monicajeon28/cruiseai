@@ -36,17 +36,18 @@ export async function POST(req: Request) {
     const isTrialUser = !!userWithTestMode?.testModeStartedAt;
     logger.debug('[Stream API] User type:', { isTrialUser, userId: user.id });
 
-    // 환경 변수에서 API 키 가져오기 (GEMINI_API_KEY 우선 사용)
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    // 환경 변수에서 API 키 가져오기 (GEMINI_API_KEY 우선, 형식 검증 후 GOOGLE_GENERATIVE_AI_API_KEY 사용)
+    const googleKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    const isGoogleKeyValid = !!googleKey && googleKey.length >= 30 && googleKey.startsWith('AIza');
 
-    // GOOGLE_GENERATIVE_AI_API_KEY가 잘못된 형식이면 경고
-    if (process.env.GOOGLE_GENERATIVE_AI_API_KEY &&
-      (process.env.GOOGLE_GENERATIVE_AI_API_KEY.length < 30 || !process.env.GOOGLE_GENERATIVE_AI_API_KEY.startsWith('AIza'))) {
-      logger.warn('[Stream API] GOOGLE_GENERATIVE_AI_API_KEY has invalid format, using GEMINI_API_KEY instead:', {
-        GOOGLE_GENERATIVE_AI_API_KEY_length: process.env.GOOGLE_GENERATIVE_AI_API_KEY.length,
+    if (googleKey && !isGoogleKeyValid) {
+      logger.warn('[Stream API] GOOGLE_GENERATIVE_AI_API_KEY has invalid format, ignoring it:', {
+        GOOGLE_GENERATIVE_AI_API_KEY_length: googleKey.length,
         GEMINI_API_KEY_length: process.env.GEMINI_API_KEY?.length || 0
       });
     }
+
+    const apiKey = process.env.GEMINI_API_KEY || (isGoogleKeyValid ? googleKey : undefined);
 
     logger.debug('[Stream API] API key check:', {
       hasGEMINI_API_KEY: !!process.env.GEMINI_API_KEY,

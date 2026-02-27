@@ -280,11 +280,8 @@ export async function searchPhotos(query: string): Promise<{
   // 캐싱된 pool 사용 (훨씬 빠름!)
   const pool = getPhotoPool();
 
-  // AND 매칭 (모든 term 포함)
-  const scored: Array<{ score: number; item: (typeof pool)[number] }> = [];
-  for (const it of pool) {
-    const hay = [it.title, it.folder, it.tags.join(' '), it.url].map(squash).join(' ');
-    if (!terms.every((t) => hay.includes(t))) continue;
+  // AND 매칭 먼저 시도 (모든 term 포함)
+  const scoreItem = (it: (typeof pool)[number]) => {
     let score = 0;
     for (const t of terms) {
       if (squash(it.folder).includes(t)) score += 3;
@@ -292,7 +289,23 @@ export async function searchPhotos(query: string): Promise<{
       if (it.tags.some((tag) => squash(tag).includes(t))) score += 2;
       if (squash(it.url).includes(t)) score += 1;
     }
-    scored.push({ score, item: it });
+    return score;
+  };
+
+  let scored: Array<{ score: number; item: (typeof pool)[number] }> = [];
+  for (const it of pool) {
+    const hay = [it.title, it.folder, it.tags.join(' '), it.url].map(squash).join(' ');
+    if (!terms.every((t) => hay.includes(t))) continue;
+    scored.push({ score: scoreItem(it), item: it });
+  }
+
+  // AND 매칭 결과 없으면 OR 매칭으로 fallback (terms 중 하나라도 포함)
+  if (scored.length === 0 && terms.length > 1) {
+    for (const it of pool) {
+      const hay = [it.title, it.folder, it.tags.join(' '), it.url].map(squash).join(' ');
+      if (!terms.some((t) => hay.includes(t))) continue;
+      scored.push({ score: scoreItem(it), item: it });
+    }
   }
 
   scored.sort((a, b) => b.score - a.score);

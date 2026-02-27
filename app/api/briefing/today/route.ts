@@ -270,8 +270,12 @@ export async function GET(req: NextRequest) {
       'KR': '한국', 'JP': '일본', 'CN': '중국', 'TW': '대만', 'HK': '홍콩', 'MO': '마카오',
       'US': '미국', 'CA': '캐나다', 'MX': '멕시코', 'BR': '브라질', 'AR': '아르헨티나',
       'GB': '영국', 'FR': '프랑스', 'DE': '독일', 'IT': '이탈리아', 'ES': '스페인', 'GR': '그리스',
+      'HR': '크로아티아', 'ME': '몬테네그로', 'MT': '몰타', 'PT': '포르투갈',
+      'NO': '노르웨이', 'IS': '아이슬란드', 'FI': '핀란드', 'SE': '스웨덴',
+      'EE': '에스토니아', 'LV': '라트비아', 'NL': '네덜란드', 'BE': '벨기에', 'DK': '덴마크',
       'TH': '태국', 'VN': '베트남', 'PH': '필리핀', 'SG': '싱가포르', 'MY': '말레이시아', 'ID': '인도네시아',
       'AU': '호주', 'NZ': '뉴질랜드', 'RU': '러시아', 'AE': 'UAE', 'TR': '터키',
+      'BS': '바하마', 'BM': '버뮤다',
     };
 
     // 국가명 -> 국가 코드 역매핑 (더 많은 변형 지원)
@@ -305,6 +309,10 @@ export async function GET(req: NextRequest) {
       '러시아': 'RU',
       'UAE': 'AE',
       '터키': 'TR',
+      '크로아티아': 'HR', '몬테네그로': 'ME', '몰타': 'MT', '포르투갈': 'PT',
+      '노르웨이': 'NO', '아이슬란드': 'IS', '핀란드': 'FI', '스웨덴': 'SE',
+      '에스토니아': 'EE', '라트비아': 'LV', '네덜란드': 'NL', '벨기에': 'BE', '덴마크': 'DK',
+      '바하마': 'BS', '버뮤다': 'BM',
       // 영어 국가명
       'South Korea': 'KR', 'Korea': 'KR',
       'Japan': 'JP',
@@ -321,6 +329,10 @@ export async function GET(req: NextRequest) {
       'Italy': 'IT',
       'Spain': 'ES',
       'Greece': 'GR',
+      'Croatia': 'HR', 'Montenegro': 'ME', 'Malta': 'MT', 'Portugal': 'PT',
+      'Norway': 'NO', 'Iceland': 'IS', 'Finland': 'FI', 'Sweden': 'SE',
+      'Estonia': 'EE', 'Latvia': 'LV', 'Netherlands': 'NL', 'Belgium': 'BE', 'Denmark': 'DK',
+      'Bahamas': 'BS', 'Bermuda': 'BM',
       'Australia': 'AU',
       'New Zealand': 'NZ',
       'Thailand': 'TH',

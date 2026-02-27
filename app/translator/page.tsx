@@ -644,15 +644,19 @@ export default function TranslatorPage() {
   }
 
   async function stopPressToTalk() {
-    if (isProcessingRef.current) return; // 중복 실행 방지
+    // 마이크는 항상 멈춰야 함 (번역 중이라도)
+    const r: any = recRef.current;
+    if (r) {
+      try { r.stop(); } catch { }
+    }
+    setListening('none');
+    setPreview('');
+
+    // 번역 이미 진행 중이면 마이크만 멈추고 종료 (중복 번역 방지)
+    if (isProcessingRef.current) return;
     isProcessingRef.current = true;
 
-    const r: any = recRef.current;
     if (!r) { isProcessingRef.current = false; return; }
-    try {
-      r.stop();
-    } catch { }
-    setListening('none');
     const pair = r.__translatePair as { from: any; to: any } | undefined;
     const acc = typeof r.__acc === 'function' ? r.__acc() : '';
 
@@ -660,7 +664,6 @@ export default function TranslatorPage() {
     const finalAcc = acc || (finalText + ' ' + interimText).trim();
 
     // 상태 초기화
-    setPreview('');
     setFinalText('');
     setInterimText('');
 
@@ -1219,8 +1222,8 @@ export default function TranslatorPage() {
                 key={p.label}
                 onMouseDown={() => startPressToTalk(p.from, p.to)}
                 onMouseUp={stopPressToTalk}
-                onTouchStart={() => startPressToTalk(p.from, p.to)}
-                onTouchEnd={stopPressToTalk}
+                onTouchStart={(e) => { e.preventDefault(); startPressToTalk(p.from, p.to); }}
+                onTouchEnd={(e) => { e.preventDefault(); stopPressToTalk(); }}
                 className={`
                 w-full px-4 md:px-5 py-5 md:py-6 rounded-xl text-lg md:text-xl font-bold shadow-lg
                 min-h-[72px] md:min-h-[100px]
