@@ -413,8 +413,8 @@ export default function TranslatorPage() {
           };
         }
 
-        // 다른 API 오류 시 원문 반환 (부분 번역 시도 안 함)
-        return { translated: text, pronunciation: '' };
+        // 다른 API 오류 시 에러 표시 (원문 그대로 반환하면 번역된 것처럼 보임)
+        return { translated: '⚠️ 번역에 실패했습니다. 잠시 후 다시 시도해주세요.', pronunciation: '', isError: true };
       }
 
       const data = await res.json();

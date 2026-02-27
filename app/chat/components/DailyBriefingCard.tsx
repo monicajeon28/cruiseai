@@ -1490,7 +1490,7 @@ export default function DailyBriefingCard() {
                 오늘 날씨
                 {kstTime && (
                   <span className="ml-auto text-sm font-normal text-gray-500">
-                    🇰🇷 {kstTime} KST
+                    한국 {kstTime}
                   </span>
                 )}
               </h3>

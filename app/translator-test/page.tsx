@@ -395,7 +395,7 @@ export default function TranslatorPage() {
         if (res.status === 429) {
           return { translated: '⏳ 번역 서버가 바쁩니다. 잠시 후 다시 시도해주세요.', pronunciation: '', isError: true };
         }
-        return { translated: text, pronunciation: '' };
+        return { translated: '⚠️ 번역에 실패했습니다. 잠시 후 다시 시도해주세요.', pronunciation: '', isError: true };
       }
 
       const data = await res.json();
