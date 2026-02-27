@@ -1133,8 +1133,8 @@ export async function POST(req: Request) {
         });
 
         authLogger.loginSuccess(userId, clientIp);
-        await reactivateUser(userId);
-        await updateLastActive(userId);
+        reactivateUser(userId).catch(() => {});
+        updateLastActive(userId).catch(() => {});
 
         // 남은 시간 계산 (음수면 0으로 표시)
         const remainingMs = testModeEndAt.getTime() - now.getTime();
@@ -1641,9 +1641,9 @@ export async function POST(req: Request) {
         // 로그인 성공 로그
         authLogger.loginSuccess(userId, clientIp);
 
-        // 생애주기 관리: 재활성화 및 활동 시각 업데이트
-        await reactivateUser(userId);
-        await updateLastActive(userId);
+        // 생애주기 관리: 백그라운드 처리 (응답 속도에 영향 없음)
+        reactivateUser(userId).catch(() => {});
+        updateLastActive(userId).catch(() => {});
 
         console.log('[Login] 동면 고객 자동 전환 완료:', { userId, phone, name });
 
@@ -2036,18 +2036,9 @@ export async function POST(req: Request) {
         // 로그인 성공 로그
         authLogger.loginSuccess(userId, clientIp);
 
-        // 생애주기 관리: 재활성화 및 활동 시각 업데이트
-        try {
-          await reactivateUser(userId);
-        } catch (reactivateError) {
-          console.error('[Login] 재활성화 실패 (무시):', reactivateError);
-        }
-
-        try {
-          await updateLastActive(userId);
-        } catch (updateActiveError) {
-          console.error('[Login] 활동 시각 업데이트 실패 (무시):', updateActiveError);
-        }
+        // 생애주기 관리: 백그라운드 처리 (응답 속도에 영향 없음)
+        reactivateUser(userId).catch((e: unknown) => console.error('[Login] 재활성화 실패 (무시):', e));
+        updateLastActive(userId).catch((e: unknown) => console.error('[Login] 활동 시각 업데이트 실패 (무시):', e));
 
         console.log('[Login] 활성 고객 로그인 완료:', { userId, phone, name });
 
@@ -2168,8 +2159,8 @@ export async function POST(req: Request) {
       });
 
       authLogger.loginSuccess(userId, clientIp);
-      await reactivateUser(userId);
-      await updateLastActive(userId);
+      reactivateUser(userId).catch(() => {});
+      updateLastActive(userId).catch(() => {});
 
       return NextResponse.json({
         ok: true,
@@ -2333,9 +2324,9 @@ export async function POST(req: Request) {
     // 로그인 성공 로그
     authLogger.loginSuccess(userId, clientIp);
 
-    // 생애주기 관리: 재활성화 및 활동 시각 업데이트
-    await reactivateUser(userId);
-    await updateLastActive(userId);
+    // 생애주기 관리: 백그라운드 처리 (응답 속도에 영향 없음)
+    reactivateUser(userId).catch(() => {});
+    updateLastActive(userId).catch(() => {});
 
     // 최종 안전장치: 비밀번호 기반 리다이렉트 경로 확인
     // 비밀번호 1101 = 3일 체험 → /chat-test (강제)
