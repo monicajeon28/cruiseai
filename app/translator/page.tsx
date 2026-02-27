@@ -55,6 +55,15 @@ const DESTINATION_LANGUAGE_MAP: Record<string, { code: string; name: string; fla
   스페인: { code: 'es-ES', name: '스페인어', flag: '🇪🇸' },
   독일: { code: 'de-DE', name: '독일어', flag: '🇩🇪' },
   러시아: { code: 'ru-RU', name: '러시아어', flag: '🇷🇺' },
+  // 지중해/유럽 추가
+  그리스: { code: 'el-GR', name: '그리스어', flag: '🇬🇷' },
+  크로아티아: { code: 'hr-HR', name: '크로아티아어', flag: '🇭🇷' },
+  포르투갈: { code: 'pt-PT', name: '포르투갈어', flag: '🇵🇹' },
+  // 북유럽 추가
+  노르웨이: { code: 'nb-NO', name: '노르웨이어', flag: '🇳🇴' },
+  스웨덴: { code: 'sv-SE', name: '스웨덴어', flag: '🇸🇪' },
+  덴마크: { code: 'da-DK', name: '덴마크어', flag: '🇩🇰' },
+  핀란드: { code: 'fi-FI', name: '핀란드어', flag: '🇫🇮' },
 };
 
 type ConversationItem = {
@@ -459,10 +468,26 @@ export default function TranslatorPage() {
   // 말하기(TTS)
   function speak(text: string, langCode: string) {
     if (!('speechSynthesis' in window)) return;
+    const synth = window.speechSynthesis;
+
+    // 음성 목록이 로드된 경우에만 지원 여부 확인
+    const voices = synth.getVoices();
+    if (voices.length > 0) {
+      const langPrefix = langCode.split('-')[0].toLowerCase();
+      const hasVoice = voices.some(v =>
+        v.lang === langCode ||
+        v.lang.toLowerCase().startsWith(langPrefix)
+      );
+      if (!hasVoice) {
+        logger.log(`[TTS] No voice available for ${langCode} on this device`);
+        return;
+      }
+    }
+
     const u = new SpeechSynthesisUtterance(text);
     u.lang = langCode;
     u.rate = 0.9;
-    window.speechSynthesis.speak(u);
+    synth.speak(u);
   }
 
   // 공통 음성 인식 시작(길게 누르는 동안)
@@ -758,6 +783,36 @@ export default function TranslatorPage() {
       'Russian': 'Russian',
       'ru-RU': 'Russian',
       'ru': 'Russian',
+      // 지중해/유럽
+      '그리스어': 'Greek',
+      'Greek': 'Greek',
+      'el-GR': 'Greek',
+      'el': 'Greek',
+      '크로아티아어': 'Croatian',
+      'Croatian': 'Croatian',
+      'hr-HR': 'Croatian',
+      'hr': 'Croatian',
+      '포르투갈어': 'Portuguese',
+      'Portuguese': 'Portuguese',
+      'pt-PT': 'Portuguese',
+      'pt': 'Portuguese',
+      // 북유럽
+      '노르웨이어': 'Norwegian',
+      'Norwegian': 'Norwegian',
+      'nb-NO': 'Norwegian',
+      'nb': 'Norwegian',
+      '스웨덴어': 'Swedish',
+      'Swedish': 'Swedish',
+      'sv-SE': 'Swedish',
+      'sv': 'Swedish',
+      '덴마크어': 'Danish',
+      'Danish': 'Danish',
+      'da-DK': 'Danish',
+      'da': 'Danish',
+      '핀란드어': 'Finnish',
+      'Finnish': 'Finnish',
+      'fi-FI': 'Finnish',
+      'fi': 'Finnish',
     };
     return languageMap[koreanName] || koreanName;
   }
@@ -890,6 +945,7 @@ export default function TranslatorPage() {
             <h1 className="text-xl md:text-2xl lg:text-3xl font-bold">AI 통번역기</h1>
           </div>
           <div className="max-w-3xl mx-auto mt-3 flex flex-col sm:flex-row sm:items-center gap-3 text-base md:text-lg">
+            {(isCruising || (destination !== '여행 미등록' && destination !== '여행 정보 없음' && destination !== '로드 실패' && destination !== '확인 중...')) && (
             <div className={`inline-flex items-center gap-2 px-4 md:px-5 py-2 md:py-2.5 rounded-lg ${isCruising ? 'bg-blue-50 text-blue-700' : 'bg-green-50 text-green-700'
               }`}>
               <span className="text-xl md:text-2xl">{isCruising ? '⛵' : '🏝️'}</span>
@@ -897,6 +953,7 @@ export default function TranslatorPage() {
                 {isCruising ? '항해 중' : `현재 기항지: ${destination}`}
               </span>
             </div>
+          )}
             {/* 언어 선택 드롭다운 */}
             <div className="relative">
               <select

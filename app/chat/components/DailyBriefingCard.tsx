@@ -100,6 +100,7 @@ export default function DailyBriefingCard() {
   const [ddayPopup, setDdayPopup] = useState<{ title: string; message: string } | null>(null); // D-day 팝업 상태
   const [user, setUser] = useState<{ name: string | null } | null>(null); // 사용자 정보
   const briefingDateRef = useRef<string | null>(null); // briefing.date 변경 추적용 (무한 리렌더링 방지)
+  const [kstTime, setKstTime] = useState<string>(''); // 한국 시간 (KST)
 
   // 한국 시간 기준 날짜 생성 함수 (공통 함수로 분리)
   const getKoreanDateString = (offsetDays = 0) => {
@@ -158,6 +159,21 @@ export default function DailyBriefingCard() {
         }
       });
     }
+  }, []);
+
+  // 한국 시간(KST) 초기화
+  useEffect(() => {
+    const updateKstTime = () => {
+      const time = new Date().toLocaleTimeString('ko-KR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Seoul',
+      });
+      setKstTime(time);
+    };
+    updateKstTime();
+    const timer = setInterval(updateKstTime, 60000); // 1분마다 갱신
+    return () => clearInterval(timer);
   }, []);
 
   // 서버에서 일정 불러오기 함수 (공통 함수로 분리)
@@ -1472,6 +1488,11 @@ export default function DailyBriefingCard() {
               <h3 className="flex items-center gap-3 text-gray-900 font-bold text-xl md:text-2xl mb-3 leading-tight">
                 <FiSun className="text-orange-500" size={28} />
                 오늘 날씨
+                {kstTime && (
+                  <span className="ml-auto text-sm font-normal text-gray-500">
+                    🇰🇷 {kstTime} KST
+                  </span>
+                )}
               </h3>
               <div className="grid grid-cols-3 gap-1.5">
                 {briefing.weathers.map((w, idx) => {
