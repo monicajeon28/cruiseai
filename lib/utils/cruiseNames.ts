@@ -85,6 +85,39 @@ export function getKoreanShipName(cruiseLine: string, shipName: string): string 
 }
 
 /**
+ * 크루즈 전체 이름(선사+선박 통합)을 한국어로 변환합니다.
+ * CruiseProduct 없이 cruiseName 필드만 있는 경우 사용.
+ * 모든 선사의 선박 목록을 전수 탐색합니다.
+ * @param fullName "Explorer of the Seas" 같은 영어 선박명 또는 이미 한국어인 이름
+ * @returns 한국어 이름 (변환 실패 시 원본 반환)
+ */
+export function getKoreanNameFromFullString(fullName: string): string {
+  if (!fullName) return fullName;
+
+  // 이미 한국어면 그대로
+  if (/[가-힣]/.test(fullName)) return fullName.split('(')[0].trim();
+
+  const lower = fullName.toLowerCase();
+
+  for (const line of cruiseShipsData as any[]) {
+    const lineEnglish = (line.cruise_line.match(/\(([^)]+)\)/)?.[1] || '').toLowerCase();
+    const lineKorean = line.cruise_line.split('(')[0].trim();
+
+    // 선사명 자체와 일치하면 선사 한국어 반환
+    if (lineEnglish && lower.includes(lineEnglish)) return lineKorean;
+
+    // 선박명 전수 탐색
+    for (const ship of line.ships as string[]) {
+      const shipEnglish = (ship.match(/\(([^)]+)\)/)?.[1] || '').toLowerCase();
+      const shipKorean = ship.split('(')[0].trim();
+      if (shipEnglish && lower.includes(shipEnglish)) return shipKorean;
+    }
+  }
+
+  return fullName;
+}
+
+/**
  * 여행 기간을 포맷팅합니다.
  * @param startDate 시작일 (Date 또는 string)
  * @param endDate 종료일 (Date 또는 string)

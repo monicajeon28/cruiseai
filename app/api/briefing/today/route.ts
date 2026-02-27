@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { normalizeItineraryPattern, extractCountryCodesFromItineraryPattern } from '@/lib/utils/itineraryPattern';
-import { getKoreanCruiseLineName, getKoreanShipName } from '@/lib/utils/cruiseNames';
+import { getKoreanCruiseLineName, getKoreanShipName, getKoreanNameFromFullString } from '@/lib/utils/cruiseNames';
 
 /**
  * GET /api/briefing/today
@@ -256,8 +256,8 @@ export async function GET(req: NextRequest) {
       const koreanShipName = getKoreanShipName(cruiseLine, shipName);
       koreanCruiseName = `${koreanCruiseLine} ${koreanShipName}`;
     } else if (activeTrip.cruiseName) {
-      // CruiseProduct 없으면 cruiseName 원본 그대로 (파싱하면 "Explorer of the" + "Seas"로 잘못 분리됨)
-      koreanCruiseName = activeTrip.cruiseName;
+      // CruiseProduct 없으면 cruiseName 전체 문자열로 한국어 변환 시도
+      koreanCruiseName = getKoreanNameFromFullString(activeTrip.cruiseName);
     }
 
     console.log('[Briefing API] 크루즈명 변환:', {
