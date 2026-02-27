@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { FiArrowLeft } from 'react-icons/fi';
 
 const TOOLS = [
@@ -19,7 +19,6 @@ const TOOLS_TEST = [
 ];
 
 export default function ToolsPage() {
-  const router = useRouter();
   const pathname = usePathname();
   const isTestMode = pathname?.includes('/tools-test');
 
@@ -29,12 +28,12 @@ export default function ToolsPage() {
     <div className="min-h-screen bg-[#F5F7FA]">
       <header className="sticky top-0 z-20 border-b bg-white/95 backdrop-blur px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
-          <button
-            onClick={() => router.back()}
+          <Link
+            href={isTestMode ? '/chat-test' : '/chat'}
             className="inline-flex items-center gap-2 text-gray-700 hover:text-black"
           >
             <FiArrowLeft size={24} />
-          </button>
+          </Link>
           <h1 className="text-xl font-bold">도구함</h1>
         </div>
       </header>

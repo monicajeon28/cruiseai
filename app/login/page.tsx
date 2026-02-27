@@ -226,6 +226,16 @@ function LoginPageContent() {
             </div>
           </div>
 
+          {/* 3일 무료 체험 버튼 */}
+          <Link
+            href="/login-test"
+            className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-xl py-5 rounded-2xl shadow-xl mb-6 hover:from-purple-600 hover:to-pink-600 active:scale-95 transition-all duration-200"
+          >
+            <span>🎁</span>
+            <span>3일 무료 체험하기</span>
+            <span>✨</span>
+          </Link>
+
           {/* 메인 콘텐츠 카드 */}
           <div className="bg-white rounded-3xl shadow-2xl border-2 border-gray-200 p-6 md:p-8 space-y-6">
             {/* 로그인 폼 */}

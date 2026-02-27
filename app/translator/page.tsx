@@ -470,6 +470,9 @@ export default function TranslatorPage() {
     if (!('speechSynthesis' in window)) return;
     const synth = window.speechSynthesis;
 
+    // 이전 음성 큐 비우기
+    synth.cancel();
+
     // 음성 목록이 로드된 경우에만 지원 여부 확인
     const voices = synth.getVoices();
     if (voices.length > 0) {
@@ -479,7 +482,7 @@ export default function TranslatorPage() {
         v.lang.toLowerCase().startsWith(langPrefix)
       );
       if (!hasVoice) {
-        logger.log(`[TTS] No voice available for ${langCode} on this device`);
+        alert(`❌ 이 기기에서 ${langCode} 언어의 음성을 지원하지 않습니다.\n\n기기 설정에서 해당 언어 음성 팩을 설치해주세요.`);
         return;
       }
     }
@@ -487,6 +490,11 @@ export default function TranslatorPage() {
     const u = new SpeechSynthesisUtterance(text);
     u.lang = langCode;
     u.rate = 0.9;
+    u.onerror = (e) => {
+      if (e.error !== 'interrupted') {
+        logger.log(`[TTS] Speech error: ${e.error} for lang ${langCode}`);
+      }
+    };
     synth.speak(u);
   }
 
