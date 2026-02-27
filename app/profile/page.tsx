@@ -12,6 +12,34 @@ import { FiArrowLeft, FiUser } from 'react-icons/fi';
 import { checkTestMode, getCorrectPath } from '@/lib/test-mode';
 import { redirect } from 'next/navigation';
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getDdayMessageKey(dday: number): string | null {
+  if (dday < 0) return null;
+  if (dday === 0) return '0';
+  if (dday <= 2) return '2';
+  if (dday <= 4) return '3';
+  if (dday <= 8) return '7';
+  if (dday <= 12) return '10';
+  if (dday <= 17) return '15';
+  if (dday <= 25) return '20';
+  if (dday <= 35) return '30';
+  if (dday <= 45) return '40';
+  if (dday <= 55) return '50';
+  if (dday <= 65) return '60';
+  if (dday <= 75) return '70';
+  if (dday <= 85) return '80';
+  if (dday <= 95) return '90';
+  return '100';
+}
+
 export default async function ProfilePage() {
   // 경로 보호: 테스트 모드 사용자는 /profile-test로 리다이렉트
   const testModeInfo = await checkTestMode();
@@ -23,9 +51,6 @@ export default async function ProfilePage() {
 
   // 1) 세션 (❗️중요: await 필수)
   const session = await getServerSession();
-
-  // 디버깅: 세션 정보 로그
-  console.log('[Profile Page] Session:', session);
 
   // 2) 유저/여행 조회 (세션 없으면 조회 생략)
   let user: { id: number; name?: string | null; phone?: string | null } | null = null;
@@ -46,14 +71,11 @@ export default async function ProfilePage() {
 
   if (session?.userId) {
     const userId = session.userId;
-    console.log('[Profile Page] Looking up user with userId:', userId);
 
     user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, name: true, phone: true },
     });
-
-    console.log('[Profile Page] Found user:', user ? { id: user.id, name: user.name, phone: user.phone } : 'null');
 
     // 유저 정보가 성공적으로 조회되면 여행 정보 조회 (브리핑 API와 동일한 방식)
     if (user) {
@@ -72,15 +94,6 @@ export default async function ProfilePage() {
           userId: true,
         },
       });
-
-      console.log('[Profile Page] Found trip:', trip ? {
-        id: trip.id,
-        cruiseName: trip.cruiseName,
-        userId: trip.userId,
-        nights: trip.nights,
-        days: trip.days,
-        destination: trip.destination
-      } : 'null');
 
       // 계약서 싸인 이미지 조회
       const contract = await prisma.affiliateContract.findFirst({
@@ -153,15 +166,6 @@ export default async function ProfilePage() {
       }
     }
 
-    console.log('[Profile] D-day 계산 결과:', {
-      userId: user.id,
-      startDate: trip.startDate,
-      endDate: trip.endDate,
-      now: now.toISOString().split('T')[0],
-      currentDday,
-      ddayType,
-      isTripExpired,
-    });
   }
 
   // 4) 여행 기간 계산
@@ -326,38 +330,13 @@ export default async function ProfilePage() {
                         let currentKey: string | null = null;
                         let futureKey: string | null = null;
 
-                        console.log('[Profile] 메시지 키 선택 시작:', {
-                          currentDday,
-                          ddayType,
-                          hasTrip: !!trip,
-                          startDate: trip?.startDate,
-                          endDate: trip?.endDate,
-                        });
-
                         if (currentDday !== null) {
                           if (ddayType === 'departure') {
                             const validDdays = [0, 1, 2, 3, 7, 10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 
                             // 현재 D-day가 양수인 경우 (여행 시작 전)
                             if (currentDday >= 0) {
-                              let currentDdayKey: string | null = null;
-
-                              // 현재 D-day가 validDdays에 정확히 있는지 확인
-                              if (validDdays.includes(currentDday)) {
-                                currentDdayKey = String(currentDday);
-                              } else {
-                                // 가장 가까운 다음 D-day 찾기
-                                const nextDday = validDdays.find(d => d >= currentDday);
-                                if (nextDday !== undefined) {
-                                  currentDdayKey = String(nextDday);
-                                }
-                              }
-
-                              console.log('[Profile] 메시지 키 선택 (출발일 기준):', {
-                                currentDday,
-                                currentDdayKey,
-                                isValidDday: validDdays.includes(currentDday),
-                              });
+                              const currentDdayKey = getDdayMessageKey(currentDday);
 
                               if (currentDdayKey) {
                                 currentKey = currentDdayKey;
@@ -418,13 +397,6 @@ export default async function ProfilePage() {
                         if (!currentKey && ddayMessages.messages['7']) {
                           currentKey = '7';
                         }
-
-                        console.log('[Profile] 메시지 키 선택 결과:', {
-                          currentKey,
-                          futureKey,
-                          pastKey,
-                          currentDday,
-                        });
 
                         const renderOrder = [futureKey, currentKey, pastKey].filter((k): k is string => k !== null);
 
@@ -508,7 +480,7 @@ export default async function ProfilePage() {
                                     style={{ lineHeight: '1.8', fontSize: '18px' }}
                                     dangerouslySetInnerHTML={{
                                       __html: message.message
-                                        .replace(/\[고객명\]/g, `<span class="bg-yellow-200 text-gray-900 px-2 py-0.5 rounded font-semibold">${user.name || '고객'}</span>`)
+                                        .replace(/\[고객명\]/g, `<span class="bg-yellow-200 text-gray-900 px-2 py-0.5 rounded font-semibold">${escapeHtml(user.name || '고객')}</span>`)
                                         .replace(/\[크루즈명\]/g, trip.cruiseName || '크루즈')
                                         .replace(/\[목적지\]/g, destinationString)
                                         .replace(/(승선권)/g, '<span class="bg-yellow-200 text-gray-900 px-2 py-0.5 rounded font-semibold">$1</span>')
@@ -534,7 +506,7 @@ export default async function ProfilePage() {
                       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-100 mb-6">
                         <p className="text-center text-gray-800 font-semibold text-lg flex items-center justify-center gap-3">
                           <span className="text-3xl">💡</span>
-                          <span className="bg-yellow-200 text-gray-900 px-3 py-1.5 rounded-md font-semibold">{user.name || '고객'}</span>님의 완벽한 크루즈 여행을 위한 단계별 가이드입니다
+                          <span className="bg-yellow-200 text-gray-900 px-3 py-1.5 rounded-md font-semibold">{escapeHtml(user.name || '고객')}</span>님의 완벽한 크루즈 여행을 위한 단계별 가이드입니다
                         </p>
                       </div>
 
@@ -543,20 +515,9 @@ export default async function ProfilePage() {
                         let detailMessageKey: string | null = null;
 
                         if (ddayType === 'departure') {
-                          const validDdays = [0, 1, 2, 3, 7, 10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-
-                          // 현재 D-day가 양수인 경우 (여행 시작 전)
                           if (currentDday >= 0) {
-                            if (validDdays.includes(currentDday)) {
-                              detailMessageKey = String(currentDday);
-                            } else {
-                              const nextDday = validDdays.find(d => d >= currentDday);
-                              if (nextDday !== undefined) {
-                                detailMessageKey = String(nextDday);
-                              } else {
-                                detailMessageKey = '7'; // 기본값
-                              }
-                            }
+                            // 현재 D-day가 양수인 경우 (여행 시작 전)
+                            detailMessageKey = getDdayMessageKey(currentDday) ?? '7';
                           } else {
                             // 여행 중이거나 종료된 경우 (음수 D-day)
                             detailMessageKey = '0'; // D-0 메시지 표시
@@ -584,7 +545,7 @@ export default async function ProfilePage() {
                                 style={{ lineHeight: '1.8' }}
                                 dangerouslySetInnerHTML={{
                                   __html: detailMessage.message
-                                    .replace(/\[고객명\]/g, `<span class="bg-yellow-200 text-gray-900 px-2 py-0.5 rounded font-semibold">${user.name || '고객'}</span>`)
+                                    .replace(/\[고객명\]/g, `<span class="bg-yellow-200 text-gray-900 px-2 py-0.5 rounded font-semibold">${escapeHtml(user.name || '고객')}</span>`)
                                     .replace(/\[크루즈명\]/g, trip.cruiseName || '크루즈')
                                     .replace(/\[목적지\]/g, destinationString)
                                     .replace(/(여권\(유효기간 6개월 이상\))/g, '<span class="bg-yellow-200 text-gray-900 px-2 py-0.5 rounded font-semibold">$1</span>')

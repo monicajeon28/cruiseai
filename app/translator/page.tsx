@@ -100,7 +100,7 @@ export default function TranslatorPage() {
   // 카테고리 선택 상태
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   // 상황별 번역도우미 접기/펼치기 상태
-  const [isPhraseHelperExpanded, setIsPhraseHelperExpanded] = useState(true);
+  const [isPhraseHelperExpanded, setIsPhraseHelperExpanded] = useState(false);
   // 발음 캐시 (phrase.target -> pronunciation)
   const [pronunciationCache, setPronunciationCache] = useState<Record<string, string>>({});
 
@@ -878,7 +878,7 @@ export default function TranslatorPage() {
 
       <div className="min-h-screen bg-[#F5F7FA] text-gray-900 flex flex-col">
         {/* 헤더 */}
-        <header className="sticky top-0 z-20 border-b bg-white/95 backdrop-blur px-4 py-4 md:py-5">
+        <header className="sticky top-0 z-20 border-b bg-white/95 backdrop-blur px-4 py-2 md:py-4">
           <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
             <button onClick={() => router.push('/chat')} className="inline-flex items-center gap-2 text-gray-700 hover:text-black text-lg md:text-xl font-semibold">
               <FiArrowLeft size={24} className="md:w-6 md:h-6" />
@@ -1006,8 +1006,8 @@ export default function TranslatorPage() {
                     <div
                       key={i}
                       className="
-                        p-6 md:p-8 bg-white border-2 border-gray-200 rounded-xl 
-                        min-h-[120px] md:min-h-[140px]
+                        p-6 md:p-8 bg-white border-2 border-gray-200 rounded-xl
+                        min-h-[80px]
                         flex flex-col items-center justify-center gap-3 shadow-md
                         animate-pulse
                       "
@@ -1024,9 +1024,9 @@ export default function TranslatorPage() {
                       key={category.id}
                       onClick={() => setSelectedCategory(category.id)}
                       className="
-                        p-6 md:p-8 bg-white border-2 border-blue-300 rounded-xl 
+                        p-6 md:p-8 bg-white border-2 border-blue-300 rounded-xl
                         hover:border-blue-500 hover:shadow-lg
-                        active:scale-95 transition-all min-h-[120px] md:min-h-[140px]
+                        active:scale-95 transition-all min-h-[80px]
                         flex flex-col items-center justify-center gap-3 shadow-md
                       "
                     >
@@ -1048,8 +1048,8 @@ export default function TranslatorPage() {
                       <div
                         key={i}
                         className="
-                          p-5 md:p-6 bg-white border-2 border-gray-200 rounded-xl 
-                          min-h-[120px] md:min-h-[140px]
+                          p-5 md:p-6 bg-white border-2 border-gray-200 rounded-xl
+                          min-h-[80px]
                           shadow-md animate-pulse
                         "
                       >
@@ -1089,9 +1089,9 @@ export default function TranslatorPage() {
                             speak(phrase.target, localLang.code);
                           }}
                           className="
-                        p-5 md:p-6 bg-white border-2 border-blue-300 rounded-xl 
+                        p-5 md:p-6 bg-white border-2 border-blue-300 rounded-xl
                         text-left hover:border-blue-500 hover:shadow-lg
-                        active:scale-95 transition-all min-h-[120px] md:min-h-[140px]
+                        active:scale-95 transition-all min-h-[80px]
                         shadow-md
                       "
                         >
@@ -1223,7 +1223,7 @@ export default function TranslatorPage() {
                 onTouchEnd={stopPressToTalk}
                 className={`
                 w-full px-4 md:px-5 py-5 md:py-6 rounded-xl text-lg md:text-xl font-bold shadow-lg
-                min-h-[120px] md:min-h-[140px]
+                min-h-[72px] md:min-h-[100px]
                 ${listening === 'recording'
                     ? 'bg-gradient-to-r from-red-600 to-red-500 text-white animate-pulse'
                     : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600'

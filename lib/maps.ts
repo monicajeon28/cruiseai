@@ -32,6 +32,35 @@ const CITY_PRESETS: Record<string, { airport: string; cruise: string }> = {
   '부산':       { airport: 'Gimhae International Airport',           cruise: 'Busan International Passenger Terminal' },
   '인천':       { airport: 'Incheon International Airport',          cruise: 'Incheon International Ferry Terminal' },
   '제주':       { airport: 'Jeju International Airport',             cruise: 'Jeju International Passenger Terminal' },
+  // 이탈리아
+  '라벤나':        { airport: 'Bologna Guglielmo Marconi Airport',     cruise: 'Porto di Ravenna Terminal' },
+  '치비타베키아':  { airport: 'Rome Fiumicino Airport',                cruise: 'Civitavecchia Cruise Terminal' },
+  '나폴리':        { airport: 'Naples International Airport',          cruise: 'Stazione Marittima Napoli' },
+  '바리':          { airport: 'Karol Wojtyla Airport Bari',            cruise: 'Porto di Bari Terminal' },
+  '팔레르모':      { airport: 'Palermo Falcone Borsellino Airport',    cruise: 'Porto di Palermo' },
+  '제노바':        { airport: 'Genova Cristoforo Colombo Airport',     cruise: 'Terminal Crociere Genova' },
+  '베네치아':      { airport: 'Venice Marco Polo Airport',             cruise: 'Venice Cruise Terminal (Marittima)' },
+  '트리에스테':    { airport: 'Trieste Airport',                       cruise: 'Porto di Trieste' },
+  // 크로아티아
+  '스플리트':      { airport: 'Split Airport',                         cruise: 'Split Ferry Port' },
+  '두브로브니크':  { airport: 'Dubrovnik Airport',                     cruise: 'Dubrovnik Cruise Port (Gruz)' },
+  '코토르':        { airport: 'Tivat Airport',                         cruise: 'Port of Kotor' },
+  // 그리스
+  '피레우스':      { airport: 'Athens International Airport',          cruise: 'Port of Piraeus Cruise Terminal' },
+  '헤라클리온':    { airport: 'Heraklion International Airport',       cruise: 'Port of Heraklion' },
+  '산토리니':      { airport: 'Santorini Thira Airport',               cruise: 'Santorini Old Port (Skala)' },
+  '미코노스':      { airport: 'Mykonos Island National Airport',       cruise: 'Mykonos New Port' },
+  '코르푸':        { airport: 'Corfu International Airport',           cruise: 'Corfu Cruise Port' },
+  '카타콜론':      { airport: 'Araxos Airport',                        cruise: 'Katakolo Cruise Port' },
+  // 스페인
+  '바르셀로나':    { airport: 'Barcelona El Prat Airport',             cruise: 'Port de Barcelona' },
+  '팔마':          { airport: 'Palma de Mallorca Airport',             cruise: 'Port de Palma Cruise Terminal' },
+  // 프랑스
+  '마르세유':      { airport: 'Marseille Provence Airport',            cruise: 'Port de Marseille Joliette' },
+  '툴롱':          { airport: 'Toulon Hyeres Airport',                 cruise: 'Port de Toulon' },
+  // 터키
+  '이스탄불':      { airport: 'Istanbul Airport',                      cruise: 'Galataport Istanbul' },
+  '쿠샤다시':      { airport: 'Izmir Adnan Menderes Airport',          cruise: 'Kusadasi Cruise Port' },
 };
 
 const trim = (s?: string) => (s ?? '').replace(/\s+/g, ' ').trim();

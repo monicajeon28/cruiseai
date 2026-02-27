@@ -256,15 +256,8 @@ export async function GET(req: NextRequest) {
       const koreanShipName = getKoreanShipName(cruiseLine, shipName);
       koreanCruiseName = `${koreanCruiseLine} ${koreanShipName}`;
     } else if (activeTrip.cruiseName) {
-      // CruiseProduct가 없으면 cruiseName을 파싱해서 변환 시도
-      const parts = activeTrip.cruiseName.split(' ');
-      if (parts.length >= 2) {
-        const cruiseLinePart = parts.slice(0, -1).join(' ');
-        const shipNamePart = parts[parts.length - 1];
-        const koreanCruiseLine = getKoreanCruiseLineName(cruiseLinePart);
-        const koreanShipName = getKoreanShipName(cruiseLinePart, shipNamePart);
-        koreanCruiseName = `${koreanCruiseLine} ${koreanShipName}`;
-      }
+      // CruiseProduct 없으면 cruiseName 원본 그대로 (파싱하면 "Explorer of the" + "Seas"로 잘못 분리됨)
+      koreanCruiseName = activeTrip.cruiseName;
     }
 
     console.log('[Briefing API] 크루즈명 변환:', {

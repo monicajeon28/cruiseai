@@ -22,21 +22,36 @@ export async function GET(req: NextRequest) {
     }
 
     const tripIdParam = req.nextUrl.searchParams.get('tripId');
-    const tripId = tripIdParam ? parseInt(tripIdParam) : undefined;
+    let tripId = tripIdParam ? parseInt(tripIdParam) : undefined;
 
-    if (!tripId) {
-      return NextResponse.json(
-        { error: '여행 ID가 필요합니다' },
-        { status: 400 }
-      );
+    let trip;
+    if (tripId) {
+      // 특정 tripId 제공 시 소유권 확인
+      trip = await prisma.userTrip.findFirst({
+        where: { id: tripId, userId: user.id },
+      });
+    } else {
+      // tripId 없으면 현재 활성 여행 자동 선택
+      const now = new Date();
+      trip = await prisma.userTrip.findFirst({
+        where: {
+          userId: user.id,
+          startDate: { lte: now },
+          endDate: { gte: now },
+        },
+        orderBy: { startDate: 'desc' },
+      });
+      // 진행 중인 여행 없으면 가장 최근 여행
+      if (!trip) {
+        trip = await prisma.userTrip.findFirst({
+          where: { userId: user.id },
+          orderBy: { startDate: 'desc' },
+        });
+      }
+      if (trip) tripId = trip.id;
     }
 
-    // 여행 소유권 확인
-    const trip = await prisma.userTrip.findFirst({
-      where: { id: tripId, userId: user.id },
-    });
-
-    if (!trip) {
+    if (!trip || !tripId) {
       return NextResponse.json(
         { error: '여행을 찾을 수 없습니다' },
         { status: 404 }

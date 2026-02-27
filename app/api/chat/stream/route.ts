@@ -66,17 +66,14 @@ export async function POST(req: Request) {
       });
     }
 
-    // API 키 형식 검증 (Gemini API 키는 보통 39자이고 "AIza"로 시작)
-    if (apiKey.length < 30 || !apiKey.startsWith('AIza')) {
-      logger.error('[Stream API] Invalid API key format:', {
+    // API 키 기본 길이 검증 (30자 미만이면 명백히 잘못된 키)
+    if (apiKey.trim().length < 30) {
+      logger.error('[Stream API] Invalid API key format: key is too short', {
         length: apiKey.length,
-        prefix: apiKey.substring(0, 10),
-        expectedLength: '39 characters',
-        expectedPrefix: 'AIza'
       });
       return new Response(JSON.stringify({
-        error: 'Invalid API key format. GEMINI_API_KEY should be approximately 39 characters and start with "AIza". Please check your Vercel environment variables.',
-        details: `Current key length: ${apiKey.length}, prefix: ${apiKey.substring(0, 10)}...`
+        error: 'Invalid API key: key is too short. Please set GEMINI_API_KEY in Vercel environment variables.',
+        details: `Current key length: ${apiKey.length}`
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
@@ -366,12 +363,7 @@ export async function POST(req: Request) {
           error: errorMessage,
           details: errorText,
           suggestion: suggestion,
-          status: 400,
-          apiKeyInfo: {
-            length: apiKey.length,
-            prefix: apiKey.substring(0, 10) + '...',
-            isValidFormat: apiKey.length >= 30 && apiKey.startsWith('AIza')
-          }
+          status: 400
         }), {
           status: 500, // 클라이언트에는 500으로 반환 (내부 서버 설정 오류로 처리)
           headers: { 'Content-Type': 'application/json' }
@@ -564,14 +556,23 @@ export async function POST(req: Request) {
                     for (const candidate of candidates) {
                       const parts = candidate?.content?.parts || [];
                       for (const part of parts) {
-                        // Tool Call은 나중에 처리 (스트리밍 완료 후)
-                        // 텍스트만 스트리밍
                         const text = part?.text;
                         if (text && text.trim()) {
                           const data = JSON.stringify(text);
                           controller.enqueue(new TextEncoder().encode(`0:${data}\n`));
                           hasSentData = true;
                           logger.debug('[Stream API] Sending chunk:', text.substring(0, 50));
+                        }
+                        const functionCall = part?.functionCall;
+                        if (functionCall) {
+                          const toolData = JSON.stringify({
+                            type: 'tool_call',
+                            name: functionCall.name,
+                            args: functionCall.args
+                          });
+                          controller.enqueue(new TextEncoder().encode(`8:${toolData}\n`));
+                          hasSentData = true;
+                          logger.debug('[Stream API] Tool call:', functionCall.name);
                         }
                       }
                     }

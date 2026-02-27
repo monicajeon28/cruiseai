@@ -296,18 +296,18 @@ export default function ChatWindow({ messages, mode, onSend }: Props) {
                   <h3 className="text-2xl font-bold text-gray-900 mb-4">{message.text}</h3>
                 )}
 
-                {/* 구글 이미지만 표시하는 경우 */}
+                {/* 웹 사진만 표시하는 경우 */}
                 {googleImagesOnly && (
                   <div className="text-center py-6">
                     <div className="text-6xl mb-4">🖼️</div>
                     <p className="text-xl text-gray-700 mb-6">
-                      구글 이미지 검색에서<br />
+                      웹에서<br />
                       다양한 사진을 확인해보세요!
                     </p>
                   </div>
                 )}
 
-                {/* 구글 이미지 검색 버튼 (크게! 50대+ 친화적) */}
+                {/* 웹 사진 보기 버튼 (크게! 50대+ 친화적) */}
                 <a
                   href={message.googleImageUrl}
                   target="_blank"
@@ -329,8 +329,8 @@ export default function ChatWindow({ messages, mode, onSend }: Props) {
                 >
                   <span className={googleImagesOnly ? 'text-5xl' : 'text-4xl'}>🔍</span>
                   <div className="flex flex-col items-start">
-                    <span>구글에서 {googleImagesOnly ? '' : '더 많은 '}사진 보기</span>
-                    <span className={`opacity-90 ${googleImagesOnly ? 'text-lg' : 'text-sm'}`}>Google 이미지 검색</span>
+                    <span>{googleImagesOnly ? '웹 사진 보기' : '웹에서 더 보기'}</span>
+                    <span className={`opacity-90 ${googleImagesOnly ? 'text-lg' : 'text-sm'}`}>{googleImagesOnly ? 'Google 이미지 검색' : '더 많은 사진 찾기'}</span>
                   </div>
                 </a>
 

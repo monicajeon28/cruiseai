@@ -97,8 +97,8 @@ export default function TranslatorPage() {
 
   // 카테고리 선택 상태
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  // 상황별 번역도우미 접기/펼치기 상태 - 기본값을 true로 유지하여 항상 보이도록
-  const [isPhraseHelperExpanded, setIsPhraseHelperExpanded] = useState(true);
+  // 상황별 번역도우미 접기/펼치기 상태 - 기본값을 false로 설정하여 닫혀있게
+  const [isPhraseHelperExpanded, setIsPhraseHelperExpanded] = useState(false);
   // 발음 캐시 (phrase.target -> pronunciation)
   const [pronunciationCache, setPronunciationCache] = useState<Record<string, string>>({});
 
@@ -1041,7 +1041,7 @@ export default function TranslatorPage() {
                   {listening === 'recording' ? '🎤 인식 중...' : '⏳ 준비 중...'}
                 </span>
               </div>
-              <div className="text-center min-h-[80px] flex flex-col justify-center">
+              <div className="text-center min-h-[100px] md:min-h-[120px] flex flex-col justify-center">
                 {finalText || interimText ? (
                   <div className="space-y-3">
                     {/* 최종 확정된 텍스트 (검은색, 굵게) */}
@@ -1109,9 +1109,9 @@ export default function TranslatorPage() {
                     key={category.id}
                     onClick={() => setSelectedCategory(category.id)}
                     className="
-                      p-6 bg-white border-3 border-purple-400 rounded-2xl 
+                      p-6 bg-white border-3 border-purple-400 rounded-2xl
                       hover:border-purple-600 hover:shadow-xl hover:scale-105
-                      active:scale-95 transition-all min-h-[120px]
+                      active:scale-95 transition-all min-h-[80px]
                       flex flex-col items-center justify-center gap-3
                       shadow-lg
                     "
@@ -1279,7 +1279,7 @@ export default function TranslatorPage() {
                 }}
                 className={`
                 w-full px-4 py-4 rounded-xl text-lg font-bold shadow-lg
-                min-h-[80px]
+                min-h-[72px] md:min-h-[100px]
                 ${listening === 'recording'
                     ? 'bg-gradient-to-r from-red-600 to-red-500 text-white animate-pulse'
                     : listening === 'pressing'
