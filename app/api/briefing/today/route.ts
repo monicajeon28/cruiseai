@@ -692,21 +692,26 @@ export async function GET(req: NextRequest) {
         if (WEATHER_API_KEY) {
           try {
             const cityQuery = COUNTRY_DEFAULT_CITY[countryCode] || countryCode;
+            console.log(`[Briefing API] WeatherAPI 호출: ${countryCode} → ${cityQuery}`);
             const weatherRes = await fetch(
               `https://api.weatherapi.com/v1/current.json?key=${WEATHER_API_KEY}&q=${encodeURIComponent(cityQuery)}&lang=ko`,
-              { next: { revalidate: 1800 } } // 30분 캐시
+              { cache: 'no-store' } // 캐시 비활성화 (디버깅)
             );
             if (weatherRes.ok) {
               const wd = await weatherRes.json();
               temp = Math.round(wd.current.temp_c);
               condition = wd.current.condition.text;
               icon = getWeatherIcon(wd.current.condition.code, wd.current.is_day);
+              console.log(`[Briefing API] WeatherAPI 성공: ${countryCode} → ${temp}°C, ${condition}`);
             } else {
-              console.warn(`[Briefing API] WeatherAPI error for ${countryCode}: ${weatherRes.status}`);
+              const errBody = await weatherRes.text();
+              console.error(`[Briefing API] WeatherAPI 실패: ${countryCode}, status=${weatherRes.status}, body=${errBody}`);
             }
           } catch (e) {
-            console.warn(`[Briefing API] WeatherAPI fetch failed for ${countryCode}:`, e);
+            console.error(`[Briefing API] WeatherAPI fetch 예외: ${countryCode}:`, e);
           }
+        } else {
+          console.warn('[Briefing API] WEATHER_API_KEY 환경변수가 없음 - 더미 날씨 사용');
         }
 
         return {
