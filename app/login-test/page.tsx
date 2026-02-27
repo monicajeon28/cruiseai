@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { setCsrfToken, clearAllLocalStorage } from '@/lib/csrf-client';
 import KakaoShareButton from '@/components/KakaoShareButton';
-import KakaoChannelButton from '@/components/KakaoChannelButton';
 
 function TestLoginPageContent() {
   const [phone, setPhone] = useState('');
@@ -255,9 +254,6 @@ function TestLoginPageContent() {
 
           {/* 메인 콘텐츠 카드 */}
           <div className="bg-white rounded-2xl md:rounded-3xl shadow-xl md:shadow-2xl border-2 border-gray-200 p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6">
-            {/* 카카오톡 채널 추가 배너 */}
-            <KakaoChannelButton variant="banner" />
-            
             {/* 기능 소개 */}
             <div className="grid grid-cols-4 gap-2 md:gap-3 lg:gap-4">
               {[

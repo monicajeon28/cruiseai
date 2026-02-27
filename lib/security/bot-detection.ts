@@ -143,42 +143,19 @@ export function isSuspiciousRequest(
   return false;
 }
 
+// 모듈 레벨에서 한 번만 컴파일 (매 요청마다 배열 생성/순회 오버헤드 제거)
+const SCRAPER_REGEX = /curl|wget|python-requests|python-urllib|scrapy|beautifulsoup|selenium|puppeteer|playwright|headless|phantomjs|casperjs|nightmare|webdriver|chromedriver|geckodriver|postman|insomnia|httpie|rest-client/i;
+
 /**
  * 스크래퍼 도구인지 확인
  * @param userAgent User-Agent 문자열
  * @returns true if scraper tool, false otherwise
  */
 export function isScraperTool(userAgent: string | null | undefined): boolean {
-  // User-Agent가 없거나 비어있으면 일반 요청으로 간주 (통과)
   if (!userAgent || userAgent.trim() === '') {
     return false;
   }
-  
-  // 명확한 스크래퍼 도구만 차단
-  const scraperPatterns = [
-    /curl/i,
-    /wget/i,
-    /python-requests/i,
-    /python-urllib/i,
-    /scrapy/i,
-    /beautifulsoup/i,
-    /selenium/i,
-    /puppeteer/i,
-    /playwright/i,
-    /headless/i,
-    /phantomjs/i,
-    /casperjs/i,
-    /nightmare/i,
-    /webdriver/i,
-    /chromedriver/i,
-    /geckodriver/i,
-    /postman/i,
-    /insomnia/i,
-    /httpie/i,
-    /rest-client/i,
-  ];
-  
-  return scraperPatterns.some(pattern => pattern.test(userAgent));
+  return SCRAPER_REGEX.test(userAgent);
 }
 
 

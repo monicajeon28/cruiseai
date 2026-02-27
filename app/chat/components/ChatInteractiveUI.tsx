@@ -42,9 +42,6 @@ const AdminMessageModal = dynamic(() => import('@/components/AdminMessageModal')
   ssr: false,
 });
 
-const KakaoChannelButton = dynamic(() => import('@/components/KakaoChannelButton'), {
-  ssr: false,
-});
 
 const GenieAITutorial = dynamic(() => import('./GenieAITutorial'), {
   ssr: false,
@@ -234,18 +231,21 @@ export default function ChatInteractiveUI() {
       diffDays = 0;
     }
 
-    if (today < startDateObj) {
-      const ddayKey = diffDays.toString();
-      if (ddayMessagesData?.messages?.[ddayKey]) {
-        setDdayMessageData(ddayMessagesData.messages[ddayKey]);
-        setShowDdayModal(true);
-        setHasShownDdayModal(true);
-      }
-    } else if (today.getTime() === startDateObj.getTime()) {
-      if (ddayMessagesData?.messages?.["0"]) {
-        setDdayMessageData(ddayMessagesData.messages["0"]);
-        setShowDdayModal(true);
-        setHasShownDdayModal(true);
+    if (today <= startDateObj) {
+      const messages = ddayMessagesData?.messages;
+      if (messages) {
+        // 정확한 키 또는 가장 가까운 작은 키 찾기
+        const numericKeys = Object.keys(messages)
+          .map(Number)
+          .filter(k => !isNaN(k))
+          .sort((a, b) => b - a); // 내림차순 정렬
+        const matchKey = numericKeys.find(k => k <= diffDays);
+        const ddayKey = matchKey !== undefined ? matchKey.toString() : null;
+        if (ddayKey && messages[ddayKey]) {
+          setDdayMessageData(messages[ddayKey]);
+          setShowDdayModal(true);
+          setHasShownDdayModal(true);
+        }
       }
     }
   }, [trip, hasShownDdayModal, userPhone, ddayMessagesData]);
@@ -293,12 +293,6 @@ export default function ChatInteractiveUI() {
       {/* "배로 돌아가기" 카운트다운 배너 */}
       {!tripExpired && <ReturnToShipBanner />}
       
-      {/* 카카오톡 채널 추가 배너 */}
-      {!tripExpired && (
-        <div className="mx-auto max-w-6xl w-full px-3 pt-2 pb-1">
-          <KakaoChannelButton variant="banner" />
-        </div>
-      )}
       
       {/* 오늘의 브리핑 - 컴팩트하게 */}
       {!tripExpired && (

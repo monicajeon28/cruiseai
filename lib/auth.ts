@@ -1,5 +1,6 @@
 // lib/auth.ts
 import 'server-only';
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 
@@ -13,7 +14,7 @@ export type SessionUser = {
   role: string | null;
 };
 
-export async function getSessionUser(): Promise<SessionUser | null> {
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   try {
     const cookieStore = await cookies();
     const sid = cookieStore.get(SESSION_COOKIE)?.value;
@@ -41,7 +42,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     console.error('[getSessionUser] Error:', error);
     return null;
   }
-}
+});
 
 // ============================================================================
 // 관리자 인증 유틸리티 (Admin Auth Utilities)

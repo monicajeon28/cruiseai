@@ -34,18 +34,6 @@ export async function PUT(
     const body = await req.json();
     const { text, completed } = body;
 
-    // 항목 소유권 확인
-    const item = await prisma.checklistItem.findFirst({
-      where: { id, userId: parseInt(session.userId) },
-    });
-
-    if (!item) {
-      return NextResponse.json(
-        { error: '항목을 찾을 수 없습니다' },
-        { status: 404 }
-      );
-    }
-
     // 업데이트할 데이터 구성
     const updateData: { text?: string; completed?: boolean } = {};
     if (text !== undefined) {
@@ -55,10 +43,20 @@ export async function PUT(
       updateData.completed = completed;
     }
 
-    const updated = await prisma.checklistItem.update({
-      where: { id },
+    // ownership 확인 + update 1번으로 처리
+    const result = await prisma.checklistItem.updateMany({
+      where: { id, userId: parseInt(session.userId) },
       data: updateData,
     });
+
+    if (result.count === 0) {
+      return NextResponse.json(
+        { error: '항목을 찾을 수 없습니다' },
+        { status: 404 }
+      );
+    }
+
+    const updated = await prisma.checklistItem.findUnique({ where: { id } });
 
     return NextResponse.json(
       { item: updated },
@@ -77,7 +75,7 @@ export async function PUT(
  * DELETE: 체크리스트 항목 삭제
  */
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {

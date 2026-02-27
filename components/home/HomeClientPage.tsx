@@ -14,7 +14,6 @@ import { FiX, FiChevronRight, FiYoutube } from 'react-icons/fi';
 import HeroSection from '@/components/mall/HeroSection';
 import PWAInstallButtonMall from '@/components/PWAInstallButtonMall';
 import PWAInstallButtonGenie from '@/components/PWAInstallButtonGenie';
-import KakaoChannelButton from '@/components/KakaoChannelButton';
 
 // 동적 임포트 컴포넌트 (성능 최적화: 무거운 컴포넌트는 필요할 때만 로드)
 const ProductList = dynamicImport(() => import('@/components/mall/ProductList'), {
@@ -306,10 +305,6 @@ export default function HomeClientPage() {
 
 
 
-      {/* 카카오톡 채널 추가 배너 */}
-      <div className="container mx-auto px-4 py-4">
-        <KakaoChannelButton variant="banner" />
-      </div>
 
       {/* 바탕화면 추가하기 (내 정보와 크루즈 상품 검색 위) */}
       <section className="container mx-auto px-4 py-6 bg-white">

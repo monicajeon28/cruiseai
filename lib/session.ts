@@ -1,7 +1,7 @@
 // 서버 전용 유틸 (App Router)
 // named export 로 반드시 내보냅니다!
 import { cookies } from 'next/headers';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
 export const SESSION_COOKIE = 'cg.sid.v2';   // ✅ 새 버전명
@@ -40,7 +40,20 @@ export async function getSession(): Promise<SessionPayload | null> {
     // DB에서 세션 조회
     const session = await prisma.session.findUnique({
       where: { id: sessionId },
-      include: { User: true },
+      select: {
+        id: true,
+        userId: true,
+        expiresAt: true,
+        User: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            role: true,
+            onboarded: true,
+          }
+        }
+      },
     });
 
     if (!session || !session.User) return null;

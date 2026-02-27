@@ -38,9 +38,6 @@ const AdminMessageModal = dynamic(() => import('@/components/AdminMessageModal')
   ssr: false,
 });
 
-const KakaoChannelButton = dynamic(() => import('@/components/KakaoChannelButton'), {
-  ssr: false,
-});
 
 const GenieAITutorial = dynamic(() => import('./GenieAITutorial'), {
   ssr: false,
@@ -202,12 +199,6 @@ export default function TestChatInteractiveUI() {
       {/* ReturnToShipBanner는 테스트 모드에서는 표시하지 않음 */}
       {/* (테스트 고객은 실제 크루즈 여행 중이 아니므로 "배로 돌아가기" 배너 불필요) */}
       
-      {/* 카카오톡 채널 추가 배너 */}
-      {!tripExpired && (
-        <div className="mx-auto max-w-6xl w-full px-3 pt-2 pb-1">
-          <KakaoChannelButton variant="banner" />
-        </div>
-      )}
       
       {/* 오늘의 브리핑 - 컴팩트하게 */}
       {!tripExpired && (
