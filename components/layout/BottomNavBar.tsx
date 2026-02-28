@@ -142,6 +142,7 @@ export default function BottomNavBar() {
               <Link
                 key={item.href}
                 href={itemHref}
+                prefetch={true}
                 className={className}
               >
                 {linkContent}

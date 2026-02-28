@@ -113,6 +113,8 @@ export default function TranslatorPage() {
 
   // 마이크 권한 상태 (전역으로 관리하여 모든 에러 핸들러에서 접근 가능)
   const micPermissionRef = useRef<boolean>(false);
+  // 마이크 스트림 캐시 (권한 팝업 반복 방지)
+  const micStreamRef = useRef<MediaStream | null>(null);
 
   // 기본 현지어는 영어(US)로 시작(API 로드 후 교체)
   const [localLang, setLocalLang] = useState({ code: 'en-US', name: '영어', flag: '🇺🇸' });
@@ -263,6 +265,8 @@ export default function TranslatorPage() {
     return () => {
       try { recog.abort(); } catch { }
       recRef.current = null;
+      micStreamRef.current?.getTracks().forEach(track => track.stop());
+      micStreamRef.current = null;
     };
   }, []);
 
@@ -504,13 +508,16 @@ export default function TranslatorPage() {
 
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         try {
-          // Permissions Policy 경고는 무시하고 getUserMedia 시도
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch((err) => {
-            // Permissions Policy 경고는 무시 (실제 권한은 있을 수 있음)
-            console.log('[getUserMedia] Caught error (may be Permissions Policy warning):', err);
-            throw err;
-          });
-          stream.getTracks().forEach(track => track.stop());
+          // 캐시된 스트림 재사용 (권한 팝업 반복 방지)
+          let stream = micStreamRef.current;
+          if (!stream || stream.getTracks().every(t => t.readyState === 'ended')) {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch((err) => {
+              // Permissions Policy 경고는 무시 (실제 권한은 있을 수 있음)
+              console.log('[getUserMedia] Caught error (may be Permissions Policy warning):', err);
+              throw err;
+            });
+            micStreamRef.current = stream;
+          }
           micPermissionRef.current = true; // ✅ 권한 확인됨 - 전역 상태 저장
           setPreview('✅ 마이크 준비됨! 말씀하세요...');
         } catch (mediaError: any) {
@@ -658,15 +665,24 @@ export default function TranslatorPage() {
   }
 
   async function stopPressToTalk() {
-    if (isProcessingRef.current) return; // 중복 실행 방지
+    // iOS/Android gesture context 유지를 위해 즉시 cancel 호출 (speechSynthesis를 활성화)
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    // 마이크는 항상 멈춰야 함 (번역 중이라도)
+    const r: any = recRef.current;
+    if (r) {
+      try { r.stop(); } catch { }
+    }
+    setListening('none');
+    setPreview('');
+
+    // 번역 이미 진행 중이면 마이크만 멈추고 종료 (중복 번역 방지)
+    if (isProcessingRef.current) return;
     isProcessingRef.current = true;
 
-    const r: any = recRef.current;
     if (!r) { isProcessingRef.current = false; return; }
-    try {
-      r.stop();
-    } catch { }
-    setListening('none');
     const pair = r.__translatePair as { from: any; to: any } | undefined;
     const acc = typeof r.__acc === 'function' ? r.__acc() : '';
 
@@ -674,7 +690,6 @@ export default function TranslatorPage() {
     const finalAcc = acc || (finalText + ' ' + interimText).trim();
 
     // 상태 초기화
-    setPreview('');
     setFinalText('');
     setInterimText('');
 
@@ -698,7 +713,10 @@ export default function TranslatorPage() {
 
       // 에러 메시지는 TTS로 읽지 않음
       if (!isError) {
-        speak(translated, pair.to.code);
+        // iOS/Android에서 gesture context 유지를 위해 setTimeout 사용
+        setTimeout(() => {
+          speak(translated, pair.to.code);
+        }, 10);
       }
     } catch (error) {
       console.error('[stopPressToTalk] Unexpected error:', error);
@@ -831,8 +849,8 @@ export default function TranslatorPage() {
 
   // 사용자가 제공한 샘플 데이터 사용 (발음 포함)
   const PHRASE_CATEGORIES: Record<string, PhraseCategory[]> = PHRASE_CATEGORIES_DATA as Record<string, PhraseCategory[]>;
-  // 빠른 문장 데이터 (자주 쓰는 문장) - 하위 호환을 위해 유지
-  const QUICK_PHRASES: Record<string, Array<{ ko: string; target: string; emoji: string }>> = {
+  // 빠른 문장 데이터 (자주 쓰는 문장) - 하위 호환을 위해 유지 (현재 미사용)
+  const _QUICK_PHRASES: Record<string, Array<{ ko: string; target: string; emoji: string }>> = {
     'ja-JP': [ // 일본어
       { ko: '화장실이 어디에요?', target: 'トイレはどこですか？', emoji: '🚻' },
       { ko: '얼마예요?', target: 'いくらですか？', emoji: '💰' },

@@ -44,6 +44,7 @@ export default function ChatClientShell({
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const prevModeRef = useRef<ChatInputMode | null>(null); // 이전 모드 추적
   const hasLoadedHistoryRef = useRef(false); // 히스토리 로드 여부 추적
+  const abortControllerRef = useRef<AbortController | null>(null); // 히스토리 fetch 취소용
   const [isTestMode, setIsTestMode] = useState(false); // test 모드 여부
 
   // test 모드 확인
@@ -71,6 +72,17 @@ export default function ChatClientShell({
     const loadChatHistory = async () => {
       if (hasLoadedHistoryRef.current) return; // 이미 로드했으면 스킵
 
+      // 이전 요청이 진행 중이면 취소 (모드 전환 레이스 컨디션 방지)
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      // 5초 타임아웃
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      // AbortError 여부 추적 (finally에서 조건부 처리를 위해)
+      let isAborted = false;
+
       try {
         setIsLoading(true);
         // test 모드 확인
@@ -85,7 +97,9 @@ export default function ChatClientShell({
 
         const response = await fetch(`/api/chat/history?sessionId=${sessionId}`, {
           credentials: 'include',
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
 
         if (response.ok) {
           const data = await response.json();
@@ -107,15 +121,29 @@ export default function ChatClientShell({
           }
         }
       } catch (error) {
+        clearTimeout(timeoutId);
+        // AbortError는 정상 취소(모드 전환 또는 타임아웃)이므로 UI 에러 없이 조용히 종료
+        if (error instanceof Error && error.name === 'AbortError') {
+          isAborted = true;
+          return;
+        }
         console.error('[ChatClientShell] 히스토리 로드 실패:', error);
       } finally {
         setIsLoading(false);
-        hasLoadedHistoryRef.current = true;
+        // abort된 경우(타임아웃/모드 전환)에는 true로 세팅하지 않음 → 재로드 가능하도록 유지
+        if (!isAborted) {
+          hasLoadedHistoryRef.current = true;
+        }
       }
     };
 
     // 모든 모드에서 히스토리 로드 (탭별로 분리)
     loadChatHistory();
+
+    return () => {
+      // 모드 변경 또는 언마운트 시 진행 중인 fetch 취소
+      abortControllerRef.current?.abort();
+    };
   }, [mode]);
 
   // 모드가 변경될 때마다 메시지 초기화 (새로운 대화 시작)

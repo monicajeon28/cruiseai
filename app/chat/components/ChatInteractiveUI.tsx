@@ -123,7 +123,7 @@ export default function ChatInteractiveUI() {
         // 4개 API 병렬 호출
         const [userResponse, tripResponse, accessResponse, affiliateResponse] = await Promise.all([
           fetch('/api/user/profile', { credentials: 'include' }),
-          fetch('/api/trips/active'),
+          fetch('/api/trips/active', { credentials: 'include' }),
           fetch('/api/user/access-check', { credentials: 'include' }),
           fetch('/api/user/affiliate-mall-url', { credentials: 'include' }),
         ]);
