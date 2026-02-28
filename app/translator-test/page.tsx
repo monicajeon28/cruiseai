@@ -1066,42 +1066,31 @@ export default function TranslatorPage() {
         </div>
       )}
 
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 text-gray-900 flex flex-col">
-        {/* 헤더 */}
-        <header className="sticky top-0 z-20 border-b-2 border-purple-200 bg-white/95 backdrop-blur shadow-md px-4 py-3">
-          <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
+      <div className="h-[100dvh] bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 text-gray-900 flex flex-col overflow-hidden">
+        {/* 헤더 — 1줄 압축 (모바일 최적화) */}
+        <header className="flex-none border-b-2 border-purple-200 bg-white/95 backdrop-blur shadow-md">
+          <div className="max-w-3xl mx-auto h-14 flex items-center gap-2 px-3">
+            {/* 뒤로가기 */}
             <button
               onClick={() => router.push('/tools-test')}
-              className="inline-flex items-center gap-2 text-purple-600 hover:text-purple-700 font-semibold border-2 border-purple-200 px-4 py-3 rounded-lg hover:bg-purple-50 transition-colors text-base md:text-lg"
-              style={{ minHeight: '56px' }}
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center -ml-1 text-purple-600 hover:text-purple-700 flex-shrink-0"
             >
-              <FiArrowLeft size={24} />
-              <span className="text-base md:text-lg">뒤로가기</span>
+              <FiArrowLeft size={22} />
             </button>
-            <div className="flex-1 text-center">
-              <div className="flex items-center justify-center gap-3">
-                <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                  <span className="text-2xl md:text-3xl">🌐</span>
-                </div>
-                <h1 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent leading-tight">
-                  AI 통번역기
-                </h1>
-              </div>
-              <p className="text-sm md:text-base text-gray-500 mt-2 leading-relaxed">72시간 무료 체험</p>
+            {/* 제목 + 부제목 */}
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent leading-none">
+                AI 통번역기
+              </h1>
+              <p className="text-xs text-gray-500 truncate mt-0.5">
+                {isCruising ? <span className="text-blue-600">⛵ 항해 중</span>
+                  : (destination !== '여행 미등록' && destination !== '여행 정보 없음' && destination !== '로드 실패' && destination !== '확인 중...')
+                    ? <span className="text-green-600">🏝️ {destination}</span>
+                    : '72시간 무료 체험'}
+              </p>
             </div>
-          </div>
-          <div className="max-w-3xl mx-auto mt-3 flex flex-col sm:flex-row sm:items-center gap-3 text-base md:text-lg">
-            {(isCruising || (destination !== '여행 미등록' && destination !== '여행 정보 없음' && destination !== '로드 실패' && destination !== '확인 중...')) && (
-              <div className={`inline-flex items-center gap-3 px-4 py-2.5 rounded-lg ${isCruising ? 'bg-blue-50 text-blue-700' : 'bg-green-50 text-green-700'
-                }`}>
-                <span className="text-2xl">{isCruising ? '⛵' : '🏝️'}</span>
-                <span className="font-semibold leading-relaxed">
-                  {isCruising ? '항해 중' : `현재 기항지: ${destination}`}
-                </span>
-              </div>
-            )}
-            {/* 언어 선택 드롭다운 */}
-            <div className="relative">
+            {/* 언어 선택 드롭다운 (우측, compact) */}
+            <div className="relative flex-shrink-0">
               <select
                 value={localLang.code}
                 onChange={(e) => {
@@ -1109,16 +1098,11 @@ export default function TranslatorPage() {
                   const selectedLang = Object.values(DESTINATION_LANGUAGE_MAP).find(lang => lang.code === selectedCode)
                     || { code: 'en-US', name: '영어', flag: '🇺🇸' };
                   setLocalLang(selectedLang);
-                  setSelectedCategory(null); // 언어 변경 시 카테고리 초기화
+                  setSelectedCategory(null);
                 }}
-                className="
-                inline-flex items-center gap-2 px-3 py-1.5 rounded-lg 
-                bg-purple-50 text-purple-700 font-semibold
-                border-2 border-purple-200
-                hover:border-purple-400 focus:border-purple-500
-                cursor-pointer appearance-none
-                pr-8 min-w-[140px]
-              "
+                className="appearance-none bg-purple-50 border border-purple-200 rounded-lg
+                  pl-2 pr-6 py-1.5 text-sm font-semibold text-purple-800 min-h-[44px] min-w-[100px]
+                  hover:border-purple-400 focus:border-purple-500 cursor-pointer"
               >
                 {Object.values(DESTINATION_LANGUAGE_MAP).map((lang) => (
                   <option key={lang.code} value={lang.code}>
@@ -1126,20 +1110,13 @@ export default function TranslatorPage() {
                   </option>
                 ))}
               </select>
-              <span className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-purple-700">
-                ▼
-              </span>
+              <span className="absolute right-1.5 top-1/2 transform -translate-y-1/2 pointer-events-none text-purple-700 text-xs">▼</span>
             </div>
-            {portInfo && (
-              <div className="text-xs text-gray-500">
-                {portInfo}
-              </div>
-            )}
           </div>
         </header>
 
         {/* 본문 */}
-        <main className="max-w-3xl mx-auto w-full flex-1 px-4 py-4">
+        <main className="max-w-3xl mx-auto w-full flex-1 overflow-y-auto overscroll-contain px-4 py-4">
           {/* 프리뷰(인식 중) - 개선된 버전: 인식 과정을 실시간으로 표시 */}
           {listening !== 'none' && (
             <div className="rounded-xl border-2 border-blue-400 bg-gradient-to-r from-blue-50 to-purple-50 p-6 mb-4 shadow-lg">
@@ -1372,9 +1349,10 @@ export default function TranslatorPage() {
           </div>
         </main>
 
-        {/* 하단 고정 버튼들(모바일에 최적) - 크기 조정 */}
-        <footer className="sticky bottom-0 z-20 border-t bg-white px-4 pb-[env(safe-area-inset-bottom)]">
-          <div className="max-w-3xl mx-auto py-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* 하단 고정 버튼 — 컴팩트 (모바일 최적화) */}
+        <footer className="flex-none border-t bg-white px-3 shadow-lg
+          pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          <div className="max-w-3xl mx-auto pt-2 pb-1 flex gap-2">
             {BTN_PAIRS.map((p) => (
               <button
                 key={p.label}
@@ -1386,25 +1364,26 @@ export default function TranslatorPage() {
                   }
                 }}
                 className={`
-                w-full px-4 py-4 rounded-xl text-lg font-bold shadow-lg
-                min-h-[72px] md:min-h-[100px]
-                ${listening === 'recording'
+                  flex-1 px-2 py-2.5 rounded-xl font-bold shadow min-h-[56px]
+                  ${listening === 'recording'
                     ? 'bg-gradient-to-r from-red-600 to-red-500 text-white animate-pulse'
                     : listening === 'pressing'
                     ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white'
                     : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600'
                   }
-                active:scale-95 transition-all
-              `}
+                  active:scale-95 transition-all
+                `}
               >
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-3xl">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-xl">
                     {listening === 'recording' ? '🔴' : listening === 'pressing' ? '⏳' : '🎤'}
                   </span>
-                  <span className="text-lg">{p.label}</span>
-                  <span className="text-xs font-normal opacity-90">
-                    {listening === 'recording' ? '(다시 누르면 번역됩니다)' : '(한 번 누르고 말하세요)'}
-                  </span>
+                  <div className="text-left">
+                    <div className="font-bold text-xs leading-tight">{p.label}</div>
+                    <div className="text-[10px] opacity-80 font-normal mt-0.5">
+                      {listening === 'recording' ? '다시 누르면 번역' : '한 번 누르고 말하기'}
+                    </div>
+                  </div>
                 </div>
               </button>
             ))}

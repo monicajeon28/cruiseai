@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 // Neon DB auto-suspend 방지 (5분마다 ping)
 export async function GET() {
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await prisma.user.findFirst({ select: { id: true }, take: 1 });
     return NextResponse.json({ ok: true, ts: new Date().toISOString() });
   } catch {
     return NextResponse.json({ ok: false }, { status: 500 });
