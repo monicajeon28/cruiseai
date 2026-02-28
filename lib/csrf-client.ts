@@ -73,10 +73,7 @@ export function clearAllLocalStorage() {
     }
   });
 
-  console.log('[clearAllLocalStorage] 사용자 데이터 정리 완료:', removedKeys.length, '개 키 제거됨');
-  if (removedKeys.length > 0) {
-    console.log('[clearAllLocalStorage] 제거된 키:', removedKeys);
-  }
+  // 정리 완료 (verbose 로그 제거됨)
 }
 
 /**

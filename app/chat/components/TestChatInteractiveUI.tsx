@@ -94,7 +94,7 @@ export default function TestChatInteractiveUI() {
         }
 
         // 활성 여행 조회 (테스트 모드는 SAMPLE-MED-001 상품)
-        const tripResponse = await fetch('/api/trips/active');
+        const tripResponse = await fetch('/api/trips/active', { credentials: 'include' });
         if (tripResponse.ok) {
           const tripData = await tripResponse.json();
           if (tripData.data) {

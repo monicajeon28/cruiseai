@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { csrfFetch, clearCsrfToken, clearAllLocalStorage } from "@/lib/csrf-client";
+import { csrfFetch, clearAllLocalStorage } from "@/lib/csrf-client";
 import tts from "@/lib/tts";
 import { FiVolume2, FiVolumeX } from "react-icons/fi";
 
