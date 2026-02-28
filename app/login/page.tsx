@@ -213,8 +213,8 @@ function LoginPageContent() {
           </div>
 
           {/* YouTube 영상 */}
-          <div className="mb-6 rounded-2xl overflow-hidden shadow-2xl border-2 border-gray-200 bg-white">
-            <div className="aspect-video w-full">
+          <div className="mb-4 rounded-2xl overflow-hidden shadow-2xl border-2 border-gray-200 bg-white max-h-[200px]">
+            <div className="aspect-video w-full max-h-[200px]">
               <iframe
                 src="https://www.youtube.com/embed/-p_6G69MgyQ?autoplay=1&mute=1&loop=1&playlist=-p_6G69MgyQ&controls=1&modestbranding=1&rel=0&enablejsapi=1"
                 title="크루즈닷AI 소개 영상"
@@ -229,7 +229,7 @@ function LoginPageContent() {
           {/* 3일 무료 체험 버튼 */}
           <Link
             href="/login-test"
-            className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-xl py-5 rounded-2xl shadow-xl mb-6 hover:from-purple-600 hover:to-pink-600 active:scale-95 transition-all duration-200"
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-lg py-3.5 rounded-2xl shadow-xl mb-4 hover:from-purple-600 hover:to-pink-600 active:scale-95 transition-all duration-200"
           >
             <span>🎁</span>
             <span>3일 무료 체험하기</span>

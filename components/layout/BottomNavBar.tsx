@@ -85,30 +85,29 @@ export default function BottomNavBar() {
   };
 
   return (
-    <nav 
-      className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} // iOS safe-area 대응
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg pb-[env(safe-area-inset-bottom)]"
     >
       <div className="max-w-screen-xl mx-auto">
-        <div className="grid grid-cols-5 gap-1">
+        <div className="grid grid-cols-5 gap-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             // 테스트 모드일 때 링크를 테스트 버전으로 변경
             const itemHref = getItemHref(item);
             const isActive = !item.isExternal && (pathname === itemHref || pathname?.startsWith(itemHref + '/'));
-            
+
             const linkContent = (
               <>
                 {item.emoji ? (
-                  <span className="text-3xl mb-1">{item.emoji}</span>
+                  <span className="text-2xl mb-0.5">{item.emoji}</span>
                 ) : Icon ? (
-                  <Icon 
-                    size={28} 
-                    className="mb-1"
+                  <Icon
+                    size={22}
+                    className="mb-0.5"
                     strokeWidth={isActive ? 2.5 : 2}
                   />
                 ) : null}
-                <span className="text-xs font-semibold whitespace-nowrap">
+                <span className="text-[10px] font-semibold whitespace-nowrap leading-tight">
                   {item.label}
                 </span>
               </>
@@ -116,10 +115,10 @@ export default function BottomNavBar() {
 
             const className = `
               flex flex-col items-center justify-center
-              py-3 px-2
+              py-2 px-1
               transition-colors duration-200
-              ${isActive 
-                ? 'text-brand-red font-bold' 
+              ${isActive
+                ? 'text-brand-red font-bold'
                 : 'text-gray-600 hover:text-gray-900'
               }
             `;

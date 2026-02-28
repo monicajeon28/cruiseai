@@ -1130,6 +1130,8 @@ export async function POST(req: Request) {
           sameSite: 'lax',
           path: '/',
           maxAge: 60 * 60 * 24 * 30,
+          secure: process.env.NODE_ENV === 'production',
+          domain: process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined,
         });
 
         authLogger.loginSuccess(userId, clientIp);
