@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { FiRefreshCw, FiAlertCircle } from 'react-icons/fi';
+import { logger } from '@/lib/logger';
 
 type Currency = {
   code: string;
@@ -81,7 +82,7 @@ export default function CurrencyCalculator() {
         const countriesRes = await fetch('/api/wallet/countries');
         const countriesData = await countriesRes.json();
 
-        console.log('[CurrencyCalculator] Countries data:', countriesData);
+        logger.debug('[CurrencyCalculator] Countries data:', countriesData);
 
         if (countriesData.success && countriesData.currencies?.length > 0) {
           setCurrencies(countriesData.currencies);
@@ -95,7 +96,7 @@ export default function CurrencyCalculator() {
           });
 
           const ratesData = await ratesRes.json();
-          console.log('[CurrencyCalculator] Rates data:', ratesData);
+          logger.debug('[CurrencyCalculator] Rates data:', ratesData);
 
           if (ratesData.success) {
             setRates(ratesData.rates);
@@ -103,7 +104,7 @@ export default function CurrencyCalculator() {
           }
         } else {
           // fallback: 기본 통화 사용
-          console.log('[CurrencyCalculator] Using default currencies');
+          logger.debug('[CurrencyCalculator] Using default currencies');
           const currencyCodes = DEFAULT_CURRENCIES.map(c => c.code);
           const ratesRes = await fetch('/api/wallet/exchange-rate', {
             method: 'POST',
