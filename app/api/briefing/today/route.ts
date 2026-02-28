@@ -693,19 +693,33 @@ export async function GET(req: NextRequest) {
           try {
             const cityQuery = COUNTRY_DEFAULT_CITY[countryCode] || countryCode;
             console.log(`[Briefing API] WeatherAPI 호출: ${countryCode} → ${cityQuery}`);
-            const weatherRes = await fetch(
-              `https://api.weatherapi.com/v1/current.json?key=${WEATHER_API_KEY}&q=${encodeURIComponent(cityQuery)}&lang=ko`,
-              { cache: 'no-store' } // 캐시 비활성화 (디버깅)
-            );
-            if (weatherRes.ok) {
-              const wd = await weatherRes.json();
-              temp = Math.round(wd.current.temp_c);
-              condition = wd.current.condition.text;
-              icon = getWeatherIcon(wd.current.condition.code, wd.current.is_day);
-              console.log(`[Briefing API] WeatherAPI 성공: ${countryCode} → ${temp}°C, ${condition}`);
-            } else {
-              const errBody = await weatherRes.text();
-              console.error(`[Briefing API] WeatherAPI 실패: ${countryCode}, status=${weatherRes.status}, body=${errBody}`);
+            // 3초 타임아웃: Vercel Hobby 10s 제한 내에 완료하기 위함
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            try {
+              const weatherRes = await fetch(
+                `https://api.weatherapi.com/v1/current.json?key=${WEATHER_API_KEY}&q=${encodeURIComponent(cityQuery)}&lang=ko`,
+                { cache: 'no-store', signal: controller.signal }
+              );
+              clearTimeout(timeoutId);
+              if (weatherRes.ok) {
+                const wd = await weatherRes.json();
+                temp = Math.round(wd.current.temp_c);
+                condition = wd.current.condition.text;
+                icon = getWeatherIcon(wd.current.condition.code, wd.current.is_day);
+                console.log(`[Briefing API] WeatherAPI 성공: ${countryCode} → ${temp}°C, ${condition}`);
+              } else {
+                clearTimeout(timeoutId);
+                const errBody = await weatherRes.text();
+                console.error(`[Briefing API] WeatherAPI 실패: ${countryCode}, status=${weatherRes.status}, body=${errBody}`);
+              }
+            } catch (fetchErr: any) {
+              clearTimeout(timeoutId);
+              if (fetchErr.name === 'AbortError') {
+                console.warn(`[Briefing API] WeatherAPI 타임아웃 (3s): ${countryCode} - 더미 데이터 사용`);
+              } else {
+                throw fetchErr;
+              }
             }
           } catch (e) {
             console.error(`[Briefing API] WeatherAPI fetch 예외: ${countryCode}:`, e);
