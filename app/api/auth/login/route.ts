@@ -1125,6 +1125,8 @@ export async function POST(req: Request) {
           domain: process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined,
         });
         // 3일 체험 유저 표시 쿠키 (middleware에서 -test 경로 강제 리다이렉트에 사용)
+        // 먼저 구 쿠키(domain 없는) 만료 처리 - 기존 사용자 마이그레이션
+        cookieStore.set('cg.mode', '', { path: '/', maxAge: 0 });
         cookieStore.set('cg.mode', 'test', {
           httpOnly: false,
           sameSite: 'lax',

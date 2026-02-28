@@ -27,7 +27,11 @@ export async function POST() {
     // 쿠키 삭제 (프로덕션에서 domain 포함 필수)
     const domain = process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined;
     cookieStore.set(SESSION_COOKIE, '', { path: '/', maxAge: 0, ...(domain ? { domain } : {}) });
-    cookieStore.set('cg.mode', '', { path: '/', maxAge: 0, ...(domain ? { domain } : {}) });
+    // cg.mode: domain 있는 쿠키(신규) + domain 없는 쿠키(기존) 모두 삭제
+    if (domain) {
+      cookieStore.set('cg.mode', '', { path: '/', maxAge: 0, domain });
+    }
+    cookieStore.set('cg.mode', '', { path: '/', maxAge: 0 }); // 기존 domain 없는 쿠키도 삭제
 
     return NextResponse.json({ ok: true });
   } catch (error) {
@@ -35,7 +39,10 @@ export async function POST() {
     // 쿠키는 삭제 시도
     const domain = process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined;
     cookieStore.set(SESSION_COOKIE, '', { path: '/', maxAge: 0, ...(domain ? { domain } : {}) });
-    cookieStore.set('cg.mode', '', { path: '/', maxAge: 0, ...(domain ? { domain } : {}) });
+    if (domain) {
+      cookieStore.set('cg.mode', '', { path: '/', maxAge: 0, domain });
+    }
+    cookieStore.set('cg.mode', '', { path: '/', maxAge: 0 }); // 기존 domain 없는 쿠키도 삭제
     return NextResponse.json({ ok: true }); // 에러가 있어도 로그아웃은 성공 처리
   }
 } 
