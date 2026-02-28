@@ -5,12 +5,13 @@ import { getSessionUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { normalizeItineraryPattern, extractCountryCodesFromItineraryPattern } from '@/lib/utils/itineraryPattern';
 import { getKoreanCruiseLineName, getKoreanShipName, getKoreanNameFromFullString } from '@/lib/utils/cruiseNames';
+import { Redis as UpstashRedis } from '@upstash/redis';
 
 /**
  * GET /api/briefing/today
  * 오늘의 데일리 브리핑 정보를 반환합니다.
  */
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) {
@@ -63,7 +64,7 @@ export async function GET(req: NextRequest) {
     console.log('[Briefing API] 사용자 전체 Trip 목록:', {
       userId: user.id,
       tripCount: allTrips.length,
-      trips: allTrips.map(t => ({
+      trips: allTrips.map((t: (typeof allTrips)[number]) => ({
         id: t.id,
         cruiseName: t.cruiseName,
         startDate: t.startDate,
@@ -76,7 +77,7 @@ export async function GET(req: NextRequest) {
     const todayMidnight = new Date();
     todayMidnight.setHours(0, 0, 0, 0);
     const activeTrip =
-      allTrips.find(t => {
+      allTrips.find((t: (typeof allTrips)[number]) => {
         if (!t.startDate) return false;
         const s = new Date(t.startDate);
         s.setHours(0, 0, 0, 0);
@@ -84,7 +85,7 @@ export async function GET(req: NextRequest) {
         if (e) e.setHours(23, 59, 59, 999);
         return s <= todayMidnight && (!e || todayMidnight <= e);
       }) ||
-      allTrips.find(t => {
+      allTrips.find((t: (typeof allTrips)[number]) => {
         if (!t.startDate) return false;
         const s = new Date(t.startDate);
         s.setHours(0, 0, 0, 0);
@@ -142,7 +143,8 @@ export async function GET(req: NextRequest) {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    let todayItinerary, tomorrowItinerary;
+    let todayItinerary: Awaited<ReturnType<typeof prisma.itinerary.findFirst>>;
+    let tomorrowItinerary: Awaited<ReturnType<typeof prisma.itinerary.findFirst>>;
     
     if (dayNumber === 0) {
       // 출발 전: 첫 번째 일정(출발일)을 오늘 일정으로 표시
@@ -433,21 +435,21 @@ export async function GET(req: NextRequest) {
     console.log('[Briefing API] All itineraries (전체 조회):', { 
       userTripId: activeTrip.id, 
       count: allItineraries.length,
-      allItems: allItineraries.map(it => ({ 
+      allItems: allItineraries.map((it: (typeof allItineraries)[number]) => ({
         id: it.id,
         day: it.day,
         date: it.date,
         type: it.type,
-        country: it.country, 
-        location: it.location 
+        country: it.country,
+        location: it.location
       }))
     });
 
     // 국가가 있는 Itinerary만 필터링
-    const itinerariesWithCountry = allItineraries.filter(it => it.country && it.country !== 'KR');
+    const itinerariesWithCountry = allItineraries.filter((it: (typeof allItineraries)[number]) => it.country && it.country !== 'KR');
     console.log('[Briefing API] 국가가 있는 Itinerary:', {
       count: itinerariesWithCountry.length,
-      items: itinerariesWithCountry.map(it => ({
+      items: itinerariesWithCountry.map((it: (typeof allItineraries)[number]) => ({
         day: it.day,
         type: it.type,
         country: it.country,
@@ -459,7 +461,7 @@ export async function GET(req: NextRequest) {
       console.warn('[Briefing API] ⚠️ Itinerary에 국가 정보가 없습니다. itineraryPattern에서 추출을 시도합니다.');
     }
 
-    itinerariesWithCountry.forEach(it => {
+    itinerariesWithCountry.forEach((it: (typeof allItineraries)[number]) => {
       const countryCode = String(it.country).toUpperCase();
       if (!uniqueCountries.has(countryCode)) {
         uniqueCountries.set(countryCode, it.location);
@@ -577,7 +579,7 @@ export async function GET(req: NextRequest) {
         userTripId: activeTrip.id, // UserTrip의 id 사용
         itineraryCount: allItineraries.length,
         itinerariesWithCountry: itinerariesWithCountry.length,
-        sampleItineraries: allItineraries.slice(0, 3).map(it => ({
+        sampleItineraries: allItineraries.slice(0, 3).map((it: (typeof allItineraries)[number]) => ({
           day: it.day,
           type: it.type,
           country: it.country,
@@ -667,6 +669,12 @@ export async function GET(req: NextRequest) {
 
     // 각 국가별 날씨 및 시간 정보 생성 (WeatherAPI.com 무료 플랜: 현재날씨 무료)
     const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
+
+    // Upstash Redis 클라이언트 (날씨 캐싱 - 1시간 TTL, WeatherAPI 호출 최소화)
+    const weatherRedis = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+      ? new UpstashRedis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN })
+      : null;
+
     const weathers = await Promise.all(
       Array.from(uniqueCountries.entries()).map(async ([countryCode, location]) => {
         const timezone = COUNTRY_TIMEZONES[countryCode] || 'UTC';
@@ -689,7 +697,28 @@ export async function GET(req: NextRequest) {
         let condition = '맑음';
         let icon = '☀️';
 
-        if (WEATHER_API_KEY) {
+        // Redis 캐시 키 (1시간 단위: YYYY-MM-DDTHH)
+        const weatherCacheKey = `weather:${countryCode}:${new Date().toISOString().slice(0, 13)}`;
+
+        // 1단계: Redis 캐시 확인
+        let cacheHit = false;
+        if (weatherRedis) {
+          try {
+            const cached = await weatherRedis.get<{ temp: number; condition: string; icon: string }>(weatherCacheKey);
+            if (cached) {
+              temp = cached.temp;
+              condition = cached.condition;
+              icon = cached.icon;
+              cacheHit = true;
+              console.log(`[Briefing API] 날씨 캐시 히트: ${countryCode}`);
+            }
+          } catch {
+            // Redis 실패 시 WeatherAPI 직접 호출 (graceful degradation)
+          }
+        }
+
+        // 2단계: 캐시 미스 시 WeatherAPI 호출
+        if (!cacheHit && WEATHER_API_KEY) {
           try {
             const cityQuery = COUNTRY_DEFAULT_CITY[countryCode] || countryCode;
             console.log(`[Briefing API] WeatherAPI 호출: ${countryCode} → ${cityQuery}`);
@@ -708,6 +737,10 @@ export async function GET(req: NextRequest) {
                 condition = wd.current.condition.text;
                 icon = getWeatherIcon(wd.current.condition.code, wd.current.is_day);
                 console.log(`[Briefing API] WeatherAPI 성공: ${countryCode} → ${temp}°C, ${condition}`);
+                // Redis에 캐시 저장 (1시간 TTL)
+                if (weatherRedis) {
+                  weatherRedis.set(weatherCacheKey, { temp, condition, icon }, { ex: 3600 }).catch(() => {});
+                }
               } else {
                 clearTimeout(timeoutId);
                 const errBody = await weatherRes.text();
@@ -724,7 +757,7 @@ export async function GET(req: NextRequest) {
           } catch (e) {
             console.error(`[Briefing API] WeatherAPI fetch 예외: ${countryCode}:`, e);
           }
-        } else {
+        } else if (!cacheHit) {
           console.warn('[Briefing API] WEATHER_API_KEY 환경변수가 없음 - 더미 날씨 사용');
         }
 
