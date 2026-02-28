@@ -944,7 +944,7 @@ export default function TranslatorPage() {
 
       <div className="h-[100dvh] bg-[#F5F7FA] text-gray-900 flex flex-col overflow-hidden">
         {/* 헤더 — 1줄 압축 (모바일 최적화) */}
-        <header className="flex-none border-b bg-white/95 backdrop-blur">
+        <header className="flex-none z-20 border-b bg-white/95 backdrop-blur shadow-sm">
           <div className="max-w-3xl mx-auto h-14 flex items-center gap-2 px-3">
             {/* 뒤로가기 */}
             <button
@@ -1273,7 +1273,7 @@ export default function TranslatorPage() {
         {/* 하단 고정 버튼 — 컴팩트 (모바일 최적화) */}
         <footer className="flex-none border-t-2 bg-white/95 backdrop-blur px-3 shadow-lg
           pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-          <div className="max-w-3xl mx-auto pt-2 pb-1 flex gap-2">
+          <div className="max-w-3xl mx-auto pt-2 pb-1 grid grid-cols-2 gap-2">
             {BTN_PAIRS.map((p) => (
               <button
                 key={p.label}
@@ -1282,7 +1282,7 @@ export default function TranslatorPage() {
                 onTouchStart={(e) => { e.preventDefault(); startPressToTalk(p.from, p.to); }}
                 onTouchEnd={(e) => { e.preventDefault(); stopPressToTalk(); }}
                 className={`
-                  flex-1 px-2 py-2.5 rounded-xl font-bold shadow min-h-[56px]
+                  w-full px-2 py-2.5 rounded-xl font-bold shadow min-h-[56px]
                   ${listening === 'recording'
                     ? 'bg-gradient-to-r from-red-600 to-red-500 text-white animate-pulse'
                     : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600'

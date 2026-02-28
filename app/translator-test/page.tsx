@@ -1068,7 +1068,7 @@ export default function TranslatorPage() {
 
       <div className="h-[100dvh] bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 text-gray-900 flex flex-col overflow-hidden">
         {/* 헤더 — 1줄 압축 (모바일 최적화) */}
-        <header className="flex-none border-b-2 border-purple-200 bg-white/95 backdrop-blur shadow-md">
+        <header className="flex-none z-20 border-b-2 border-purple-200 bg-white/95 backdrop-blur shadow-md">
           <div className="max-w-3xl mx-auto h-14 flex items-center gap-2 px-3">
             {/* 뒤로가기 */}
             <button
@@ -1352,7 +1352,7 @@ export default function TranslatorPage() {
         {/* 하단 고정 버튼 — 컴팩트 (모바일 최적화) */}
         <footer className="flex-none border-t bg-white px-3 shadow-lg
           pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-          <div className="max-w-3xl mx-auto pt-2 pb-1 flex gap-2">
+          <div className="max-w-3xl mx-auto pt-2 pb-1 grid grid-cols-2 gap-2">
             {BTN_PAIRS.map((p) => (
               <button
                 key={p.label}
@@ -1364,7 +1364,7 @@ export default function TranslatorPage() {
                   }
                 }}
                 className={`
-                  flex-1 px-2 py-2.5 rounded-xl font-bold shadow min-h-[56px]
+                  w-full px-2 py-2.5 rounded-xl font-bold shadow min-h-[56px]
                   ${listening === 'recording'
                     ? 'bg-gradient-to-r from-red-600 to-red-500 text-white animate-pulse'
                     : listening === 'pressing'
