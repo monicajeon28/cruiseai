@@ -283,20 +283,20 @@ export default function Statistics() {
   return (
     <div className="space-y-6">
       {/* 총 지출 요약 */}
-      <div className="bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl shadow-lg p-8 text-white">
-        <div className="flex items-center gap-3 mb-3">
-          <FiTrendingUp className="w-8 h-8" />
-          <h2 className="text-2xl font-bold">총 지출</h2>
+      <div className="bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl shadow-lg p-5 md:p-8 text-white">
+        <div className="flex items-center gap-2 mb-2">
+          <FiTrendingUp className="w-6 h-6 md:w-8 md:h-8" />
+          <h2 className="text-lg md:text-2xl font-bold">총 지출</h2>
         </div>
-        <p className="text-5xl font-bold mb-2">{totalExpense.toLocaleString()}원</p>
-        <p className="text-lg opacity-90">{expenses.length}건의 지출</p>
+        <p className="text-3xl md:text-5xl font-bold mb-1 md:mb-2">{totalExpense.toLocaleString()}원</p>
+        <p className="text-sm md:text-lg opacity-90">{expenses.length}건의 지출</p>
       </div>
 
       {/* 예산 설정 및 관리 */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-200">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <FiTarget className="w-6 h-6 text-green-600" />
+      <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border-2 border-green-200">
+        <div className="flex items-center justify-between mb-3 md:mb-4">
+          <h3 className="text-base md:text-xl font-bold text-gray-900 flex items-center gap-2">
+            <FiTarget className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
             여행 예산 관리
           </h3>
           {!isEditingBudget && budget && (
@@ -335,20 +335,20 @@ export default function Statistics() {
           </div>
         ) : budget ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-green-50 rounded-lg p-4 border-2 border-green-200">
-                <p className="text-sm text-gray-600 mb-1">설정된 예산</p>
-                <p className="text-2xl font-bold text-green-700">{budget.toLocaleString()}원</p>
+            <div className="grid grid-cols-2 gap-3 md:gap-4">
+              <div className="bg-green-50 rounded-lg p-3 md:p-4 border-2 border-green-200">
+                <p className="text-xs md:text-sm text-gray-600 mb-1">설정된 예산</p>
+                <p className="text-lg md:text-2xl font-bold text-green-700">{budget.toLocaleString()}원</p>
               </div>
-              <div className={`rounded-lg p-4 border-2 ${
-                remainingBudget && remainingBudget >= 0 
-                  ? 'bg-blue-50 border-blue-200' 
+              <div className={`rounded-lg p-3 md:p-4 border-2 ${
+                remainingBudget && remainingBudget >= 0
+                  ? 'bg-blue-50 border-blue-200'
                   : 'bg-red-50 border-red-200'
               }`}>
-                <p className="text-sm text-gray-600 mb-1">남은 예산</p>
-                <p className={`text-2xl font-bold ${
-                  remainingBudget && remainingBudget >= 0 
-                    ? 'text-blue-700' 
+                <p className="text-xs md:text-sm text-gray-600 mb-1">남은 예산</p>
+                <p className={`text-lg md:text-2xl font-bold ${
+                  remainingBudget && remainingBudget >= 0
+                    ? 'text-blue-700'
                     : 'text-red-700'
                 }`}>
                   {remainingBudget !== null ? remainingBudget.toLocaleString() : '-'}원
@@ -412,9 +412,9 @@ export default function Statistics() {
       </div>
 
       {/* 카테고리별 원형 차트 (도형 형식) */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-purple-200">
-        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-          <FiPieChart className="w-6 h-6" />
+      <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border-2 border-purple-200">
+        <h3 className="text-base md:text-xl font-bold text-gray-900 mb-4 md:mb-6 flex items-center gap-2">
+          <FiPieChart className="w-5 h-5 md:w-6 md:h-6" />
           카테고리별 지출 분포
         </h3>
 
@@ -457,9 +457,9 @@ export default function Statistics() {
       </div>
 
       {/* 카테고리별 상세 정보 (기존 스타일 유지) */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-purple-200">
-        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-          <FiPieChart className="w-6 h-6" />
+      <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border-2 border-purple-200">
+        <h3 className="text-base md:text-xl font-bold text-gray-900 mb-3 md:mb-4 flex items-center gap-2">
+          <FiPieChart className="w-5 h-5 md:w-6 md:h-6" />
           카테고리별 상세 내역
         </h3>
 
@@ -497,8 +497,8 @@ export default function Statistics() {
       </div>
 
       {/* Day별 지출 통계 */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-200">
-        <h3 className="text-xl font-bold text-gray-900 mb-6">날짜별 지출</h3>
+      <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border-2 border-blue-200">
+        <h3 className="text-base md:text-xl font-bold text-gray-900 mb-4 md:mb-6">날짜별 지출</h3>
 
         <div className="space-y-4">
           {dayStats.map((stat) => {
@@ -534,9 +534,9 @@ export default function Statistics() {
 
       {/* 통화별 지출 분석 */}
       {Object.keys(currencyStats).length > 0 && (
-        <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-200">
-          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <FiDollarSign className="w-6 h-6" />
+        <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border-2 border-blue-200">
+          <h3 className="text-base md:text-xl font-bold text-gray-900 mb-3 md:mb-4 flex items-center gap-2">
+            <FiDollarSign className="w-5 h-5 md:w-6 md:h-6" />
             통화별 지출 분석
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -571,26 +571,26 @@ export default function Statistics() {
 
       {/* 예상 지출 및 평균 지출 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-gradient-to-r from-green-500 to-teal-500 rounded-xl shadow-lg p-6 text-white">
-          <h3 className="text-xl font-bold mb-3">💡 평균 일일 지출</h3>
-          <p className="text-4xl font-bold">
+        <div className="bg-gradient-to-r from-green-500 to-teal-500 rounded-xl shadow-lg p-4 md:p-6 text-white">
+          <h3 className="text-base md:text-xl font-bold mb-2 md:mb-3">💡 평균 일일 지출</h3>
+          <p className="text-2xl md:text-4xl font-bold">
             {dayStats.length > 0
               ? Math.round(averageDailyExpense).toLocaleString()
               : '0'}원
           </p>
-          <p className="text-base opacity-90 mt-2">
+          <p className="text-sm md:text-base opacity-90 mt-1 md:mt-2">
             {dayStats.length}일 동안의 평균
           </p>
         </div>
 
-        <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-xl shadow-lg p-6 text-white">
-          <h3 className="text-xl font-bold mb-3">📊 예상 총 지출</h3>
-          <p className="text-4xl font-bold">
+        <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-xl shadow-lg p-4 md:p-6 text-white">
+          <h3 className="text-base md:text-xl font-bold mb-2 md:mb-3">📊 예상 총 지출</h3>
+          <p className="text-2xl md:text-4xl font-bold">
             {estimatedTotalExpense > 0
               ? Math.round(estimatedTotalExpense).toLocaleString()
               : '0'}원
           </p>
-          <p className="text-base opacity-90 mt-2">
+          <p className="text-sm md:text-base opacity-90 mt-1 md:mt-2">
             Day {maxDay}까지 예상
           </p>
         </div>
@@ -598,23 +598,23 @@ export default function Statistics() {
 
       {/* 최고/최저 지출일 */}
       {dayStats.length > 0 && (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-red-200">
-            <h4 className="text-lg font-bold text-gray-900 mb-2">📈 최고 지출일</h4>
-            <p className="text-xl font-bold text-red-600">
+        <div className="grid grid-cols-2 gap-3 md:gap-4">
+          <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border-2 border-red-200">
+            <h4 className="text-sm md:text-lg font-bold text-gray-900 mb-1 md:mb-2">📈 최고 지출일</h4>
+            <p className="text-base md:text-xl font-bold text-red-600">
               Day {dayStats.reduce((max, stat) => stat.total > max.total ? stat : max).day}
             </p>
-            <p className="text-base text-gray-600 mt-1">
+            <p className="text-sm md:text-base text-gray-600 mt-1">
               {dayStats.reduce((max, stat) => stat.total > max.total ? stat : max).total.toLocaleString()}원
             </p>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-200">
-            <h4 className="text-lg font-bold text-gray-900 mb-2">📉 최저 지출일</h4>
-            <p className="text-xl font-bold text-green-600">
+          <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border-2 border-green-200">
+            <h4 className="text-sm md:text-lg font-bold text-gray-900 mb-1 md:mb-2">📉 최저 지출일</h4>
+            <p className="text-base md:text-xl font-bold text-green-600">
               Day {dayStats.reduce((min, stat) => stat.total < min.total ? stat : min).day}
             </p>
-            <p className="text-base text-gray-600 mt-1">
+            <p className="text-sm md:text-base text-gray-600 mt-1">
               {dayStats.reduce((min, stat) => stat.total < min.total ? stat : min).total.toLocaleString()}원
             </p>
           </div>
@@ -622,8 +622,8 @@ export default function Statistics() {
       )}
 
       {/* Day별 지출 통계 */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-200">
-        <h3 className="text-xl font-bold text-gray-900 mb-6">📅 날짜별 지출 추이</h3>
+      <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border-2 border-blue-200">
+        <h3 className="text-base md:text-xl font-bold text-gray-900 mb-4 md:mb-6">📅 날짜별 지출 추이</h3>
 
         <div className="space-y-4">
           {dayStats.map((stat) => {

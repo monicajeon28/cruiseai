@@ -204,27 +204,27 @@ export default function CurrencyCalculator() {
       )}
 
       {/* 환율 계산기 */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-200">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900">💱 환율 계산기</h2>
+      <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border-2 border-blue-200">
+        <div className="flex items-center justify-between mb-4 md:mb-6">
+          <h2 className="text-base md:text-xl font-bold text-gray-900">💱 환율 계산기</h2>
           <button
             onClick={handleRefresh}
             disabled={loading}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
             aria-label="환율 새로고침"
           >
-            <FiRefreshCw className={`w-6 h-6 text-blue-500 ${loading ? 'animate-spin' : ''}`} />
+            <FiRefreshCw className={`w-5 h-5 md:w-6 md:h-6 text-blue-500 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
         {/* From 통화 */}
-        <div className="mb-4">
-          <label className="block text-lg font-semibold text-gray-700 mb-3">보낼 금액</label>
-          <div className="flex gap-3">
+        <div className="mb-3 md:mb-4">
+          <label className="block text-sm md:text-base font-semibold text-gray-700 mb-2">보낼 금액</label>
+          <div className="flex gap-2">
             <select
               value={fromCurrency}
               onChange={(e) => setFromCurrency(e.target.value)}
-              className="flex-1 px-4 py-4 text-lg font-semibold border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-3 py-2.5 text-sm md:text-base font-semibold border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {currencies.map((currency) => (
                 <option key={currency.code} value={currency.code}>
@@ -237,24 +237,24 @@ export default function CurrencyCalculator() {
               value={fromAmount}
               onChange={(e) => setFromAmount(formatNumber(e.target.value))}
               placeholder="금액"
-              className="flex-1 px-4 py-4 text-lg font-semibold border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-3 py-2.5 text-sm md:text-base font-semibold border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
 
         {/* 화살표 */}
-        <div className="flex justify-center my-4">
-          <div className="text-4xl text-blue-500">⬇️</div>
+        <div className="flex justify-center my-3">
+          <div className="text-2xl md:text-4xl text-blue-500">⬇️</div>
         </div>
 
         {/* To 통화 */}
-        <div className="mb-6">
-          <label className="block text-lg font-semibold text-gray-700 mb-3">받을 금액</label>
-          <div className="flex gap-3">
+        <div className="mb-4 md:mb-6">
+          <label className="block text-sm md:text-base font-semibold text-gray-700 mb-2">받을 금액</label>
+          <div className="flex gap-2">
             <select
               value={toCurrency}
               onChange={(e) => setToCurrency(e.target.value)}
-              className="flex-1 px-4 py-4 text-lg font-semibold border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="flex-1 px-3 py-2.5 text-sm md:text-base font-semibold border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
             >
               {currencies.map((currency) => (
                 <option key={currency.code} value={currency.code}>
@@ -267,7 +267,7 @@ export default function CurrencyCalculator() {
               value={toAmount}
               readOnly
               placeholder="0.00"
-              className="flex-1 px-4 py-4 text-lg font-semibold bg-green-50 border-2 border-green-300 rounded-lg text-green-700"
+              className="flex-1 px-3 py-2.5 text-sm md:text-base font-semibold bg-green-50 border-2 border-green-300 rounded-lg text-green-700"
             />
           </div>
         </div>
@@ -281,9 +281,9 @@ export default function CurrencyCalculator() {
       </div>
 
       {/* 환율표 */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-purple-200">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">📊 실시간 환율표 (원화 기준)</h3>
-        <div className="space-y-3">
+      <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border-2 border-purple-200">
+        <h3 className="text-base md:text-xl font-bold text-gray-900 mb-3 md:mb-4">📊 실시간 환율표 (원화 기준)</h3>
+        <div className="space-y-2 md:space-y-3">
           {rates.map((rate) => {
             const currency = currencies.find(c => c.code === rate.code);
             if (!currency) return null;
@@ -291,22 +291,22 @@ export default function CurrencyCalculator() {
             return (
               <div
                 key={rate.code}
-                className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200"
+                className="flex items-center justify-between p-3 md:p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200"
               >
                 <div>
-                  <p className="text-lg font-bold text-gray-900">
+                  <p className="text-sm md:text-base font-bold text-gray-900">
                     {currency.symbol} {currency.code}
                   </p>
-                  <p className="text-sm text-gray-600">{currency.country}</p>
+                  <p className="text-xs md:text-sm text-gray-600">{currency.country}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xl font-bold text-blue-600">
+                  <p className="text-base md:text-xl font-bold text-blue-600">
                     {rate.rateToKRW.toLocaleString('ko-KR', {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2
                     })} 원
                   </p>
-                  <p className="text-sm text-gray-500">1 {currency.code}당</p>
+                  <p className="text-xs md:text-sm text-gray-500">1 {currency.code}당</p>
                 </div>
               </div>
             );

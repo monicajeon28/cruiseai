@@ -575,22 +575,22 @@ export default function ExpenseTracker() {
       )}
 
       {/* 지출 추가 폼 */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-200">
-        <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-          <FiPlus className="w-6 h-6" />
+      <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border-2 border-green-200">
+        <h2 className="text-base md:text-xl font-bold text-gray-900 mb-4 md:mb-6 flex items-center gap-2">
+          <FiPlus className="w-5 h-5 md:w-6 md:h-6" />
           지출 추가
         </h2>
 
         {/* Day 선택 */}
-        <div className="mb-5">
-          <label className="block text-lg font-semibold text-gray-700 mb-3">
-            <FiCalendar className="inline w-5 h-5 mr-2" />
+        <div className="mb-4">
+          <label className="block text-sm md:text-base font-semibold text-gray-700 mb-2">
+            <FiCalendar className="inline w-4 h-4 mr-2" />
             여행 날짜
           </label>
           <select
             value={selectedDay}
             onChange={(e) => setSelectedDay(Number(e.target.value))}
-            className="w-full px-4 py-4 text-lg font-semibold border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full px-3 py-2.5 text-sm md:text-base font-semibold border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
           >
             {Array.from({ length: totalDays }, (_, i) => i + 1).map((day) => (
               <option key={day} value={day}>
@@ -601,19 +601,19 @@ export default function ExpenseTracker() {
         </div>
 
         {/* 카테고리 선택 */}
-        <div className="mb-5">
-          <label className="block text-lg font-semibold text-gray-700 mb-3">카테고리</label>
-          <div className="grid grid-cols-3 gap-3">
+        <div className="mb-4">
+          <label className="block text-sm md:text-base font-semibold text-gray-700 mb-2">카테고리</label>
+          <div className="grid grid-cols-3 gap-2">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.key}
                 onClick={() => setSelectedCategory(cat.key)}
-                className={`py-4 px-3 rounded-lg text-base font-semibold transition-all ${selectedCategory === cat.key
+                className={`py-2.5 px-2 rounded-lg text-sm font-semibold transition-all ${selectedCategory === cat.key
                   ? 'bg-green-500 text-white shadow-lg scale-105'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
               >
-                <div className="text-2xl mb-1">{cat.icon}</div>
+                <div className="text-xl mb-0.5">{cat.icon}</div>
                 <div>{cat.label}</div>
               </button>
             ))}
@@ -621,13 +621,13 @@ export default function ExpenseTracker() {
         </div>
 
         {/* 금액 입력 */}
-        <div className="mb-5">
-          <label className="block text-lg font-semibold text-gray-700 mb-3">금액</label>
-          <div className="flex gap-3">
+        <div className="mb-4">
+          <label className="block text-sm md:text-base font-semibold text-gray-700 mb-2">금액</label>
+          <div className="flex gap-2">
             <select
               value={selectedCurrency}
               onChange={(e) => setSelectedCurrency(e.target.value)}
-              className="w-1/3 px-4 py-4 text-lg font-semibold border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-1/3 px-3 py-2.5 text-sm md:text-base font-semibold border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
             >
               {currencies.map((currency) => (
                 <option key={currency.code} value={currency.code}>
@@ -640,25 +640,25 @@ export default function ExpenseTracker() {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="금액"
-              className="flex-1 px-4 py-4 text-lg font-semibold border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="flex-1 px-3 py-2.5 text-sm md:text-base font-semibold border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
           {/* 한화 환산 금액 표시 */}
           {amount && parseFloat(amount) > 0 && selectedCurrency !== 'KRW' && (
-            <div className="mt-3 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+            <div className="mt-2 p-3 bg-blue-50 border-2 border-blue-200 rounded-lg">
               <div className="flex items-center justify-between">
-                <span className="text-lg font-semibold text-blue-900">한국돈으로 환산:</span>
-                <span className="text-2xl font-bold text-blue-600">
+                <span className="text-sm md:text-base font-semibold text-blue-900">한국돈으로 환산:</span>
+                <span className="text-lg md:text-xl font-bold text-blue-600">
                   {amountInKRW > 0 ? `${amountInKRW.toLocaleString()}원` : '계산 중...'}
                 </span>
               </div>
             </div>
           )}
           {amount && parseFloat(amount) > 0 && selectedCurrency === 'KRW' && (
-            <div className="mt-3 p-4 bg-gray-50 border-2 border-gray-200 rounded-lg">
+            <div className="mt-2 p-3 bg-gray-50 border-2 border-gray-200 rounded-lg">
               <div className="flex items-center justify-between">
-                <span className="text-lg font-semibold text-gray-700">입력 금액:</span>
-                <span className="text-2xl font-bold text-gray-800">
+                <span className="text-sm md:text-base font-semibold text-gray-700">입력 금액:</span>
+                <span className="text-lg md:text-xl font-bold text-gray-800">
                   {parseFloat(amount).toLocaleString()}원
                 </span>
               </div>
@@ -667,14 +667,14 @@ export default function ExpenseTracker() {
         </div>
 
         {/* 설명 입력 */}
-        <div className="mb-6">
-          <label className="block text-lg font-semibold text-gray-700 mb-3">내용</label>
+        <div className="mb-4 md:mb-6">
+          <label className="block text-sm md:text-base font-semibold text-gray-700 mb-2">내용</label>
           <input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="예: 점심식사, 택시비, 기념품 등"
-            className="w-full px-4 py-4 text-lg border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full px-3 py-2.5 text-sm md:text-base border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
           />
         </div>
 
@@ -683,18 +683,18 @@ export default function ExpenseTracker() {
           <button
             onClick={handleAddExpense}
             disabled={loading}
-            className="flex-1 py-5 text-xl font-bold bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 md:py-3 text-base md:text-lg font-bold bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <FiPlus className="w-6 h-6" />
+            <FiPlus className="w-5 h-5" />
             지출 추가
           </button>
           <button
             onClick={handleResetAll}
             disabled={loading || expenses.length === 0}
-            className="px-6 py-5 text-xl font-bold bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="px-4 md:px-6 py-2.5 md:py-3 text-base md:text-lg font-bold bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             title="모든 지출 기록 삭제"
           >
-            <FiTrash2 className="w-6 h-6" />
+            <FiTrash2 className="w-5 h-5" />
             모두 지우기
           </button>
         </div>
@@ -710,10 +710,10 @@ export default function ExpenseTracker() {
             const dayTotal = dayExpenses.reduce((sum, exp) => sum + exp.amountInKRW, 0);
 
             return (
-              <div key={day} className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold text-gray-900">Day {day}</h3>
-                  <p className="text-lg font-bold text-blue-600">
+              <div key={day} className="bg-white rounded-xl shadow-lg p-4 md:p-6 border-2 border-blue-200">
+                <div className="flex items-center justify-between mb-3 md:mb-4">
+                  <h3 className="text-base md:text-xl font-bold text-gray-900">Day {day}</h3>
+                  <p className="text-sm md:text-lg font-bold text-blue-600">
                     총 {dayTotal.toLocaleString()}원
                   </p>
                 </div>
@@ -807,28 +807,28 @@ export default function ExpenseTracker() {
           })}
 
         {expenses.length === 0 && (
-          <div className="bg-white rounded-xl shadow-lg p-12 text-center border-2 border-gray-200">
-            <p className="text-xl text-gray-500">아직 지출 기록이 없습니다.</p>
-            <p className="text-base text-gray-400 mt-2">위 폼에서 지출을 추가해보세요!</p>
+          <div className="bg-white rounded-xl shadow-lg p-8 md:p-12 text-center border-2 border-gray-200">
+            <p className="text-base md:text-xl text-gray-500">아직 지출 기록이 없습니다.</p>
+            <p className="text-sm md:text-base text-gray-400 mt-2">위 폼에서 지출을 추가해보세요!</p>
           </div>
         )}
 
         {/* 전체 총합 표시 */}
         {expenses.length > 0 && (
-          <div className="bg-gradient-to-r from-green-500 to-blue-500 rounded-xl shadow-2xl p-6 border-4 border-green-600 mt-6">
+          <div className="bg-gradient-to-r from-green-500 to-blue-500 rounded-xl shadow-2xl p-4 md:p-6 border-4 border-green-600 mt-4 md:mt-6">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="text-4xl">💰</div>
+              <div className="flex items-center gap-2 md:gap-3">
+                <div className="text-2xl md:text-4xl">💰</div>
                 <div>
-                  <p className="text-2xl font-bold text-white">전체 지출 총계</p>
-                  <p className="text-lg text-green-100 mt-1">모든 Day 합산</p>
+                  <p className="text-base md:text-2xl font-bold text-white">전체 지출 총계</p>
+                  <p className="text-sm md:text-lg text-green-100 mt-0.5 md:mt-1">모든 Day 합산</p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-4xl font-extrabold text-white">
+                <p className="text-2xl md:text-4xl font-extrabold text-white">
                   {totalAmount.toLocaleString()}원
                 </p>
-                <p className="text-lg text-green-100 mt-1">
+                <p className="text-sm md:text-lg text-green-100 mt-0.5 md:mt-1">
                   {Object.keys(expensesByDay).length}일 동안의 총 지출
                 </p>
               </div>
