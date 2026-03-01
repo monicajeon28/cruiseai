@@ -278,7 +278,7 @@ export default function ChatInteractiveUI() {
                 href={affiliateMallUrl}
                 className="px-6 py-3 bg-white text-red-600 rounded-lg font-semibold hover:bg-gray-100 transition-colors shadow-md whitespace-nowrap"
               >
-                다음 여행 등록하기
+                새 여행 추가
               </Link>
             </div>
             <div className="mt-4 bg-white/10 rounded-lg p-3">
@@ -301,12 +301,10 @@ export default function ChatInteractiveUI() {
         </div>
       )}
       
-      {/* 채팅 탭 */}
-      {!tripExpired && (
-        <div className="mx-auto max-w-6xl w-full px-3 pb-2">
-          <ChatTabs value={mode} onChange={onChangeTab} />
-        </div>
-      )}
+      {/* 채팅 탭 - 여행 종료 여부와 무관하게 항상 표시 */}
+      <div className="mx-auto max-w-6xl w-full px-3 pb-2">
+        <ChatTabs value={mode} onChange={onChangeTab} />
+      </div>
       
       {/* 채팅창 - 화면의 80%+ 차지 (여행 종료 시 숨김) */}
       {!tripExpired && (

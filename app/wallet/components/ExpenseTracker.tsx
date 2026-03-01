@@ -101,9 +101,9 @@ export default function ExpenseTracker() {
     loadData();
   }, []);
 
-  // 실시간 환율 계산 (금액이나 통화가 바뀔 때)
+  // 실시간 환율 계산 (금액이나 통화가 바뀔 때) - 500ms 디바운스 적용
   useEffect(() => {
-    const calculateKRW = async () => {
+    const timer = setTimeout(async () => {
       if (!amount || selectedCurrency === 'KRW') {
         const amountNum = parseFloat(amount) || 0;
         setAmountInKRW(amountNum);
@@ -135,9 +135,9 @@ export default function ExpenseTracker() {
       } catch (error) {
         logger.error('[ExpenseTracker] Error calculating KRW:', error);
       }
-    };
+    }, 500);
 
-    calculateKRW();
+    return () => clearTimeout(timer);
   }, [amount, selectedCurrency]);
 
   // localStorage에서 로드
@@ -807,14 +807,14 @@ export default function ExpenseTracker() {
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleStartEdit(expense)}
-                              className="p-3 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="p-4 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
                               aria-label="수정"
                             >
                               <FiEdit2 className="w-6 h-6" />
                             </button>
                             <button
                               onClick={() => handleDeleteExpense(expense.id)}
-                              className="p-3 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                              className="p-4 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                               aria-label="삭제"
                             >
                               <FiTrash2 className="w-6 h-6" />

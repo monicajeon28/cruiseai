@@ -107,7 +107,7 @@ export default function BottomNavBar() {
                     strokeWidth={isActive ? 2.5 : 2}
                   />
                 ) : null}
-                <span className="text-[10px] font-semibold whitespace-nowrap leading-tight">
+                <span className="text-xs font-semibold whitespace-nowrap leading-tight">
                   {item.label}
                 </span>
               </>

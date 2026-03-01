@@ -89,7 +89,7 @@ export default function WalletPage() {
                   </h1>
                   <p className="text-xs md:text-base text-gray-600 leading-relaxed">
                     {testModeInfo && testModeInfo.isTestMode
-                      ? '72시간 동안 모든 기능을 무료로 체험해보세요!'
+                      ? '72시간 무료 체험 중'
                       : '여행 중 지출을 쉽게 관리하세요!'}
                   </p>
                 </div>
@@ -105,29 +105,29 @@ export default function WalletPage() {
           <div className="flex gap-2 py-3">
             <button
               onClick={() => setActiveTab('calculator')}
-              className={`flex-1 flex flex-col items-center justify-center py-2.5 md:py-3 rounded-xl transition-all border-2 ${activeTab === 'calculator'
+              className={`flex-1 flex flex-col items-center justify-center py-3 min-h-[44px] rounded-xl transition-all border-2 ${activeTab === 'calculator'
                 ? 'bg-gradient-to-r from-[#FDB931] to-[#E1A21E] text-[#051C2C] shadow-lg border-[#FDB931]'
                 : 'bg-gradient-to-r from-gray-50 to-gray-100 text-gray-600 hover:bg-gradient-to-r hover:from-[#FDB931]/10 hover:to-[#FDB931]/5 border-gray-200'
                 }`}
             >
               <FiDollarSign className="w-5 h-5 md:w-6 md:h-6 mb-1" />
-              <span className="text-xs md:text-sm font-semibold">환율 계산기</span>
+              <span className="text-xs md:text-sm font-semibold">환율</span>
             </button>
 
             <button
               onClick={() => setActiveTab('expenses')}
-              className={`flex-1 flex flex-col items-center justify-center py-2.5 md:py-3 rounded-xl transition-all border-2 ${activeTab === 'expenses'
+              className={`flex-1 flex flex-col items-center justify-center py-3 min-h-[44px] rounded-xl transition-all border-2 ${activeTab === 'expenses'
                 ? 'bg-gradient-to-r from-[#FDB931] to-[#E1A21E] text-[#051C2C] shadow-lg border-[#FDB931]'
                 : 'bg-gradient-to-r from-gray-50 to-gray-100 text-gray-600 hover:bg-gradient-to-r hover:from-[#FDB931]/10 hover:to-[#FDB931]/5 border-gray-200'
                 }`}
             >
               <FiList className="w-5 h-5 md:w-6 md:h-6 mb-1" />
-              <span className="text-xs md:text-sm font-semibold">지출 기록</span>
+              <span className="text-xs md:text-sm font-semibold">지출</span>
             </button>
 
             <button
               onClick={() => setActiveTab('statistics')}
-              className={`flex-1 flex flex-col items-center justify-center py-2.5 md:py-3 rounded-xl transition-all border-2 ${activeTab === 'statistics'
+              className={`flex-1 flex flex-col items-center justify-center py-3 min-h-[44px] rounded-xl transition-all border-2 ${activeTab === 'statistics'
                 ? 'bg-gradient-to-r from-[#FDB931] to-[#E1A21E] text-[#051C2C] shadow-lg border-[#FDB931]'
                 : 'bg-gradient-to-r from-gray-50 to-gray-100 text-gray-600 hover:bg-gradient-to-r hover:from-[#FDB931]/10 hover:to-[#FDB931]/5 border-gray-200'
                 }`}
@@ -140,7 +140,7 @@ export default function WalletPage() {
       </div>
 
       {/* 탭 컨텐츠 */}
-      <div className="max-w-6xl mx-auto px-4 pb-6">
+      <div className="max-w-6xl mx-auto px-4 pb-[calc(env(safe-area-inset-bottom)+6rem)]">
         {activeTab === 'calculator' && <CurrencyCalculator />}
         {activeTab === 'expenses' && <ExpenseTracker />}
         {activeTab === 'statistics' && <Statistics />}

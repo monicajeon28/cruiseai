@@ -170,8 +170,8 @@ export default function ChecklistPage() {
       return;
     }
 
-    for (const item of defaultItems) {
-      try {
+    const results = await Promise.allSettled(
+      defaultItems.map(async (item) => {
         const res = await fetch('/api/checklist', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -179,28 +179,25 @@ export default function ChecklistPage() {
           body: JSON.stringify({ text: item.text }),
         });
 
-        if (res.ok) {
-          const serverItem = await res.json();
-          const finalItem = serverItem.item || serverItem;
-          // 서버에서 받은 ID로 업데이트
-          setItems(prev => {
-            const updated = prev.map(localItem =>
-              localItem.id === item.id ? finalItem : localItem
-            );
-            return updated;
-          });
-          // 서버 저장 간격 조절 (429 에러 방지)
-          await new Promise(resolve => setTimeout(resolve, 200));
-        } else if (res.status === 429) {
-          // Rate limit이면 더 긴 대기
-          console.warn('[Checklist] Rate limit, waiting longer...');
-          await new Promise(resolve => setTimeout(resolve, 2000));
+        if (!res.ok) {
+          throw new Error(`Failed to create item: ${res.status}`);
         }
-      } catch (error) {
-        console.error('[Checklist] Error creating default item on server:', error);
-        // 에러 발생 시에도 계속 진행 (다음 항목 시도)
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
+
+        const serverItem = await res.json();
+        const finalItem = serverItem.item || serverItem;
+
+        // 서버에서 받은 ID로 업데이트
+        setItems(prev =>
+          prev.map(localItem => (localItem.id === item.id ? finalItem : localItem))
+        );
+
+        return finalItem;
+      })
+    );
+
+    const failedCount = results.filter(r => r.status === 'rejected').length;
+    if (failedCount > 0) {
+      console.error(`[Checklist] ${failedCount}개 기본 항목 서버 저장 실패`);
     }
   };
 
@@ -399,16 +396,7 @@ export default function ChecklistPage() {
     } catch (err: any) {
       // 에러는 항상 로깅
       console.error('[Checklist] Error toggling item:', err);
-      const errorMessage = err.message || '알 수 없는 오류';
-      setError(`상태 변경 중 오류가 발생했습니다: ${errorMessage}`);
-
-      // 401이나 429 오류가 아니고, 상태가 이미 롤백되지 않은 경우에만 다시 로드
-      if (!errorMessage.includes('인증') && !errorMessage.includes('너무 많')) {
-        // 짧은 딜레이 후 재시도 (무한 루프 방지)
-        setTimeout(() => {
-          loadItems(true).catch(console.error);
-        }, 1000);
-      }
+      setError('작업에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
     }
@@ -470,16 +458,7 @@ export default function ChecklistPage() {
     } catch (err: any) {
       // 에러는 항상 로깅
       console.error('[Checklist] Error updating item:', err);
-      const errorMessage = err.message || '알 수 없는 오류';
-      setError(`수정 중 오류가 발생했습니다: ${errorMessage}`);
-
-      // 401이나 429 오류가 아니고, 상태가 이미 롤백되지 않은 경우에만 다시 로드
-      if (!errorMessage.includes('인증') && !errorMessage.includes('너무 많')) {
-        // 짧은 딜레이 후 재시도 (무한 루프 방지)
-        setTimeout(() => {
-          loadItems(true).catch(console.error);
-        }, 1000);
-      }
+      setError('작업에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
     }
@@ -595,16 +574,7 @@ export default function ChecklistPage() {
     } catch (err: any) {
       // 에러는 항상 로깅
       console.error('[Checklist] Error deleting item:', err);
-      const errorMessage = err.message || '알 수 없는 오류';
-      setError(`삭제 중 오류가 발생했습니다: ${errorMessage}`);
-
-      // 401이나 429 오류가 아니고, 상태가 이미 롤백되지 않은 경우에만 다시 로드
-      if (!errorMessage.includes('인증') && !errorMessage.includes('너무 많')) {
-        // 짧은 딜레이 후 재시도 (무한 루프 방지)
-        setTimeout(() => {
-          loadItems(true).catch(console.error);
-        }, 1000);
-      }
+      setError('작업에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
     }
