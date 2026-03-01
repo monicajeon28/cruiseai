@@ -169,6 +169,7 @@ export default function MyTripsPage() {
                       <p className="text-xs md:text-sm text-gray-600">출발일</p>
                       <p className="font-semibold text-gray-900 text-sm md:text-base">
                         {new Date(trip.startDate).toLocaleDateString('ko-KR', {
+                          year: 'numeric',
                           month: 'long',
                           day: 'numeric',
                         })}
@@ -185,6 +186,7 @@ export default function MyTripsPage() {
                       <p className="text-xs md:text-sm text-gray-600">종료일</p>
                       <p className="font-semibold text-gray-900 text-sm md:text-base">
                         {new Date(trip.endDate).toLocaleDateString('ko-KR', {
+                          year: 'numeric',
                           month: 'long',
                           day: 'numeric',
                         })}
