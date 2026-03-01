@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 
@@ -52,6 +52,7 @@ export default function AccessCheckWrapper({ children }: { children: React.React
   const [accessStatus, setAccessStatus] = useState<AccessStatus | null>(null);
   const [isChecking, setIsChecking] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const modalShownRef = useRef(false); // 세션 중 모달 한 번만 표시 (페이지 전환마다 재표시 방지)
 
   useEffect(() => {
     // pathname이 아직 로드되지 않았으면 대기
@@ -75,10 +76,10 @@ export default function AccessCheckWrapper({ children }: { children: React.React
       const checkTestAccess = async () => {
         // sessionStorage 캐시 확인 (페이지 전환마다 API 호출 제거)
         const cachedData = getCachedAccess();
-        if (cachedData) {
+        if (cachedData?.ok) {
           if (!cachedData.allowed && cachedData.reason === 'trial_expired') {
             setAccessStatus({ allowed: false, status: 'expired', reason: cachedData.reason, message: cachedData.message });
-            setShowModal(true);
+            if (!modalShownRef.current) { setShowModal(true); modalShownRef.current = true; }
           } else {
             setAccessStatus({ allowed: true, status: 'active' });
           }
@@ -91,7 +92,7 @@ export default function AccessCheckWrapper({ children }: { children: React.React
             credentials: 'include',
           });
           const data = await response.json();
-          setCachedAccess(data);
+          if (data.ok) setCachedAccess(data); // ok:true 응답만 캐시
 
           if (data.ok) {
             // 3일 체험 만료 체크 (reason: 'trial_expired')
@@ -102,7 +103,7 @@ export default function AccessCheckWrapper({ children }: { children: React.React
                 reason: data.reason,
                 message: data.message || '3일 체험이 종료되었습니다.',
               });
-              setShowModal(true);
+              if (!modalShownRef.current) { setShowModal(true); modalShownRef.current = true; }
             } else {
               // 체험 중이거나 다른 이유로 허용
               setAccessStatus({
@@ -117,8 +118,7 @@ export default function AccessCheckWrapper({ children }: { children: React.React
               status: 'active',
             });
           }
-        } catch (error) {
-          console.error('[AccessCheck] Test mode check failed:', error);
+        } catch {
           // 에러 시 허용
           setAccessStatus({
             allowed: true,
@@ -174,7 +174,10 @@ export default function AccessCheckWrapper({ children }: { children: React.React
           message: cachedData.message,
           remainingHours: cachedData.remainingHours,
         });
-        if (!cachedData.allowed) setShowModal(true);
+        if (!cachedData.allowed && !modalShownRef.current) {
+          setShowModal(true);
+          modalShownRef.current = true;
+        }
         setIsChecking(false);
         return;
       }
@@ -195,8 +198,9 @@ export default function AccessCheckWrapper({ children }: { children: React.React
             remainingHours: data.remainingHours,
           });
 
-          if (!data.allowed) {
+          if (!data.allowed && !modalShownRef.current) {
             setShowModal(true);
+            modalShownRef.current = true;
           }
         } else {
           setAccessStatus({ allowed: true, status: 'active' });

@@ -165,32 +165,35 @@ export default function ExpenseTracker() {
             // 1주일 localStorage 캐시 확인 (앱 실행마다 API 호출 불필요)
             const RATE_CACHE_KEY = 'wallet-exchange-rates-v1';
             const RATE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 1주일
+            let ratesCached = false;
             try {
               const cached = localStorage.getItem(RATE_CACHE_KEY);
               if (cached) {
                 const { rates: cachedObj, ts } = JSON.parse(cached);
                 if (Date.now() - ts < RATE_CACHE_TTL) {
                   setCachedRates(cachedObj);
-                  return; // 캐시 유효 → API 호출 없음
+                  ratesCached = true; // return 제거: 환율 캐시 HIT 시에도 지출 데이터 계속 로드
                 }
               }
             } catch { /* 캐시 파싱 실패 → API 호출 */ }
 
-            fetch('/api/wallet/exchange-rate', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ currencies: foreignCodes }),
-            }).then(r => r.json()).then(data => {
-              if (data.success) {
-                const rates: Record<string, number> = { KRW: 1 };
-                data.rates.forEach((r: any) => { rates[r.code] = r.rateToKRW; });
-                setCachedRates(rates);
-                // localStorage에 1주일 캐시 저장
-                try {
-                  localStorage.setItem(RATE_CACHE_KEY, JSON.stringify({ rates, ts: Date.now() }));
-                } catch { /* 저장 공간 부족 시 무시 */ }
-              }
-            }).catch(() => {/* DEFAULT_EXCHANGE_RATES 유지 */});
+            if (!ratesCached) {
+              fetch('/api/wallet/exchange-rate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currencies: foreignCodes }),
+              }).then(r => r.json()).then(data => {
+                if (data.success) {
+                  const rates: Record<string, number> = { KRW: 1 };
+                  data.rates.forEach((r: any) => { rates[r.code] = r.rateToKRW; });
+                  setCachedRates(rates);
+                  // localStorage에 1주일 캐시 저장
+                  try {
+                    localStorage.setItem(RATE_CACHE_KEY, JSON.stringify({ rates, ts: Date.now() }));
+                  } catch { /* 저장 공간 부족 시 무시 */ }
+                }
+              }).catch(() => {/* DEFAULT_EXCHANGE_RATES 유지 */});
+            }
           }
         }
         setTripDates(countriesData.tripDates);

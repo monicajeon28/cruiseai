@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 // GET: 사용자 접근 권한 체크 (여행 종료 후 1일 사용 제한)
 export async function GET(req: NextRequest) {
@@ -121,7 +122,7 @@ export async function GET(req: NextRequest) {
       gracePeriodEnd: gracePeriodEnd.toISOString(),
     });
   } catch (error) {
-    console.error('[User Access Check] Error:', error);
+    logger.error('[User Access Check] Error:', error);
     return NextResponse.json(
       { ok: false, error: 'Failed to check access' },
       { status: 500 }

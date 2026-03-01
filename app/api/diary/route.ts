@@ -42,15 +42,19 @@ export async function GET(req: Request) {
     }
 
     if (tripId) {
+      const tripIdNum = parseInt(tripId);
+      if (isNaN(tripIdNum)) {
+        return NextResponse.json({ ok: false, message: 'Invalid tripId' }, { status: 400 });
+      }
       // tripId 소유권 확인 (IDOR 방지)
       const trip = await prisma.userTrip.findFirst({
-        where: { id: parseInt(tripId), userId: sess.userId },
+        where: { id: tripIdNum, userId: sess.userId },
         select: { id: true },
       });
       if (!trip) {
         return NextResponse.json({ ok: false, message: 'Trip not found' }, { status: 404 });
       }
-      where.tripId = parseInt(tripId);
+      where.tripId = tripIdNum;
     }
 
     // 다이어리 기록 조회
@@ -109,11 +113,27 @@ export async function POST(req: Request) {
       );
     }
 
+    // tripId 소유권 확인 (IDOR 방지)
+    let verifiedTripId: number | null = null;
+    if (tripId) {
+      const tripIdNum = parseInt(tripId);
+      if (!isNaN(tripIdNum)) {
+        const trip = await prisma.userTrip.findFirst({
+          where: { id: tripIdNum, userId: sess.userId },
+          select: { id: true },
+        });
+        if (!trip) {
+          return NextResponse.json({ ok: false, message: 'Trip not found' }, { status: 404 });
+        }
+        verifiedTripId = tripIdNum;
+      }
+    }
+
     // 다이어리 기록 생성
     const entry = await prisma.travelDiaryEntry.create({
       data: {
         userId: sess.userId,
-        tripId: tripId ? parseInt(tripId) : null,
+        tripId: verifiedTripId,
         countryCode,
         countryName,
         title,

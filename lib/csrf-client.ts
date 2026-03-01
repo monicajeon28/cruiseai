@@ -73,7 +73,11 @@ export function clearAllLocalStorage() {
     }
   });
 
-  // 정리 완료 (verbose 로그 제거됨)
+  // sessionStorage 캐시도 클리어 (로그아웃 후 다른 사용자가 이전 캐시를 사용하지 않도록)
+  try {
+    sessionStorage.removeItem('app-test-mode-cache');
+    sessionStorage.removeItem('app-access-check');
+  } catch { /* sessionStorage 미지원 환경 무시 */ }
 }
 
 /**
