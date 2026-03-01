@@ -162,6 +162,20 @@ export default function ExpenseTracker() {
             .map((c: any) => c.code)
             .filter((c: string) => c !== 'KRW');
           if (foreignCodes.length > 0) {
+            // 1주일 localStorage 캐시 확인 (앱 실행마다 API 호출 불필요)
+            const RATE_CACHE_KEY = 'wallet-exchange-rates-v1';
+            const RATE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 1주일
+            try {
+              const cached = localStorage.getItem(RATE_CACHE_KEY);
+              if (cached) {
+                const { rates: cachedObj, ts } = JSON.parse(cached);
+                if (Date.now() - ts < RATE_CACHE_TTL) {
+                  setCachedRates(cachedObj);
+                  return; // 캐시 유효 → API 호출 없음
+                }
+              }
+            } catch { /* 캐시 파싱 실패 → API 호출 */ }
+
             fetch('/api/wallet/exchange-rate', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -171,6 +185,10 @@ export default function ExpenseTracker() {
                 const rates: Record<string, number> = { KRW: 1 };
                 data.rates.forEach((r: any) => { rates[r.code] = r.rateToKRW; });
                 setCachedRates(rates);
+                // localStorage에 1주일 캐시 저장
+                try {
+                  localStorage.setItem(RATE_CACHE_KEY, JSON.stringify({ rates, ts: Date.now() }));
+                } catch { /* 저장 공간 부족 시 무시 */ }
               }
             }).catch(() => {/* DEFAULT_EXCHANGE_RATES 유지 */});
           }
@@ -181,10 +199,17 @@ export default function ExpenseTracker() {
         }
       }
 
-      // API에서 지출 기록 시도
+      // localStorage 먼저 표시 (즉시 0ms) → 백그라운드에서 API 동기화
+      const localItems = loadFromLocalStorage();
+      if (localItems.length > 0) {
+        setExpenses(localItems);
+        setLoading(false); // 로딩 스피너 즉시 제거
+      }
+
+      // API에서 지출 기록 동기화 (백그라운드)
       try {
         const expensesRes = await fetch('/api/wallet/expenses', {
-          credentials: 'include', // 쿠키 포함
+          credentials: 'include',
         });
 
         if (expensesRes.ok) {
@@ -206,12 +231,10 @@ export default function ExpenseTracker() {
               createdAt: exp.createdAt || new Date().toISOString(),
             }));
 
-            // API 데이터와 localStorage 데이터 병합
-            const localItems = loadFromLocalStorage();
-            const merged = [...formattedExpenses, ...localItems.filter(local =>
-              !formattedExpenses.some(api => api.id === local.id)
-            )];
-
+            // API 데이터로 갱신 (이미 로컬 데이터 표시 중이므로 부드럽게 교체)
+            const serverIds = new Set(formattedExpenses.map((e: any) => e.id));
+            const pendingLocal = loadFromLocalStorage().filter(l => !serverIds.has(l.id));
+            const merged = [...formattedExpenses, ...pendingLocal];
             setExpenses(merged);
             saveToLocalStorage(merged);
             return;
@@ -219,15 +242,7 @@ export default function ExpenseTracker() {
         }
       } catch (apiError: any) {
         logger.warn('[ExpenseTracker] API failed, using localStorage:', apiError);
-      }
-
-      // API 실패 시 localStorage에서 로드
-      const localItems = loadFromLocalStorage();
-      if (localItems.length > 0) {
-        setExpenses(localItems);
-        logger.debug('[ExpenseTracker] Loaded from localStorage:', localItems.length, 'items');
-      } else {
-        setExpenses([]);
+        // localItems는 이미 위에서 표시됨 → 추가 작업 불필요
       }
     } catch (error: any) {
       logger.error('[ExpenseTracker] Error loading data:', error);

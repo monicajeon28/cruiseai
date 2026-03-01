@@ -48,6 +48,13 @@ export default function ChecklistPage() {
     checkPath();
   }, [pathname, router]);
 
+  // items 변화 시 자동으로 localStorage 캐시 갱신 (서버 데이터 있을 때만)
+  useEffect(() => {
+    if (items.length > 0 && !isLoading) {
+      try { localStorage.setItem('checklist-items-cache-v1', JSON.stringify(items)); } catch { /* 무시 */ }
+    }
+  }, [items, isLoading]);
+
   const startSpeaking = (text: string, category: string) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       alert('이 브라우저는 음성 읽기 기능을 지원하지 않습니다.');
@@ -206,11 +213,29 @@ export default function ChecklistPage() {
     }
   };
 
-  // localStorage 동기화 함수 제거 - 이제 API만 사용
+  // localStorage 캐시 (즉시 표시용)
+  const CHECKLIST_CACHE_KEY = 'checklist-items-cache-v1';
+  const saveToCache = (items: ChecklistItem[]) => {
+    try { localStorage.setItem(CHECKLIST_CACHE_KEY, JSON.stringify(items)); } catch { /* 무시 */ }
+  };
+  const loadFromCache = (): ChecklistItem[] => {
+    try {
+      const s = localStorage.getItem(CHECKLIST_CACHE_KEY);
+      return s ? JSON.parse(s) : [];
+    } catch { return []; }
+  };
 
-  // API: 체크리스트 목록 불러오기 (API 전용)
+  // API: 체크리스트 목록 불러오기 (localStorage 우선 → API 백그라운드 동기화)
   const loadItems = async (skipError = false) => {
-    setIsLoading(true);
+    // localStorage 즉시 표시 (0ms)
+    const cached = loadFromCache();
+    if (cached.length > 0) {
+      setItems(cached);
+      setIsLoading(false); // 로딩 스피너 즉시 제거
+    } else {
+      setIsLoading(true);
+    }
+
     if (!skipError) {
       setError(null);
     }
@@ -247,10 +272,12 @@ export default function ChecklistPage() {
           hasCreatedDefaultsRef.current = true;
           const defaultItems = getDefaultItems();
           setItems(defaultItems);
+          saveToCache(defaultItems);
           // 백그라운드에서 서버에 저장 (한 번만 실행되도록 플래그 사용)
           createDefaultItemsOnServer(defaultItems).catch(console.error);
         } else {
           setItems(formattedItems);
+          saveToCache(formattedItems); // localStorage 캐시 갱신
         }
       } else {
         throw new Error('잘못된 데이터 형식입니다.');
