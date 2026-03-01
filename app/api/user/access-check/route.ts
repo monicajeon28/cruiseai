@@ -52,8 +52,7 @@ export async function GET(req: NextRequest) {
 
     if (user.testModeStartedAt) {
       const testStartTime = new Date(user.testModeStartedAt);
-      const testExpireTime = new Date(testStartTime);
-      testExpireTime.setHours(testExpireTime.getHours() + 72); // 72시간 후
+      const testExpireTime = new Date(testStartTime.getTime() + 72 * 60 * 60 * 1000); // 72시간 후
       const now = new Date();
 
       if (now > testExpireTime) {
@@ -82,18 +81,17 @@ export async function GET(req: NextRequest) {
       select: { endDate: true },
     });
 
-    // 여행이 없으면 허용
+    // 여행이 없으면 허용 (신규 사용자)
     if (!latestTrip || !latestTrip.endDate) {
       return NextResponse.json({
         ok: true,
         allowed: true,
-        status: 'active',
+        status: 'no_trip',
       });
     }
 
     const endDate = new Date(latestTrip.endDate);
-    const gracePeriodEnd = new Date(endDate);
-    gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 1); // +1일
+    const gracePeriodEnd = new Date(endDate.getTime() + 24 * 60 * 60 * 1000); // +24시간(1일)
 
     const now = new Date();
 

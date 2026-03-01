@@ -303,7 +303,7 @@ export default function ChatInteractiveUI() {
       
       {/* 채팅 탭 - 여행 종료 여부와 무관하게 항상 표시 */}
       <div className="mx-auto max-w-6xl w-full px-3 pb-2">
-        <ChatTabs value={mode} onChange={onChangeTab} />
+        <ChatTabs value={mode} onChange={onChangeTab} disabled={tripExpired} />
       </div>
       
       {/* 채팅창 - 화면의 80%+ 차지 (여행 종료 시 숨김) */}

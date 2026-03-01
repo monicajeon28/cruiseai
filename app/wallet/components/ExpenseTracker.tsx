@@ -103,6 +103,8 @@ export default function ExpenseTracker() {
 
   // 실시간 환율 계산 (금액이나 통화가 바뀔 때) - 500ms 디바운스 적용
   useEffect(() => {
+    setAmountInKRW(0); // 계산 중 이전 값 표시 방지
+
     const timer = setTimeout(async () => {
       if (!amount || selectedCurrency === 'KRW') {
         const amountNum = parseFloat(amount) || 0;
@@ -133,7 +135,11 @@ export default function ExpenseTracker() {
           }
         }
       } catch (error) {
-        logger.error('[ExpenseTracker] Error calculating KRW:', error);
+        logger.warn('[ExpenseTracker] Debounce exchange rate failed, using fallback:', error);
+        const defaultRate = DEFAULT_EXCHANGE_RATES[selectedCurrency];
+        if (defaultRate) {
+          setAmountInKRW(Math.round(amountNum * defaultRate));
+        }
       }
     }, 500);
 

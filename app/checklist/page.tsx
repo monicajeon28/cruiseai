@@ -170,30 +170,35 @@ export default function ChecklistPage() {
       return;
     }
 
+    const serverItems: Array<ChecklistItem | null> = new Array(defaultItems.length).fill(null);
+
     const results = await Promise.allSettled(
-      defaultItems.map(async (item) => {
+      defaultItems.map(async (item, index) => {
         const res = await fetch('/api/checklist', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'content-type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ text: item.text }),
+          body: JSON.stringify({ text: item.text, completed: false, order: item.order }),
         });
-
-        if (!res.ok) {
-          throw new Error(`Failed to create item: ${res.status}`);
-        }
-
-        const serverItem = await res.json();
-        const finalItem = serverItem.item || serverItem;
-
-        // 서버에서 받은 ID로 업데이트
-        setItems(prev =>
-          prev.map(localItem => (localItem.id === item.id ? finalItem : localItem))
-        );
-
+        if (!res.ok) throw new Error(`Failed: ${res.status}`);
+        const data = await res.json();
+        const finalItem = { ...item, id: data.id ?? item.id };
+        serverItems[index] = finalItem;
         return finalItem;
       })
     );
+
+    // 배치 업데이트 (1번만 리렌더링)
+    setItems(prev => {
+      const updated = [...prev];
+      serverItems.forEach((serverItem, index) => {
+        if (serverItem) {
+          const idx = updated.findIndex(i => i.id === defaultItems[index].id);
+          if (idx !== -1) updated[idx] = serverItem;
+        }
+      });
+      return updated;
+    });
 
     const failedCount = results.filter(r => r.status === 'rejected').length;
     if (failedCount > 0) {
@@ -256,9 +261,9 @@ export default function ChecklistPage() {
 
       const errorMessage = err?.message || '';
 
-      // 429 에러(요청 과다)만 에러 메시지 표시
-      if (!skipError && errorMessage.includes('너무 많')) {
-        setError(`요청이 너무 많습니다. 잠시 후 다시 시도해주세요.`);
+      // 429(요청 과다) 또는 401(인증) 에러 메시지 표시
+      if (!skipError && (errorMessage.includes('너무 많') || errorMessage.includes('인증'))) {
+        setError(errorMessage);
       }
 
       // 429 오류가 아니면 기본 항목 표시 (인증 오류 시에도 기본 항목 표시)

@@ -219,7 +219,7 @@ export default async function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F5F7FA] pb-20">
+    <main className="min-h-screen bg-[#F5F7FA]">
       <div className="container mx-auto px-4 py-8 max-w-5xl">
         {/* 헤더 */}
         <div className="mb-8">
