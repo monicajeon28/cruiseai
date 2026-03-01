@@ -178,7 +178,7 @@ export default function ChecklistPage() {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ text: item.text, completed: false, order: item.order }),
+          body: JSON.stringify({ text: item.text, completed: false, order: index }),
         });
         if (!res.ok) throw new Error(`Failed: ${res.status}`);
         const data = await res.json();

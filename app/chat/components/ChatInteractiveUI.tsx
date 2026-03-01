@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { getDdayMessage } from '@/lib/date-utils'; // D-Day 계산 함수 임포트
+import { logger } from '@/lib/logger';
 import { ChatInputMode } from '@/lib/types';
 
 // 성능 최적화: 큰 컴포넌트들을 동적 임포트
@@ -120,21 +121,28 @@ export default function ChatInteractiveUI() {
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        // 4개 API 병렬 호출
-        const [userResponse, tripResponse, accessResponse, affiliateResponse] = await Promise.all([
+        // 4개 API 병렬 호출 (일부 실패해도 나머지 처리)
+        const [userResult, tripResult, accessResult, affiliateResult] = await Promise.allSettled([
           fetch('/api/user/profile', { credentials: 'include' }),
           fetch('/api/trips/active', { credentials: 'include' }),
           fetch('/api/user/access-check', { credentials: 'include' }),
           fetch('/api/user/affiliate-mall-url', { credentials: 'include' }),
         ]);
 
-        if (!userResponse.ok) throw new Error('Failed to load user profile');
+        if (userResult.status === 'rejected' || !userResult.value.ok) {
+          throw new Error('Failed to load user profile');
+        }
+
+        const userResponse = userResult.value;
+        const tripResponse = tripResult.status === 'fulfilled' ? tripResult.value : null;
+        const accessResponse = accessResult.status === 'fulfilled' ? accessResult.value : null;
+        const affiliateResponse = affiliateResult.status === 'fulfilled' ? affiliateResult.value : null;
 
         const [userData, tripData, accessData, affiliateData] = await Promise.all([
           userResponse.json(),
-          tripResponse.ok ? tripResponse.json() : Promise.resolve(null),
-          accessResponse.ok ? accessResponse.json() : Promise.resolve(null),
-          affiliateResponse.ok ? affiliateResponse.json() : Promise.resolve(null),
+          tripResponse?.ok ? tripResponse.json() : Promise.resolve(null),
+          accessResponse?.ok ? accessResponse.json() : Promise.resolve(null),
+          affiliateResponse?.ok ? affiliateResponse.json() : Promise.resolve(null),
         ]);
 
         // 사용자 프로필 처리
@@ -168,7 +176,7 @@ export default function ChatInteractiveUI() {
           setAffiliateMallUrl(affiliateData.mallUrl);
         }
       } catch (error) {
-        console.error('Error loading user data:', error);
+        logger.error('[ChatInteractiveUI] Error loading user data:', error);
       } finally {
         setIsLoading(false);
       }

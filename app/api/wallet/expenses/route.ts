@@ -85,6 +85,75 @@ export async function GET(req: NextRequest) {
 }
 
 /**
+ * DELETE: 지출 삭제 (?id=123 단건 | ?all=true 전체)
+ */
+export async function DELETE(req: NextRequest) {
+  try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: '인증이 필요합니다' },
+        { status: 401 }
+      );
+    }
+
+    const idParam = req.nextUrl.searchParams.get('id');
+    const allParam = req.nextUrl.searchParams.get('all');
+
+    if (allParam === 'true') {
+      // 현재 사용자의 모든 지출 삭제
+      const result = await prisma.expense.deleteMany({
+        where: { userId: user.id },
+      });
+      return NextResponse.json(
+        { success: true, deletedCount: result.count },
+        { status: 200 }
+      );
+    }
+
+    if (!idParam) {
+      return NextResponse.json(
+        { error: 'id 파라미터가 필요합니다' },
+        { status: 400 }
+      );
+    }
+
+    const expenseId = parseInt(idParam);
+    if (isNaN(expenseId)) {
+      return NextResponse.json(
+        { error: '유효하지 않은 지출 ID입니다' },
+        { status: 400 }
+      );
+    }
+
+    // 소유권 확인
+    const expense = await prisma.expense.findFirst({
+      where: { id: expenseId, userId: user.id },
+    });
+
+    if (!expense) {
+      return NextResponse.json(
+        { error: '지출을 찾을 수 없습니다' },
+        { status: 404 }
+      );
+    }
+
+    await prisma.expense.delete({ where: { id: expenseId } });
+
+    return NextResponse.json(
+      { success: true, deletedId: expenseId },
+      { status: 200 }
+    );
+  } catch (error) {
+    logger.error('[API] 지출 삭제 오류:', error);
+    return NextResponse.json(
+      { error: '지출 삭제 중 오류가 발생했습니다' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * POST: 지출 추가
  */
 export async function POST(req: NextRequest) {
