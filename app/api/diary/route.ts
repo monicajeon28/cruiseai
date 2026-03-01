@@ -42,6 +42,14 @@ export async function GET(req: Request) {
     }
 
     if (tripId) {
+      // tripId 소유권 확인 (IDOR 방지)
+      const trip = await prisma.userTrip.findFirst({
+        where: { id: parseInt(tripId), userId: sess.userId },
+        select: { id: true },
+      });
+      if (!trip) {
+        return NextResponse.json({ ok: false, message: 'Trip not found' }, { status: 404 });
+      }
       where.tripId = parseInt(tripId);
     }
 

@@ -63,17 +63,27 @@ const CURRENCY_COUNTRY_MAP: Record<string, string> = {
   'AED': 'UAE',
 };
 
-export default function Statistics() {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
+interface StatisticsProps {
+  sharedExpenses?: Expense[]; // wallet/page.tsx에서 1회 로드 후 전달 (탭 전환 API 제거)
+}
+
+export default function Statistics({ sharedExpenses }: StatisticsProps = {}) {
+  const [expenses, setExpenses] = useState<Expense[]>(sharedExpenses ?? []);
+  const [loading, setLoading] = useState(!sharedExpenses);
   const [budget, setBudget] = useState<number | null>(null);
   const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [budgetInput, setBudgetInput] = useState('');
 
   useEffect(() => {
-    loadExpenses();
+    if (sharedExpenses) {
+      // 부모에서 데이터 전달받은 경우 API 호출 건너뜀
+      setExpenses(sharedExpenses);
+      setLoading(false);
+    } else {
+      loadExpenses();
+    }
     loadBudget();
-  }, []);
+  }, [sharedExpenses]);
 
   const loadExpenses = async () => {
     setLoading(true);

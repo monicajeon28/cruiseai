@@ -8,35 +8,44 @@ export interface TestModeInfo {
   testModeEndAt: Date | null;
 }
 
+const TEST_MODE_CACHE_KEY = 'app-test-mode-cache';
+const TEST_MODE_CACHE_TTL = 5 * 60 * 1000; // 5분
+
+const TEST_MODE_DEFAULT: TestModeInfo = {
+  isTestMode: false,
+  testModeStartedAt: null,
+  remainingHours: null,
+  testModeEndAt: null,
+};
+
 /**
- * 클라이언트 사이드에서 테스트 모드 확인 (API 호출)
+ * 클라이언트 사이드에서 테스트 모드 확인 (API 호출, sessionStorage 5분 캐싱)
  */
 export async function checkTestModeClient(): Promise<TestModeInfo> {
+  // sessionStorage 캐시 확인 (마운트당 3회 → 1회)
+  try {
+    const cached = sessionStorage.getItem(TEST_MODE_CACHE_KEY);
+    if (cached) {
+      const { data, ts } = JSON.parse(cached);
+      if (Date.now() - ts < TEST_MODE_CACHE_TTL) return data;
+    }
+  } catch { }
+
   try {
     const response = await fetch('/api/user/test-mode', {
       credentials: 'include',
       cache: 'no-store',
     });
 
-    if (!response.ok) {
-      return {
-        isTestMode: false,
-        testModeStartedAt: null,
-        remainingHours: null,
-        testModeEndAt: null,
-      };
-    }
+    if (!response.ok) return TEST_MODE_DEFAULT;
 
     const data = await response.json();
+    try {
+      sessionStorage.setItem(TEST_MODE_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+    } catch { }
     return data;
-  } catch (error) {
-    console.error('[TestMode] Client check error:', error);
-    return {
-      isTestMode: false,
-      testModeStartedAt: null,
-      remainingHours: null,
-      testModeEndAt: null,
-    };
+  } catch {
+    return TEST_MODE_DEFAULT;
   }
 }
 

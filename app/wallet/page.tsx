@@ -14,11 +14,25 @@ import { clearAllLocalStorage } from '@/lib/csrf-client';
 
 type Tab = 'calculator' | 'expenses' | 'statistics';
 
+type WalletExpense = {
+  id: number | string;
+  tripId: number;
+  day: number;
+  date: string;
+  category: string;
+  amount: number;
+  currency: string;
+  amountInKRW: number;
+  description: string;
+  createdAt: string;
+};
+
 export default function WalletPage() {
   const router = useRouter();
   const pathname = usePathname();
   const [activeTab, setActiveTab] = useState<Tab>('calculator');
   const [testModeInfo, setTestModeInfo] = useState<TestModeInfo | null>(null);
+  const [sharedExpenses, setSharedExpenses] = useState<WalletExpense[]>([]);
 
   useEffect(() => {
     // 테스트 모드 정보 로드 및 경로 보호
@@ -34,6 +48,20 @@ export default function WalletPage() {
     };
     loadTestModeInfo();
   }, [pathname, router]);
+
+  // 지출 데이터 1회 로드 → ExpenseTracker + Statistics 공유 (탭 전환 API 중복 제거)
+  useEffect(() => {
+    const loadSharedExpenses = async () => {
+      try {
+        const res = await fetch('/api/wallet/expenses', { credentials: 'include' });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.expenses)) {
+          setSharedExpenses(data.expenses);
+        }
+      } catch { }
+    };
+    loadSharedExpenses();
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -143,7 +171,7 @@ export default function WalletPage() {
       <div className="max-w-6xl mx-auto px-4 pb-[calc(env(safe-area-inset-bottom)+6rem)]">
         {activeTab === 'calculator' && <CurrencyCalculator />}
         {activeTab === 'expenses' && <ExpenseTracker />}
-        {activeTab === 'statistics' && <Statistics />}
+        {activeTab === 'statistics' && <Statistics sharedExpenses={sharedExpenses} />}
       </div>
     </div>
   );

@@ -26,6 +26,26 @@ const PARTNER_MALL_PATHS = ['/dashboard', '/shop', '/customers', '/payment', '/p
 // -test로 끝나는 모든 경로는 접근 체크 건너뛰기
 const isTestModePath = (pathname: string) => pathname.endsWith('-test') || pathname.includes('/-test/');
 
+const ACCESS_CACHE_KEY = 'app-access-check';
+const ACCESS_CACHE_TTL = 5 * 60 * 1000; // 5분
+
+const getCachedAccess = () => {
+  try {
+    const cached = sessionStorage.getItem(ACCESS_CACHE_KEY);
+    if (cached) {
+      const { data, ts } = JSON.parse(cached);
+      if (Date.now() - ts < ACCESS_CACHE_TTL) return data;
+    }
+  } catch { }
+  return null;
+};
+
+const setCachedAccess = (data: unknown) => {
+  try {
+    sessionStorage.setItem(ACCESS_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+  } catch { }
+};
+
 export default function AccessCheckWrapper({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -41,7 +61,6 @@ export default function AccessCheckWrapper({ children }: { children: React.React
 
     // 공개 경로는 접근 체크 건너뛰기 (즉시 처리)
     if (PUBLIC_PATHS.some(path => pathname === path || pathname.startsWith(path))) {
-      console.log('[AccessCheck] Public path detected, skipping check:', pathname);
       setIsChecking(false);
       setAccessStatus({
         allowed: true,
@@ -53,14 +72,26 @@ export default function AccessCheckWrapper({ children }: { children: React.React
     // 테스트 모드 경로도 3일 체험 만료 체크 필요
     // -test로 끝나는 경로는 별도의 체험 만료 체크 수행
     if (isTestModePath(pathname)) {
-      console.log('[AccessCheck] Test mode path detected, checking trial expiry:', pathname);
-
       const checkTestAccess = async () => {
+        // sessionStorage 캐시 확인 (페이지 전환마다 API 호출 제거)
+        const cachedData = getCachedAccess();
+        if (cachedData) {
+          if (!cachedData.allowed && cachedData.reason === 'trial_expired') {
+            setAccessStatus({ allowed: false, status: 'expired', reason: cachedData.reason, message: cachedData.message });
+            setShowModal(true);
+          } else {
+            setAccessStatus({ allowed: true, status: 'active' });
+          }
+          setIsChecking(false);
+          return;
+        }
+
         try {
           const response = await fetch('/api/user/access-check', {
             credentials: 'include',
           });
           const data = await response.json();
+          setCachedAccess(data);
 
           if (data.ok) {
             // 3일 체험 만료 체크 (reason: 'trial_expired')
@@ -104,60 +135,58 @@ export default function AccessCheckWrapper({ children }: { children: React.React
 
     // 관리자 경로는 접근 체크 건너뛰기 (AdminLayout에서 인증 확인)
     if (ADMIN_PATHS.some(path => pathname.startsWith(path))) {
-      console.log('[AccessCheck] Admin path detected, skipping check:', pathname);
       setIsChecking(false);
-      setAccessStatus({
-        allowed: true,
-        status: 'active',
-      });
+      setAccessStatus({ allowed: true, status: 'active' });
       return;
     }
 
     // 어필리에이트 경로는 접근 체크 건너뛰기 (어필리에이트는 별도 인증)
     if (AFFILIATE_PATHS.some(path => pathname.startsWith(path))) {
-      console.log('[AccessCheck] Affiliate path detected, skipping check:', pathname);
       setIsChecking(false);
-      setAccessStatus({
-        allowed: true,
-        status: 'active',
-      });
+      setAccessStatus({ allowed: true, status: 'active' });
       return;
     }
 
-    // 판매원 개인몰 경로는 접근 체크 건너뛰기 (판매원/대리점장 관리자 페이지)
-    // 경로 패턴: /[mallUserId]/dashboard, /[mallUserId]/shop, /[mallUserId]/customers 등
+    // 판매원 개인몰 경로는 접근 체크 건너뛰기
     const pathSegments = pathname.split('/').filter(Boolean);
     if (pathSegments.length >= 2 && PARTNER_MALL_PATHS.includes(`/${pathSegments[1]}`)) {
-      console.log('[AccessCheck] Partner mall path detected, skipping check:', pathname);
       setIsChecking(false);
-      setAccessStatus({
-        allowed: true,
-        status: 'active',
-      });
+      setAccessStatus({ allowed: true, status: 'active' });
       return;
     }
 
-    // 크루즈몰 경로는 접근 체크는 하지만 모달은 표시하지 않음 (상태 표시만)
+    // 크루즈몰 경로는 모달 표시하지 않음
     if (MALL_PATHS.some(path => pathname === path || pathname.startsWith(path)) || pathname === '/') {
-      console.log('[AccessCheck] Mall path detected, skipping modal:', pathname);
       setIsChecking(false);
-      setAccessStatus({
-        allowed: true,
-        status: 'active',
-      });
+      setAccessStatus({ allowed: true, status: 'active' });
       return;
     }
 
     // 공개 경로가 아닌 경우에만 접근 체크
     const checkAccess = async () => {
+      // sessionStorage 캐시 확인 (페이지 전환마다 200-500ms 절약)
+      const cachedData = getCachedAccess();
+      if (cachedData?.ok) {
+        setAccessStatus({
+          allowed: cachedData.allowed,
+          status: cachedData.status,
+          reason: cachedData.reason,
+          message: cachedData.message,
+          remainingHours: cachedData.remainingHours,
+        });
+        if (!cachedData.allowed) setShowModal(true);
+        setIsChecking(false);
+        return;
+      }
+
       try {
-        console.log('[AccessCheck] Checking access for:', pathname);
         const response = await fetch('/api/user/access-check', {
           credentials: 'include',
         });
         const data = await response.json();
 
         if (data.ok) {
+          setCachedAccess(data);
           setAccessStatus({
             allowed: data.allowed,
             status: data.status,
@@ -166,24 +195,14 @@ export default function AccessCheckWrapper({ children }: { children: React.React
             remainingHours: data.remainingHours,
           });
 
-          // 접근 불가 시 모달 표시
           if (!data.allowed) {
             setShowModal(true);
           }
         } else {
-          // 체크 실패 시 허용 (기존 기능 유지)
-          setAccessStatus({
-            allowed: true,
-            status: 'active',
-          });
+          setAccessStatus({ allowed: true, status: 'active' });
         }
-      } catch (error) {
-        console.error('[AccessCheck] Failed to check access:', error);
-        // 에러 시 허용 (기존 기능 유지)
-        setAccessStatus({
-          allowed: true,
-          status: 'active',
-        });
+      } catch {
+        setAccessStatus({ allowed: true, status: 'active' });
       } finally {
         setIsChecking(false);
       }

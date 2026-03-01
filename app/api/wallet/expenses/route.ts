@@ -217,19 +217,17 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // 소유권 확인
-    const expense = await prisma.expense.findFirst({
+    // 소유권 확인 + 삭제 (원자적 처리, TOCTOU 제거)
+    const result = await prisma.expense.deleteMany({
       where: { id: expenseId, userId: user.id },
     });
 
-    if (!expense) {
+    if (result.count === 0) {
       return NextResponse.json(
         { error: '지출을 찾을 수 없습니다' },
         { status: 404 }
       );
     }
-
-    await prisma.expense.delete({ where: { id: expenseId } });
 
     return NextResponse.json(
       { success: true, deletedId: expenseId },
