@@ -83,6 +83,7 @@ const DEFAULT_EXCHANGE_RATES: Record<string, number> = {
 export default function ExpenseTracker() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>(DEFAULT_CURRENCIES);
+  const [cachedRates, setCachedRates] = useState<Record<string, number>>(DEFAULT_EXCHANGE_RATES);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [tripDates, setTripDates] = useState<{ startDate: string; endDate: string } | null>(null);
@@ -101,50 +102,20 @@ export default function ExpenseTracker() {
     loadData();
   }, []);
 
-  // 실시간 환율 계산 (금액이나 통화가 바뀔 때) - 500ms 디바운스 적용
+  // 실시간 환율 계산 - 캐시된 환율로 즉시 계산 (API 호출 없음, 딜레이 없음)
   useEffect(() => {
-    setAmountInKRW(0); // 계산 중 이전 값 표시 방지
-
-    const timer = setTimeout(async () => {
-      if (!amount || selectedCurrency === 'KRW') {
-        const amountNum = parseFloat(amount) || 0;
-        setAmountInKRW(amountNum);
-        return;
-      }
-
-      const amountNum = parseFloat(amount);
-      if (isNaN(amountNum) || amountNum <= 0) {
-        setAmountInKRW(0);
-        return;
-      }
-
-      try {
-        // 환율 정보 가져오기
-        const ratesRes = await fetch('/api/wallet/exchange-rate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ currencies: [selectedCurrency, 'KRW'] }),
-        });
-        const ratesData = await ratesRes.json();
-
-        if (ratesData.success) {
-          const currencyRate = ratesData.rates.find((r: any) => r.code === selectedCurrency);
-          if (currencyRate) {
-            const krw = Math.round(amountNum * currencyRate.rateToKRW);
-            setAmountInKRW(krw);
-          }
-        }
-      } catch (error) {
-        logger.warn('[ExpenseTracker] Debounce exchange rate failed, using fallback:', error);
-        const defaultRate = DEFAULT_EXCHANGE_RATES[selectedCurrency];
-        if (defaultRate) {
-          setAmountInKRW(Math.round(amountNum * defaultRate));
-        }
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [amount, selectedCurrency]);
+    const amountNum = parseFloat(amount) || 0;
+    if (!amount || amountNum <= 0) {
+      setAmountInKRW(0);
+      return;
+    }
+    if (selectedCurrency === 'KRW') {
+      setAmountInKRW(amountNum);
+      return;
+    }
+    const rate = cachedRates[selectedCurrency] ?? DEFAULT_EXCHANGE_RATES[selectedCurrency] ?? 1;
+    setAmountInKRW(Math.round(amountNum * rate));
+  }, [amount, selectedCurrency, cachedRates]);
 
   // localStorage에서 로드
   const loadFromLocalStorage = (): Expense[] => {
@@ -185,6 +156,24 @@ export default function ExpenseTracker() {
       if (countriesData.success) {
         if (countriesData.currencies?.length > 0) {
           setCurrencies(countriesData.currencies);
+
+          // 여행지 통화 환율을 한 번에 사전 로드 (이후 계산은 로컬에서 즉시)
+          const foreignCodes = countriesData.currencies
+            .map((c: any) => c.code)
+            .filter((c: string) => c !== 'KRW');
+          if (foreignCodes.length > 0) {
+            fetch('/api/wallet/exchange-rate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ currencies: foreignCodes }),
+            }).then(r => r.json()).then(data => {
+              if (data.success) {
+                const rates: Record<string, number> = { KRW: 1 };
+                data.rates.forEach((r: any) => { rates[r.code] = r.rateToKRW; });
+                setCachedRates(rates);
+              }
+            }).catch(() => {/* DEFAULT_EXCHANGE_RATES 유지 */});
+          }
         }
         setTripDates(countriesData.tripDates);
         if (countriesData.tripId) {
@@ -269,35 +258,11 @@ export default function ExpenseTracker() {
 
     setLoading(true);
     try {
-      // 환율 정보 가져오기
+      // 캐시된 환율로 즉시 계산 (API 호출 없음)
       let amountInKRW = amountNum;
-      try {
-        const ratesRes = await fetch('/api/wallet/exchange-rate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ currencies: [selectedCurrency, 'KRW'] }),
-        });
-        const ratesData = await ratesRes.json();
-
-        if (ratesData.success) {
-          const currencyRate = ratesData.rates.find((r: any) => r.code === selectedCurrency);
-          if (currencyRate) {
-            amountInKRW = selectedCurrency === 'KRW'
-              ? amountNum
-              : Math.round(amountNum * currencyRate.rateToKRW);
-          }
-        }
-      } catch (rateError) {
-        logger.warn('[ExpenseTracker] Exchange rate API failed, using default:', rateError);
-        // 통화별 기본 환율 사용 (API 실패 시 대략적 값)
-        if (selectedCurrency !== 'KRW') {
-          const defaultRate = DEFAULT_EXCHANGE_RATES[selectedCurrency];
-          if (defaultRate) {
-            amountInKRW = Math.round(amountNum * defaultRate);
-          } else {
-            amountInKRW = amountNum; // 알 수 없는 통화는 1:1 처리
-          }
-        }
+      if (selectedCurrency !== 'KRW') {
+        const rate = cachedRates[selectedCurrency] ?? DEFAULT_EXCHANGE_RATES[selectedCurrency] ?? 1;
+        amountInKRW = Math.round(amountNum * rate);
       }
 
       // 날짜 계산 (startDate + day)
