@@ -398,7 +398,10 @@ export default function ExpenseTracker() {
 
       // API에서 모든 지출 삭제 시도
       try {
-        const res = await fetch('/api/wallet/expenses?all=true', {
+        const deleteUrl = tripId
+          ? `/api/wallet/expenses?all=true&tripId=${tripId}`
+          : '/api/wallet/expenses?all=true';
+        const res = await fetch(deleteUrl, {
           method: 'DELETE',
           credentials: 'include',
         });
@@ -489,15 +492,20 @@ export default function ExpenseTracker() {
 
     setLoading(true);
     try {
-      // 즉시 localStorage에서 업데이트
+      // 즉시 localStorage에서 업데이트 (DEFAULT_EXCHANGE_RATES로 환율 계산)
       const updatedExpenses = expenses.map(exp => {
         if (exp.id === id) {
-          // 환율 재계산 필요 시
           const currency = exp.currency;
-          const amountInKRW = currency === 'KRW'
-            ? amountNum
-            : Math.round(amountNum * (exp.amountInKRW / exp.amount));
-
+          let amountInKRW: number;
+          if (currency === 'KRW') {
+            amountInKRW = amountNum;
+          } else {
+            // DEFAULT_EXCHANGE_RATES 사용 (stale 환율 대신 표준 환율)
+            const rate = DEFAULT_EXCHANGE_RATES[currency];
+            amountInKRW = rate
+              ? Math.round(amountNum * rate)
+              : Math.round(amountNum * (exp.amountInKRW && exp.amount ? exp.amountInKRW / exp.amount : 1));
+          }
           return {
             ...exp,
             amount: amountNum,

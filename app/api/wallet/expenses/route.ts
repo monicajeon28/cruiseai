@@ -85,7 +85,82 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * DELETE: 지출 삭제 (?id=123 단건 | ?all=true 전체)
+ * PUT: 지출 수정
+ */
+export async function PUT(req: NextRequest) {
+  try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: '인증이 필요합니다' },
+        { status: 401 }
+      );
+    }
+
+    const body = await req.json();
+    const { id, amount, amountInKRW, description, category, currency, day, date } = body;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: '지출 ID가 필요합니다' },
+        { status: 400 }
+      );
+    }
+
+    const expenseId = parseInt(String(id));
+    if (isNaN(expenseId)) {
+      return NextResponse.json(
+        { error: '유효하지 않은 지출 ID입니다' },
+        { status: 400 }
+      );
+    }
+
+    // 소유권 확인
+    const existing = await prisma.expense.findFirst({
+      where: { id: expenseId, userId: user.id },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: '지출을 찾을 수 없습니다' },
+        { status: 404 }
+      );
+    }
+
+    const amountVal = amount !== undefined ? parseFloat(String(amount)) : existing.amount;
+    const amountKRWVal = amountInKRW !== undefined ? parseFloat(String(amountInKRW)) : existing.amountKRW;
+    const currencyVal = currency ?? existing.currency;
+    const foreignAmountVal = currencyVal === 'KRW' ? amountKRWVal : amountVal;
+
+    const updated = await prisma.expense.update({
+      where: { id: expenseId },
+      data: {
+        ...(amount !== undefined ? { amount: amountVal } : {}),
+        ...(amountInKRW !== undefined ? { amountKRW: amountKRWVal, foreignAmount: foreignAmountVal } : {}),
+        ...(currency !== undefined ? { currency: currencyVal } : {}),
+        ...(description !== undefined ? { description } : {}),
+        ...(category !== undefined ? { category } : {}),
+        ...(day !== undefined ? { day } : {}),
+        ...(date !== undefined ? { date: new Date(date) } : {}),
+        updatedAt: new Date(),
+      },
+    });
+
+    return NextResponse.json(
+      { success: true, expense: { ...updated, tripId: updated.userTripId, amountInKRW: updated.amountKRW } },
+      { status: 200 }
+    );
+  } catch (error) {
+    logger.error('[API] 지출 수정 오류:', error);
+    return NextResponse.json(
+      { error: '지출 수정 중 오류가 발생했습니다' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE: 지출 삭제 (?id=123 단건 | ?all=true&tripId=456 현재여행 전체)
  */
 export async function DELETE(req: NextRequest) {
   try {
@@ -99,12 +174,28 @@ export async function DELETE(req: NextRequest) {
 
     const idParam = req.nextUrl.searchParams.get('id');
     const allParam = req.nextUrl.searchParams.get('all');
+    const tripIdParam = req.nextUrl.searchParams.get('tripId');
 
     if (allParam === 'true') {
-      // 현재 사용자의 모든 지출 삭제
-      const result = await prisma.expense.deleteMany({
-        where: { userId: user.id },
-      });
+      // 특정 여행 또는 현재 사용자 전체 지출 삭제
+      const where: { userId: number; userTripId?: number } = { userId: user.id };
+      if (tripIdParam) {
+        const userTripId = parseInt(tripIdParam);
+        if (!isNaN(userTripId)) {
+          // 여행 소유권 확인
+          const trip = await prisma.userTrip.findFirst({
+            where: { id: userTripId, userId: user.id },
+          });
+          if (!trip) {
+            return NextResponse.json(
+              { error: '여행을 찾을 수 없습니다' },
+              { status: 404 }
+            );
+          }
+          where.userTripId = userTripId;
+        }
+      }
+      const result = await prisma.expense.deleteMany({ where });
       return NextResponse.json(
         { success: true, deletedCount: result.count },
         { status: 200 }

@@ -224,13 +224,13 @@ export default function ChatInteractiveUI() {
 
     const startDateObj = parseDate(trip.startDateIso);
 
-    // 테스트 사용자(전혜선)인 경우 D-day 고정
-    const TEST_USER_PHONE = '01024958013';
+    // 데모 계정 D-day 고정 (환경변수로 관리)
+    const DEMO_USER_PHONE = process.env.NEXT_PUBLIC_DEMO_USER_PHONE ?? '';
     const FIXED_DDAY = 100;
     let diffDays: number;
 
-    if (userPhone === TEST_USER_PHONE && today < startDateObj) {
-      // 전혜선 계정이고 여행 시작 전인 경우 D-day 고정
+    if (DEMO_USER_PHONE && userPhone === DEMO_USER_PHONE && today < startDateObj) {
+      // 데모 계정이고 여행 시작 전인 경우 D-day 고정
       diffDays = FIXED_DDAY;
     } else if (today < startDateObj) {
       const diffTime = startDateObj.getTime() - today.getTime();
