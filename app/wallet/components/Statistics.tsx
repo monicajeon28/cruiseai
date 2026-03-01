@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { FiTrendingUp, FiPieChart, FiDollarSign, FiTarget, FiAlertCircle, FiCheckCircle, FiX } from 'react-icons/fi';
 
 type Expense = {
@@ -91,16 +92,16 @@ export default function Statistics() {
               const localExpenses = JSON.parse(saved);
               if (Array.isArray(localExpenses)) {
                 setExpenses(localExpenses);
-                console.log('[Statistics] Loaded from localStorage:', localExpenses.length, 'items');
+                logger.debug('[Statistics] Loaded from localStorage:', localExpenses.length, 'items');
               }
             } catch (e) {
-              console.error('[Statistics] Error parsing localStorage:', e);
+              logger.error('[Statistics] Error parsing localStorage:', e);
             }
           }
         }
       }
     } catch (error) {
-      console.error('[Statistics] Error loading expenses:', error);
+      logger.error('[Statistics] Error loading expenses:', error);
       // localStorage에서 로드 시도
       if (typeof window !== 'undefined') {
         const saved = localStorage.getItem(EXPENSES_STORAGE_KEY);
@@ -109,10 +110,10 @@ export default function Statistics() {
             const localExpenses = JSON.parse(saved);
             if (Array.isArray(localExpenses)) {
               setExpenses(localExpenses);
-              console.log('[Statistics] Loaded from localStorage (fallback):', localExpenses.length, 'items');
+              logger.debug('[Statistics] Loaded from localStorage (fallback):', localExpenses.length, 'items');
             }
           } catch (e) {
-            console.error('[Statistics] Error parsing localStorage:', e);
+            logger.error('[Statistics] Error parsing localStorage:', e);
           }
         }
       }
@@ -130,7 +131,7 @@ export default function Statistics() {
           setBudget(parsed);
           setBudgetInput(parsed.toString());
         } catch (e) {
-          console.error('[Statistics] Error loading budget:', e);
+          logger.error('[Statistics] Error loading budget:', e);
         }
       }
     }

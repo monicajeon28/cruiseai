@@ -87,6 +87,11 @@ export default function ChatClientShell({
         setIsLoading(true);
         // test 모드 확인
         const testModeInfo = await checkTestModeClient();
+        // checkTestModeClient 완료 후 abort 여부 확인 (모드 전환 시 이후 fetch 방지)
+        if (controller.signal.aborted) {
+          isAborted = true;
+          return;
+        }
         const testSuffix = testModeInfo.isTestMode ? '_test' : '';
 
         // 모드별로 다른 sessionId 사용 (탭별 히스토리 분리 + test 모드 구분)
@@ -143,6 +148,8 @@ export default function ChatClientShell({
     return () => {
       // 모드 변경 또는 언마운트 시 진행 중인 fetch 취소
       abortControllerRef.current?.abort();
+      // cleanup 시점에 리셋 → Effect 재실행 시 hasLoadedHistoryRef === false 보장
+      hasLoadedHistoryRef.current = false;
     };
   }, [mode]);
 

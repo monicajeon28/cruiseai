@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiCalendar, FiMapPin, FiAnchor, FiClock } from 'react-icons/fi';
+import Link from 'next/link';
+import { FiArrowLeft, FiCalendar, FiMapPin, FiAnchor, FiClock } from 'react-icons/fi';
 
 /**
  * 내 여행 목록 페이지 (읽기 전용)
@@ -28,6 +29,7 @@ interface Trip {
 export default function MyTripsPage() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadTrips();
@@ -48,6 +50,7 @@ export default function MyTripsPage() {
       }
     } catch (error) {
       console.error('Error loading trips:', error);
+      setError('여행 정보를 불러오지 못했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -96,17 +99,30 @@ export default function MyTripsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 md:p-6">
+    <div className="min-h-screen bg-gray-50">
+      {/* 스티키 헤더 */}
+      <div className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+        <Link href="/chat" className="p-2 rounded-full hover:bg-gray-100 transition-colors" aria-label="뒤로가기">
+          <FiArrowLeft size={20} className="text-gray-700" />
+        </Link>
+        <h1 className="text-lg font-bold text-gray-900">나의 크루즈 여행</h1>
+      </div>
+
+      <div className="p-3 md:p-6">
       <div className="max-w-6xl mx-auto">
-        {/* 헤더 */}
+        {/* 부제 */}
         <div className="mb-4 md:mb-6">
-          <h1 className="text-xl md:text-3xl font-bold text-gray-900 mb-2">내 여행</h1>
           <p className="text-gray-600 text-sm md:text-base">
             {trips.length > 0
               ? `총 ${trips.length}개의 여행이 등록되어 있습니다`
               : '등록된 여행이 없습니다'}
           </p>
         </div>
+
+        {/* 에러 메시지 */}
+        {error && (
+          <div className="text-center py-8 text-red-500 text-sm">{error}</div>
+        )}
 
         {/* 여행 목록 */}
         {isLoading ? (
@@ -223,6 +239,7 @@ export default function MyTripsPage() {
             ))}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

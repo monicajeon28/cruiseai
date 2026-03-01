@@ -741,6 +741,11 @@ export default function TranslatorPage() {
       console.error('[stopPressToTalk] Unexpected error:', error);
     } finally {
       isProcessingRef.current = false; // 예외 여부와 무관하게 항상 해제
+      // 마이크 트랙 해제 (모바일 마이크 점유 표시 제거, 다음 클릭 시 재획득)
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(track => track.stop());
+        micStreamRef.current = null;
+      }
     }
   }
 

@@ -722,6 +722,10 @@ export default function TranslatorPage() {
       console.error('[stopPressToTalk] Unexpected error:', error);
     } finally {
       isProcessingRef.current = false; // 예외 여부와 무관하게 항상 해제
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(track => track.stop());
+        micStreamRef.current = null;
+      }
     }
   }
 
