@@ -27,6 +27,21 @@ interface DiaryEntry {
   createdAt: string;
 }
 
+const DIARY_CACHE_VERSION = 'v1';
+
+const getDiaryCacheKey = (code: string) => `diary-entries-cache-${code}-${DIARY_CACHE_VERSION}`;
+
+const saveDiaryToCache = (code: string, entries: DiaryEntry[]) => {
+  try { localStorage.setItem(getDiaryCacheKey(code), JSON.stringify(entries)); } catch { }
+};
+
+const loadDiaryFromCache = (code: string): DiaryEntry[] => {
+  try {
+    const s = localStorage.getItem(getDiaryCacheKey(code));
+    return s ? JSON.parse(s) : [];
+  } catch { return []; }
+};
+
 export default function VisitedCountryModal({
   isOpen,
   onClose,
@@ -50,6 +65,12 @@ export default function VisitedCountryModal({
   const loadDiaryEntries = async () => {
     if (!countryCode) return;
 
+    // localStorage-first: 캐시 즉시 표시
+    const cached = loadDiaryFromCache(countryCode);
+    if (cached.length > 0) {
+      setDiaryEntries(cached);
+    }
+
     try {
       const response = await fetch(`/api/diary?countryCode=${countryCode}`, {
         credentials: 'include',
@@ -58,9 +79,10 @@ export default function VisitedCountryModal({
 
       if (data.ok && Array.isArray(data.entries)) {
         setDiaryEntries(data.entries);
+        saveDiaryToCache(countryCode, data.entries);
       }
-    } catch (error) {
-      console.error('Failed to load diary entries:', error);
+    } catch {
+      // 캐시 데이터가 이미 표시됨, 조용히 실패
     }
   };
 
