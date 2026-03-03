@@ -8,32 +8,16 @@ import { csrfFetch } from '@/lib/csrf-client';
 import dynamic from 'next/dynamic';
 import { trackFeature } from '@/lib/analytics';
 import { checkTestModeClient, getCorrectPath } from '@/lib/test-mode-client';
+import { showError, showWarning } from '@/components/ui/Toast';
+// 언어별 회화 데이터 동적 로더 (현재 언어만 로드)
+import { loadPhrasesForLang } from './phrases';
+import type { PhraseCategory } from './phrases';
 
 // 성능 최적화: 큰 컴포넌트와 데이터를 동적 임포트
 const TranslatorTutorial = dynamic(() => import('./components/TranslatorTutorial'), {
   loading: () => <div className="animate-pulse">튜토리얼 로딩 중...</div>,
   ssr: false,
 });
-
-// PHRASE_CATEGORIES_DATA 타입 정의
-type PhraseCategory = {
-  id: string;
-  name: string;
-  emoji: string;
-  phrases: Array<{ ko: string; target: string; pronunciation?: string; emoji: string }>;
-};
-
-type PhraseCategoriesData = Record<string, PhraseCategory[]>;
-
-// PHRASE_CATEGORIES_DATA도 동적 임포트 (큰 데이터 파일)
-let PHRASE_CATEGORIES_DATA: PhraseCategoriesData | null = null;
-const loadPhraseCategories = async (): Promise<PhraseCategoriesData> => {
-  if (!PHRASE_CATEGORIES_DATA) {
-    const phraseModule = await import('./PHRASE_CATEGORIES_DATA');
-    PHRASE_CATEGORIES_DATA = phraseModule.PHRASE_CATEGORIES_DATA as PhraseCategoriesData;
-  }
-  return PHRASE_CATEGORIES_DATA;
-};
 
 // 국가별 → 현지어 매핑
 const DESTINATION_LANGUAGE_MAP: Record<string, { code: string; name: string; flag: string }> = {
@@ -124,34 +108,33 @@ export default function TranslatorPage() {
   const [portInfo, setPortInfo] = useState<string>('');
   const [isCruising, setIsCruising] = useState(false);
 
-  // 성능 최적화: PHRASE_CATEGORIES_DATA 동적 로딩
-  const [phraseCategoriesData, setPhraseCategoriesData] = useState<PhraseCategoriesData | null>(null);
+  // 성능 최적화: 현재 언어 회화 데이터만 동적 로딩
+  const [phraseCategoriesData, setPhraseCategoriesData] = useState<PhraseCategory[] | null>(null);
   const [isLoadingPhraseData, setIsLoadingPhraseData] = useState(true);
 
   useEffect(() => {
-    loadPhraseCategories()
-      .then((data) => {
-        if (data && typeof data === 'object' && !Array.isArray(data)) {
-          setPhraseCategoriesData(data);
-        } else {
-          console.warn('[Translator] Invalid PHRASE_CATEGORIES_DATA format');
-          setPhraseCategoriesData({}); // 기본값
-        }
+    let cancelled = false;
+    setIsLoadingPhraseData(true);
+    loadPhrasesForLang(localLang.code)
+      .then((phrases) => {
+        if (!cancelled) setPhraseCategoriesData(phrases);
       })
       .catch((error) => {
-        console.error('[Translator] Failed to load PHRASE_CATEGORIES_DATA:', error);
-        setPhraseCategoriesData({}); // 기본값
+        logger.error('[Translator] Failed to load phrases', error);
+        if (!cancelled) setPhraseCategoriesData([]);
       })
       .finally(() => {
-        setIsLoadingPhraseData(false);
+        if (!cancelled) setIsLoadingPhraseData(false);
       });
-  }, []);
+    return () => { cancelled = true; };
+  }, [localLang.code]);
 
   // 첫 방문 시 튜토리얼 표시
   useEffect(() => {
     const hasSeen = localStorage.getItem('hasSeenTranslatorTutorial');
     if (!hasSeen) {
-      setTimeout(() => setShowTutorial(true), 1000);
+      const t = setTimeout(() => setShowTutorial(true), 1000);
+      return () => clearTimeout(t);
     }
   }, []);
 
@@ -189,9 +172,13 @@ export default function TranslatorPage() {
 
   // 현재 날짜의 기항지 정보를 읽어 현지어 자동 설정
   useEffect(() => {
+    const controller = new AbortController();
     (async () => {
       try {
-        const res = await fetch('/api/itinerary/current', { credentials: 'include' });
+        const res = await fetch('/api/itinerary/current', {
+          credentials: 'include',
+          signal: controller.signal,
+        });
         const data = await res.json();
 
         if (!data.ok) {
@@ -232,11 +219,14 @@ export default function TranslatorPage() {
         } else {
           setDestination('일정 정보 없음');
         }
-      } catch (error) {
-        console.error('Error loading current itinerary:', error);
-        setDestination('로드 실패');
+      } catch (error: any) {
+        if (error?.name !== 'AbortError') {
+          logger.error('Error loading current itinerary', error);
+          setDestination('로드 실패');
+        }
       }
     })();
+    return () => controller.abort();
   }, []);
 
   // 음성인식 초기화(webkit + 표준 둘 다 커버)
@@ -486,7 +476,7 @@ export default function TranslatorPage() {
         v.lang.toLowerCase().startsWith(langPrefix)
       );
       if (!hasVoice) {
-        alert(`❌ 이 기기에서 ${langCode} 언어의 음성을 지원하지 않습니다.\n\n기기 설정에서 해당 언어 음성 팩을 설치해주세요.`);
+        showWarning('기기 설정에서 해당 언어 음성 팩을 설치해주세요.', `이 기기에서 ${langCode} 언어의 음성을 지원하지 않습니다.`);
         return;
       }
     }
@@ -505,7 +495,7 @@ export default function TranslatorPage() {
   // 공통 음성 인식 시작(길게 누르는 동안)
   async function startPressToTalk(from: { code: string; name: string; flag: string }, to: { code: string; name: string; flag: string }) {
     if (!recRef.current) {
-      alert('❌ 이 브라우저는 음성 인식을 지원하지 않습니다.\n\n음성 인식을 지원하는 브라우저(Chrome, Edge, Safari 등)를 사용해주세요.');
+      showError('Chrome, Edge, Safari 브라우저를 사용해주세요.', '이 브라우저는 음성 인식을 지원하지 않습니다.');
       return;
     }
 
@@ -556,7 +546,7 @@ export default function TranslatorPage() {
       // 2단계: Speech Recognition 시작
       const r = recRef.current!;
       if (!r) {
-        alert('❌ 음성 인식 초기화에 실패했습니다.');
+        showError('음성 인식 초기화에 실패했습니다. 다시 시도해주세요.');
         setListening('none');
         setPreview('');
         return;
@@ -614,12 +604,12 @@ export default function TranslatorPage() {
         setPreview('');
 
         if (errorType === 'not-allowed' || errorType === 'permission-denied') {
-          alert('❌ 마이크 권한이 필요합니다.\n\n💡 해결 방법:\n1. 브라우저 주소창 왼쪽 🔒 아이콘 클릭\n2. "마이크" → "허용" 선택\n3. 페이지 새로고침 (F5)\n4. 버튼을 다시 눌러주세요');
+          showWarning('주소창 🔒 아이콘 > 마이크 허용 후 새로고침(F5)해주세요.', '마이크 권한이 필요합니다.');
         } else if (errorType === 'no-speech') {
           // 말이 없으면 조용히 처리 (알림 없음)
           logger.log('음성이 감지되지 않았습니다.');
         } else if (errorType === 'network') {
-          alert('⚠️ 네트워크 오류가 발생했습니다.\n인터넷 연결을 확인해주세요.');
+          showError('인터넷 연결을 확인해주세요.', '네트워크 오류가 발생했습니다.');
         } else {
           // 다른 에러는 조용히 로그만
           console.error('[Speech Recognition Error]', errorType);
@@ -644,7 +634,7 @@ export default function TranslatorPage() {
         setPreview('');
 
         if (startError?.name === 'NotAllowedError' || startError?.message?.includes('permission')) {
-          alert('❌ 마이크 권한이 필요합니다.\n\n💡 해결 방법:\n1. 브라우저 주소창 왼쪽 🔒 아이콘 클릭\n2. "마이크" → "허용" 선택\n3. 페이지 새로고침 (F5)\n4. 버튼을 다시 눌러주세요');
+          showWarning('주소창 🔒 아이콘 > 마이크 허용 후 새로고침(F5)해주세요.', '마이크 권한이 필요합니다.');
         } else {
           // 다른 오류는 조용히 처리
           console.error('[Speech Recognition Start]', startError);
@@ -675,7 +665,7 @@ export default function TranslatorPage() {
       setPreview('');
 
       if (error?.name === 'NotAllowedError' || error?.message?.includes('permission')) {
-        alert('❌ 마이크 권한이 필요합니다.\n\n💡 해결 방법:\n1. 브라우저 주소창 왼쪽 🔒 아이콘 클릭\n2. "마이크" → "허용" 선택\n3. 페이지 새로고침 (F5)\n4. 버튼을 다시 눌러주세요');
+        showWarning('주소창 🔒 아이콘 > 마이크 허용 후 새로고침(F5)해주세요.', '마이크 권한이 필요합니다.');
       } else {
         // 예상치 못한 에러는 조용히 로그만
         console.error('[Speech Recognition] Unexpected error:', error);
@@ -857,7 +847,7 @@ export default function TranslatorPage() {
     if (!pronunciation || langCode === 'ko-KR') return null;
 
     return (
-      <div className="text-xs text-gray-500 italic mt-1">
+      <div className="text-sm text-gray-600 italic mt-1 break-words">
         💬 {pronunciation}
       </div>
     );
@@ -867,24 +857,10 @@ export default function TranslatorPage() {
 
   // 사용자가 제공한 샘플 데이터 사용 (발음 포함)
   // 빌드 시점 안전성을 위해 항상 객체로 보장
-  const PHRASE_CATEGORIES: PhraseCategoriesData =
-    (phraseCategoriesData && typeof phraseCategoriesData === 'object' && !Array.isArray(phraseCategoriesData))
-      ? phraseCategoriesData
-      : {};
-
-  // 안전한 카테고리 배열 가져오기 헬퍼 함수 (빌드 시점 안전성 보장)
-  const getCategoriesForLang = (langCode: string): PhraseCategory[] => {
-    try {
-      if (!PHRASE_CATEGORIES || typeof PHRASE_CATEGORIES !== 'object' || Array.isArray(PHRASE_CATEGORIES)) {
-        return [];
-      }
-      const categories = PHRASE_CATEGORIES[langCode] || PHRASE_CATEGORIES['en-US'];
-      if (!categories) return [];
-      return Array.isArray(categories) ? categories : [];
-    } catch (error) {
-      // 빌드 시점 에러 방지
-      return [];
-    }
+  // 현재 언어의 카테고리 배열 (이미 localLang.code에 맞는 데이터가 로드됨)
+  const getCategoriesForLang = (_langCode: string): PhraseCategory[] => {
+    if (!phraseCategoriesData || !Array.isArray(phraseCategoriesData)) return [];
+    return phraseCategoriesData;
   };
 
   // 빠른 문장 데이터 (자주 쓰는 문장) - 하위 호환을 위해 유지 (현재 미사용)
@@ -1314,7 +1290,7 @@ export default function TranslatorPage() {
                   <span className="text-xl">{listening === 'recording' ? '🔴' : '🎤'}</span>
                   <div className="text-left">
                     <div className="font-bold text-xs leading-tight">{p.label}</div>
-                    <div className="text-[10px] opacity-80 font-normal mt-0.5">꾹 누르고 말하기</div>
+                    <div className="text-xs opacity-80 font-normal mt-0.5">꾹 누르고 말하기</div>
                   </div>
                 </div>
               </button>

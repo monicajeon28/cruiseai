@@ -9,29 +9,39 @@ interface OnboardingFormProps {
 
 export default function OnboardingForm({ initialName }: OnboardingFormProps) {
   const [name, setName] = useState(initialName);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
     const trimmedName = name.trim();
     if (!trimmedName) {
-      alert('이름을 입력해주세요.');
+      setError('이름을 입력해주세요.');
       return;
     }
 
-    const r = await csrfFetch('/api/auth/onboard', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name: trimmedName }),
-    });
-    const data = await r.json().catch(() => ({}));
+    setSubmitting(true);
+    try {
+      const r = await csrfFetch('/api/auth/onboard', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: trimmedName }),
+      });
+      const data = await r.json().catch(() => ({}));
 
-    if (!r.ok || !data?.ok) {
-      alert(data?.error ?? '온보딩 실패');
-      return;
+      if (!r.ok || !data?.ok) {
+        setError(data?.error ?? '온보딩 실패. 다시 시도해주세요.');
+        return;
+      }
+
+      router.replace('/chat');
+    } catch {
+      setError('네트워크 오류가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+      setSubmitting(false);
     }
-
-    router.replace('/chat');
   }
 
   return (
@@ -43,6 +53,11 @@ export default function OnboardingForm({ initialName }: OnboardingFormProps) {
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-300 rounded-lg px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
           <div>
             <label htmlFor="name" className="block text-sm font-medium mb-1">이름을 입력해주세요</label>
             <input
@@ -61,9 +76,9 @@ export default function OnboardingForm({ initialName }: OnboardingFormProps) {
           <button
             type="submit"
             className="w-full rounded-lg bg-red-600 text-white font-semibold py-3 disabled:opacity-60"
-            disabled={!name.trim()}
+            disabled={!name.trim() || submitting}
           >
-            시작하기
+            {submitting ? '저장 중...' : '시작하기'}
           </button>
         </form>
       </div>

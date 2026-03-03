@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 
 interface KakaoChannelButtonProps {
@@ -13,6 +13,20 @@ export default function KakaoChannelButton({ className = '', variant = 'banner' 
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
   const [showManualConfirm, setShowManualConfirm] = useState(false); // 수동 확인 버튼 표시 여부
+  const mountedRef = useRef(true);
+  const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // 언마운트 시 interval 정리
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
+        checkIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   // 카카오 SDK 로드 및 채널 추가 여부 확인
   useEffect(() => {
@@ -228,7 +242,7 @@ export default function KakaoChannelButton({ className = '', variant = 'banner' 
     } catch (error) {
       console.error('[Kakao Channel] 예상치 못한 오류:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert(`카카오톡 채널 추가 중 오류가 발생했습니다.\n\n오류: ${errorMessage}\n\n브라우저 콘솔을 확인하세요.`);
+      console.error('[Kakao Channel] 채널 추가 오류:', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -237,32 +251,32 @@ export default function KakaoChannelButton({ className = '', variant = 'banner' 
   // URL로 직접 이동하는 폴백 함수
   const fallbackToDirectUrl = (channelId: string) => {
     const channelUrl = `https://pf.kakao.com/_${channelId}`;
-    console.log('[Kakao Channel] 채널 페이지로 직접 이동:', channelUrl);
     window.open(channelUrl, '_blank');
-    
+
     // 자동 확인 시작 (카카오톡에서 돌아왔을 때 자동으로 확인)
     setShowManualConfirm(true);
     
     // 주기적으로 채널 추가 여부 확인 (최대 10회, 3초 간격)
     let checkCount = 0;
     const maxChecks = 10;
-    const checkInterval = setInterval(async () => {
+    checkIntervalRef.current = setInterval(async () => {
       checkCount++;
       const wasAdded = await checkChannelStatus();
-      
+
       if (wasAdded || checkCount >= maxChecks) {
-        clearInterval(checkInterval);
+        if (checkIntervalRef.current) {
+          clearInterval(checkIntervalRef.current);
+          checkIntervalRef.current = null;
+        }
+        if (!mountedRef.current) return;
         if (wasAdded) {
-          setIsAdded(true); // 명시적으로 상태 업데이트 (배너 숨김)
+          setIsAdded(true);
           setShowManualConfirm(false);
-          alert('카카오톡 채널이 자동으로 확인되었습니다!');
-        } else if (checkCount >= maxChecks) {
-          console.log('[Kakao Channel] 자동 확인 시간 초과');
         }
       }
     }, 3000);
     
-    alert('카카오톡 채널 페이지로 이동합니다. 채널을 추가하면 자동으로 확인됩니다.');
+    // 채널 추가 안내는 UI(showManualConfirm)로 표시
   };
 
   // 수동으로 채널 추가 완료 처리

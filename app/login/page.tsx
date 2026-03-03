@@ -19,7 +19,7 @@ function LoginPageContent() {
     // URL 파라미터에서 메시지 확인
     const message = sp.get('message');
     if (message) {
-      alert(message);
+      setError(message);
     }
   }, [sp]);
 
@@ -42,17 +42,9 @@ function LoginPageContent() {
       return;
     }
     if (!trimmedPassword) {
-      setError('비밀번호를 입력해주세요.');
+      setError('이용코드를 입력해주세요.');
       return;
     }
-
-    // 크루즈닷AI 비밀번호 검증 (3800=구매고객용, 1101=3일체험)
-    if (trimmedPassword !== '3800' && trimmedPassword !== '1101') {
-      setError('비밀번호가 올바르지 않습니다. 비밀번호를 확인해주세요.');
-      return;
-    }
-
-    console.log('[LOGIN] Submitting...', { phone: trimmedPhone, password: '***', name: trimmedName });
 
     // 재시도 로직 함수
     const attemptLogin = async (retryCount = 0): Promise<Response> => {
@@ -73,7 +65,6 @@ function LoginPageContent() {
         clearTimeout(timeoutId);
         // 타임아웃이나 네트워크 오류 시 재시도 (최대 2회)
         if (retryCount < 2 && (err.name === 'AbortError' || err.name === 'TypeError')) {
-          console.log(`[LOGIN] Retrying... (${retryCount + 1}/2)`);
           await new Promise(resolve => setTimeout(resolve, 1000)); // 1초 대기
           return attemptLogin(retryCount + 1);
         }
@@ -84,47 +75,19 @@ function LoginPageContent() {
     try {
       const r = await attemptLogin();
 
-      console.log('[LOGIN] Response status:', r.status);
-      
-      const data = await r.json().catch((err) => {
-        console.error('[LOGIN] JSON parse error:', err);
+      const data = await r.json().catch(() => {
         return { ok: false, error: '서버 응답을 처리할 수 없습니다.' };
       });
-      
-      console.log('[LOGIN] Response data:', data);
-      
+
       if (!r.ok || !data?.ok) {
         const errorMessage = data?.error ?? '로그인 실패';
-        const errorDetails = data?.details ?? '';
-        const errorStack = data?.stack ?? '';
-        
-        console.error('[LOGIN] Login failed:', errorMessage, { 
-          status: r.status, 
-          statusText: r.statusText,
-          data,
-          details: errorDetails,
-          stack: errorStack,
-        });
-        
-        // 개발 환경에서는 상세 오류 정보도 콘솔에 출력
-        if (errorDetails) {
-          console.error('[LOGIN] Error details:', errorDetails);
-        }
-        if (errorStack) {
-          console.error('[LOGIN] Error stack:', errorStack);
-        }
-        
-        // 비밀번호 오류인 경우 명확한 메시지 표시
-        if (r.status === 401 || errorMessage.includes('비밀번호') || errorMessage.includes('올바르지 않습니다')) {
-          setError('비밀번호가 올바르지 않습니다. 비밀번호를 확인해주세요.');
+
+        if (r.status === 401 || errorMessage.includes('비밀번호') || errorMessage.includes('코드') || errorMessage.includes('올바르지 않습니다')) {
+          setError('이용코드가 올바르지 않습니다. 코드를 다시 확인해주세요.');
         } else {
-          // 테스트 모드 오류인 경우 상세 정보 포함
-          const fullErrorMessage = errorDetails 
-            ? `${errorMessage}\n\n상세 정보: ${errorDetails}` 
-            : errorMessage;
-          setError(fullErrorMessage);
+          setError(errorMessage);
         }
-        return; // 절대 리다이렉트하지 않음
+        return;
       }
 
       // 새 사용자 로그인 시 이전 사용자의 localStorage 데이터 정리
@@ -133,28 +96,20 @@ function LoginPageContent() {
       // CSRF 토큰 저장
       if (data.csrfToken) {
         setCsrfToken(data.csrfToken);
-        console.log('[LOGIN] CSRF token saved');
       }
 
-      // 서버가 알려준 next로 이동 (온보딩으로는 절대 이동하지 않음)
+      // 서버가 알려준 next로 이동
       const nextParam = sp.get('next');
       const decodedNext = nextParam ? decodeURIComponent(nextParam) : null;
       let next = data.next || decodedNext || '/chat';
-      
-      // 비밀번호 1101(3일체험) 감지 시 /chat-test로 강제 리다이렉트
+
+      // 1101(3일체험) 코드 감지 시 /chat-test로 강제 리다이렉트
       if (trimmedPassword === '1101') {
         next = '/chat-test';
-        console.log('[LOGIN] 비밀번호 1101 감지 - /chat-test로 강제 리다이렉트');
       }
-      
-      // /onboarding은 허용 (신규 구매자 첫 로그인 시 온보딩 표시)
-      
-      console.log('[LOGIN] Redirecting to:', next);
+
       router.push(next);
     } catch (error: any) {
-      console.error('[LOGIN] Network error:', error);
-
-      // 에러 유형에 따른 상세 메시지
       let errorMessage = '네트워크 오류가 발생했습니다.';
 
       if (error.name === 'AbortError') {
@@ -285,18 +240,20 @@ function LoginPageContent() {
                 </div>
                 
                 <div>
-                  <label className="block text-base md:text-lg font-semibold text-gray-700 mb-3">
-                    비밀번호 <span className="text-red-500">*</span>
+                  <label className="block text-base md:text-lg font-semibold text-gray-700 mb-1">
+                    이용코드 <span className="text-red-500">*</span>
                   </label>
+                  <p className="text-sm text-gray-500 mb-3">담당 매니저님이 알려드린 코드를 입력하세요</p>
                   <input
                     name="password"
                     type="password"
+                    inputMode="numeric"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required
                     autoComplete="off"
                     className="w-full bg-gray-50 border-2 border-gray-300 rounded-xl px-5 py-4 text-lg md:text-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                    placeholder="비밀번호를 입력하세요"
+                    placeholder="이용코드를 입력하세요"
                     style={{ fontSize: '18px', minHeight: '56px' }}
                   />
                 </div>
@@ -325,7 +282,7 @@ function LoginPageContent() {
               </a>
             </div>
             <div className="leading-relaxed">
-              비밀번호가 기억나지 않으신가요? <span className="font-semibold text-gray-900">관리자에게 문의하세요.</span>
+              이용코드를 모르시나요? <span className="font-semibold text-gray-900">담당 매니저에게 문의하세요.</span>
             </div>
           </div>
           

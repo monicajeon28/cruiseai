@@ -107,7 +107,7 @@ export function handleApiError(error: unknown, context?: {
         ok: false,
         error: '입력 데이터 검증에 실패했습니다.',
         code: 'VALIDATION_ERROR',
-        details: error.errors.map((e) => ({
+        details: error.issues.map((e) => ({
           field: e.path.join('.'),
           message: e.message,
         })),

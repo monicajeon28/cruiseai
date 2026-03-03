@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import prisma from '@/lib/prisma';
 import { normalizeItineraryPattern, extractCountryCodesFromItineraryPattern } from '@/lib/utils/itineraryPattern';
 import { getKoreanCruiseLineName, getKoreanShipName, getKoreanNameFromFullString } from '@/lib/utils/cruiseNames';
@@ -15,11 +16,11 @@ export async function GET(_req: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) {
-      console.log('[Briefing API] 사용자 인증 실패: 세션이 없음');
+      logger.log('[Briefing API] 사용자 인증 실패: 세션이 없음');
       return NextResponse.json({ ok: false, message: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('[Briefing API] 사용자 인증 성공:', { 
+    logger.log('[Briefing API] 사용자 인증 성공:', { 
       userId: user.id, 
       name: user.name, 
       phone: user.phone,
@@ -32,7 +33,7 @@ export async function GET(_req: NextRequest) {
     });
 
     // 최신 여행(온보딩 정보) 조회 - createdAt desc로 최신 온보딩 정보 가져오기
-    console.log('[Briefing API] 사용자 UserTrip 조회 시작:', { userId: user.id, name: user.name });
+    logger.log('[Briefing API] 사용자 UserTrip 조회 시작:', { userId: user.id, name: user.name });
     
     const allTrips = await prisma.userTrip.findMany({
       where: {
@@ -61,7 +62,7 @@ export async function GET(_req: NextRequest) {
       },
     });
 
-    console.log('[Briefing API] 사용자 전체 Trip 목록:', {
+    logger.log('[Briefing API] 사용자 전체 Trip 목록:', {
       userId: user.id,
       tripCount: allTrips.length,
       trips: allTrips.map((t: (typeof allTrips)[number]) => ({
@@ -94,7 +95,7 @@ export async function GET(_req: NextRequest) {
       allTrips[0] ||
       null;
 
-    console.log('[Briefing API] 사용자 Trip 조회 결과:', {
+    logger.log('[Briefing API] 사용자 Trip 조회 결과:', {
       userId: user.id,
       found: !!activeTrip,
       userTripId: activeTrip?.id,
@@ -200,7 +201,7 @@ export async function GET(_req: NextRequest) {
     const startDateNormalized = new Date(startDate);
     startDateNormalized.setHours(0, 0, 0, 0);
     
-    console.log('[Briefing API] D-day 계산 시작:', {
+    logger.log('[Briefing API] D-day 계산 시작:', {
       today: todayNormalized.toISOString(),
       startDate: startDateNormalized.toISOString(),
       endDate: activeTrip.endDate ? new Date(activeTrip.endDate).toISOString() : null,
@@ -212,7 +213,7 @@ export async function GET(_req: NextRequest) {
       // 여행 시작 전: 출발일까지 D-day
       dday = Math.ceil((startDateNormalized.getTime() - todayNormalized.getTime()) / (1000 * 60 * 60 * 24));
       ddayType = 'departure';
-      console.log('[Briefing API] D-day 계산 결과 (출발일 전):', { dday, ddayType });
+      logger.log('[Briefing API] D-day 계산 결과 (출발일 전):', { dday, ddayType });
     } else if (activeTrip.endDate) {
       const endDateNormalized = new Date(activeTrip.endDate);
       endDateNormalized.setHours(0, 0, 0, 0);
@@ -225,28 +226,28 @@ export async function GET(_req: NextRequest) {
         if (daysUntilEnd === 1) {
           dday = 1;
           ddayType = 'return';
-          console.log('[Briefing API] D-day 계산 결과 (종료일 하루 전):', { dday, ddayType, daysUntilEnd, today: todayNormalized.toISOString(), endDate: endDateNormalized.toISOString() });
+          logger.log('[Briefing API] D-day 계산 결과 (종료일 하루 전):', { dday, ddayType, daysUntilEnd, today: todayNormalized.toISOString(), endDate: endDateNormalized.toISOString() });
         } else if (daysUntilEnd === 0) {
           dday = 0;
           ddayType = 'return';
-          console.log('[Briefing API] D-day 계산 결과 (종료일):', { dday, ddayType, daysUntilEnd, today: todayNormalized.toISOString(), endDate: endDateNormalized.toISOString() });
+          logger.log('[Briefing API] D-day 계산 결과 (종료일):', { dday, ddayType, daysUntilEnd, today: todayNormalized.toISOString(), endDate: endDateNormalized.toISOString() });
         } else {
           // 그 외에는 출발일 기준으로 계산
           dday = Math.floor((todayNormalized.getTime() - startDateNormalized.getTime()) / (1000 * 60 * 60 * 24));
           ddayType = 'departure';
-          console.log('[Briefing API] D-day 계산 결과 (여행 중, 출발일 기준):', { dday, ddayType, daysUntilEnd });
+          logger.log('[Briefing API] D-day 계산 결과 (여행 중, 출발일 기준):', { dday, ddayType, daysUntilEnd });
         }
       } else {
         // 여행 종료 후: 출발일 기준으로 음수 D-day
         dday = Math.floor((todayNormalized.getTime() - startDateNormalized.getTime()) / (1000 * 60 * 60 * 24));
         ddayType = 'departure';
-        console.log('[Briefing API] D-day 계산 결과 (여행 종료 후, 출발일 기준):', { dday, ddayType });
+        logger.log('[Briefing API] D-day 계산 결과 (여행 종료 후, 출발일 기준):', { dday, ddayType });
       }
     } else {
       // endDate가 없으면 출발일 기준으로만 계산
       dday = Math.floor((todayNormalized.getTime() - startDateNormalized.getTime()) / (1000 * 60 * 60 * 24));
       ddayType = 'departure';
-      console.log('[Briefing API] D-day 계산 결과 (endDate 없음, 출발일 기준):', { dday, ddayType });
+      logger.log('[Briefing API] D-day 계산 결과 (endDate 없음, 출발일 기준):', { dday, ddayType });
     }
 
     // 크루즈명 한국어 변환
@@ -262,7 +263,7 @@ export async function GET(_req: NextRequest) {
       koreanCruiseName = getKoreanNameFromFullString(activeTrip.cruiseName);
     }
 
-    console.log('[Briefing API] 크루즈명 변환:', {
+    logger.log('[Briefing API] 크루즈명 변환:', {
       original: activeTrip.cruiseName,
       korean: koreanCruiseName,
     });
@@ -376,7 +377,7 @@ export async function GET(_req: NextRequest) {
     // 1순위: 온보딩에서 선택한 국가들 (Trip.destination)
     if (activeTrip.destination && typeof activeTrip.destination === 'object') {
       const destinations = activeTrip.destination as any;
-      console.log('[Briefing API] Trip.destination 확인:', { 
+      logger.log('[Briefing API] Trip.destination 확인:', { 
         destination: destinations,
         isArray: Array.isArray(destinations),
         type: typeof destinations
@@ -385,27 +386,27 @@ export async function GET(_req: NextRequest) {
       // destination이 배열인 경우 (예: ["일본 - 도쿄", "대만 - 타이페이"])
       if (Array.isArray(destinations)) {
         destinations.forEach((dest: string) => {
-          console.log('[Briefing API] destination 배열 항목 처리:', { dest });
+          logger.log('[Briefing API] destination 배열 항목 처리:', { dest });
           const countryCode = extractCountryCode(dest);
-          console.log('[Briefing API] 추출된 국가 코드:', { dest, countryCode });
+          logger.log('[Briefing API] 추출된 국가 코드:', { dest, countryCode });
           if (countryCode && countryCode !== 'KR' && !uniqueCountries.has(countryCode)) {
             // 지역명이 있는 경우 추출 (예: "일본 - 도쿄" -> "도쿄")
             const location = dest.includes(' - ') ? dest.split(' - ')[1]?.trim() : null;
             uniqueCountries.set(countryCode, location);
-            console.log('[Briefing API] 국가 추가:', { countryCode, location });
+            logger.log('[Briefing API] 국가 추가:', { countryCode, location });
           }
         });
       } else if (typeof destinations === 'object') {
         // destination이 객체인 경우 처리
         Object.values(destinations).forEach((dest: any) => {
           if (typeof dest === 'string') {
-            console.log('[Briefing API] destination 객체 항목 처리:', { dest });
+            logger.log('[Briefing API] destination 객체 항목 처리:', { dest });
             const countryCode = extractCountryCode(dest);
-            console.log('[Briefing API] 추출된 국가 코드:', { dest, countryCode });
+            logger.log('[Briefing API] 추출된 국가 코드:', { dest, countryCode });
             if (countryCode && countryCode !== 'KR' && !uniqueCountries.has(countryCode)) {
               const location = dest.includes(' - ') ? dest.split(' - ')[1]?.trim() : null;
               uniqueCountries.set(countryCode, location);
-              console.log('[Briefing API] 국가 추가:', { countryCode, location });
+              logger.log('[Briefing API] 국가 추가:', { countryCode, location });
             }
           }
         });
@@ -414,7 +415,7 @@ export async function GET(_req: NextRequest) {
     
     // 2순위: Itinerary에서 국가 조회 (항상 시도 - 가장 확실한 방법)
     // destination에서 국가를 찾지 못했거나, 추가 국가 정보가 있을 수 있으므로 항상 확인
-    console.log('[Briefing API] Itinerary에서 국가 조회 시작 (userTripId:', activeTrip.id, ')');
+    logger.log('[Briefing API] Itinerary에서 국가 조회 시작 (userTripId:', activeTrip.id, ')');
     const allItineraries = await prisma.itinerary.findMany({
       where: {
         userTripId: activeTrip.id, // UserTrip의 id 사용
@@ -432,7 +433,7 @@ export async function GET(_req: NextRequest) {
       },
     });
 
-    console.log('[Briefing API] All itineraries (전체 조회):', { 
+    logger.log('[Briefing API] All itineraries (전체 조회):', { 
       userTripId: activeTrip.id, 
       count: allItineraries.length,
       allItems: allItineraries.map((it: (typeof allItineraries)[number]) => ({
@@ -447,7 +448,7 @@ export async function GET(_req: NextRequest) {
 
     // 국가가 있는 Itinerary만 필터링
     const itinerariesWithCountry = allItineraries.filter((it: (typeof allItineraries)[number]) => it.country && it.country !== 'KR');
-    console.log('[Briefing API] 국가가 있는 Itinerary:', {
+    logger.log('[Briefing API] 국가가 있는 Itinerary:', {
       count: itinerariesWithCountry.length,
       items: itinerariesWithCountry.map((it: (typeof allItineraries)[number]) => ({
         day: it.day,
@@ -465,7 +466,7 @@ export async function GET(_req: NextRequest) {
       const countryCode = String(it.country).toUpperCase();
       if (!uniqueCountries.has(countryCode)) {
         uniqueCountries.set(countryCode, it.location);
-        console.log('[Briefing API] Itinerary에서 국가 추가:', { 
+        logger.log('[Briefing API] Itinerary에서 국가 추가:', { 
           day: it.day,
           type: it.type,
           country: countryCode, 
@@ -477,11 +478,11 @@ export async function GET(_req: NextRequest) {
     // 3순위: CruiseProduct의 itineraryPattern에서 국가 추출 (항상 시도 - 가장 확실한 방법)
     // destination이나 Itinerary에 국가가 없을 수 있으므로 항상 확인
     if (activeTrip.CruiseProduct?.itineraryPattern) {
-      console.log('[Briefing API] itineraryPattern에서 국가 추출 시도');
+      logger.log('[Briefing API] itineraryPattern에서 국가 추출 시도');
       try {
         const itineraryPattern = normalizeItineraryPattern(activeTrip.CruiseProduct.itineraryPattern);
         
-        console.log('[Briefing API] itineraryPattern:', { 
+        logger.log('[Briefing API] itineraryPattern:', { 
           isArray: Array.isArray(itineraryPattern),
           length: itineraryPattern.length,
           firstItem: itineraryPattern.length > 0 ? itineraryPattern[0] : null,
@@ -496,7 +497,7 @@ export async function GET(_req: NextRequest) {
         
         // extractCountryCodesFromItineraryPattern 유틸리티 함수 사용
         const countryCodes = extractCountryCodesFromItineraryPattern(activeTrip.CruiseProduct.itineraryPattern);
-        console.log('[Briefing API] extractCountryCodesFromItineraryPattern 결과:', countryCodes);
+        logger.log('[Briefing API] extractCountryCodesFromItineraryPattern 결과:', countryCodes);
         
         // 유틸리티 함수 결과를 uniqueCountries에 추가
         countryCodes.forEach((countryCode) => {
@@ -507,7 +508,7 @@ export async function GET(_req: NextRequest) {
             );
             const location = dayWithCountry?.location || null;
             uniqueCountries.set(countryCode, location);
-            console.log('[Briefing API] itineraryPattern에서 국가 추가 (유틸리티 함수 사용):', { 
+            logger.log('[Briefing API] itineraryPattern에서 국가 추가 (유틸리티 함수 사용):', { 
               countryCode, 
               location 
             });
@@ -520,7 +521,7 @@ export async function GET(_req: NextRequest) {
             const countryCode = String(day.country).toUpperCase();
             if (countryCode && countryCode !== 'KR' && !uniqueCountries.has(countryCode)) {
               uniqueCountries.set(countryCode, day.location || null);
-              console.log('[Briefing API] itineraryPattern에서 국가 추가 (기존 로직):', { 
+              logger.log('[Briefing API] itineraryPattern에서 국가 추가 (기존 로직):', { 
                 index, 
                 day: day.day,
                 type: day.type,
@@ -548,9 +549,9 @@ export async function GET(_req: NextRequest) {
       });
     }
 
-    console.log('[Briefing API] Unique countries (from onboarding or itinerary):', Array.from(uniqueCountries.entries()));
-    console.log('[Briefing API] Unique countries size:', uniqueCountries.size);
-    console.log('[Briefing API] ActiveTrip.CruiseProduct:', {
+    logger.log('[Briefing API] Unique countries (from onboarding or itinerary):', Array.from(uniqueCountries.entries()));
+    logger.log('[Briefing API] Unique countries size:', uniqueCountries.size);
+    logger.log('[Briefing API] ActiveTrip.CruiseProduct:', {
       hasCruiseProduct: !!activeTrip.CruiseProduct,
       productId: activeTrip.CruiseProduct?.id,
       productCode: activeTrip.CruiseProduct?.productCode,
@@ -710,7 +711,7 @@ export async function GET(_req: NextRequest) {
               condition = cached.condition;
               icon = cached.icon;
               cacheHit = true;
-              console.log(`[Briefing API] 날씨 캐시 히트: ${countryCode}`);
+              logger.log(`[Briefing API] 날씨 캐시 히트: ${countryCode}`);
             }
           } catch {
             // Redis 실패 시 WeatherAPI 직접 호출 (graceful degradation)
@@ -721,7 +722,7 @@ export async function GET(_req: NextRequest) {
         if (!cacheHit && WEATHER_API_KEY) {
           try {
             const cityQuery = COUNTRY_DEFAULT_CITY[countryCode] || countryCode;
-            console.log(`[Briefing API] WeatherAPI 호출: ${countryCode} → ${cityQuery}`);
+            logger.log(`[Briefing API] WeatherAPI 호출: ${countryCode} → ${cityQuery}`);
             // 3초 타임아웃: Vercel Hobby 10s 제한 내에 완료하기 위함
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 3000);
@@ -736,7 +737,7 @@ export async function GET(_req: NextRequest) {
                 temp = Math.round(wd.current.temp_c);
                 condition = wd.current.condition.text;
                 icon = getWeatherIcon(wd.current.condition.code, wd.current.is_day);
-                console.log(`[Briefing API] WeatherAPI 성공: ${countryCode} → ${temp}°C, ${condition}`);
+                logger.log(`[Briefing API] WeatherAPI 성공: ${countryCode} → ${temp}°C, ${condition}`);
                 // Redis에 캐시 저장 (1시간 TTL)
                 if (weatherRedis) {
                   weatherRedis.set(weatherCacheKey, { temp, condition, icon }, { ex: 3600 }).catch(() => {});
@@ -773,7 +774,7 @@ export async function GET(_req: NextRequest) {
       })
     );
 
-    console.log('[Briefing API] Weathers array:', weathers);
+    logger.log('[Briefing API] Weathers array:', weathers);
 
     // 기존 단일 weather 필드도 유지 (하위 호환성)
     const weather = weathers.length > 0 ? {
