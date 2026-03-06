@@ -139,7 +139,7 @@ export async function POST(req: Request) {
           });
           logger.log('[Partner Login] 파트너 계정 생성 완료:', { userId: affiliateUser.id, mallUserId: affiliateUser.mallUserId });
         } catch (createError: any) {
-          console.error('[Partner Login] 계정 생성 실패:', createError);
+          logger.error('[Partner Login] 계정 생성 실패:', createError);
           // 중복 키 에러인 경우 다시 조회 시도
           if (createError?.code === 'P2002') {
             affiliateUser = await prisma.user.findFirst({
@@ -295,12 +295,12 @@ export async function POST(req: Request) {
               });
               logger.log('[Partner Login] Gest 계정 정액제 계약서 자동 생성 완료:', { userId: affiliateUser.id });
             } catch (contractError: any) {
-              console.error('[Partner Login] Gest 계정 정액제 계약서 생성 실패:', contractError);
+              logger.error('[Partner Login] Gest 계정 정액제 계약서 생성 실패:', contractError);
               // 계약서 생성 실패해도 로그인은 계속 진행
             }
           }
         } catch (profileError: any) {
-          console.error('[Partner Login] AffiliateProfile 생성 실패:', profileError);
+          logger.error('[Partner Login] AffiliateProfile 생성 실패:', profileError);
           // 중복 키 에러인 경우 다시 조회
           if (profileError?.code === 'P2002') {
             affiliateProfile = await prisma.affiliateProfile.findFirst({
@@ -310,7 +310,7 @@ export async function POST(req: Request) {
             logger.log('[Partner Login] 중복 AffiliateProfile 발견, 재조회 완료:', { profileId: affiliateProfile?.id });
           } else {
             // AffiliateProfile 생성 실패 시 로그인도 실패
-            console.error('[Partner Login] AffiliateProfile 생성 실패로 로그인 중단:', profileError);
+            logger.error('[Partner Login] AffiliateProfile 생성 실패로 로그인 중단:', profileError);
             return NextResponse.json(
               { ok: false, error: '파트너 프로필 생성에 실패했습니다. 관리자에게 문의해주세요.', details: profileError?.message },
               { status: 500 }
@@ -320,7 +320,7 @@ export async function POST(req: Request) {
 
         // AffiliateProfile이 여전히 없으면 로그인 실패
         if (!affiliateProfile) {
-          console.error('[Partner Login] AffiliateProfile이 없어서 로그인 실패');
+          logger.error('[Partner Login] AffiliateProfile이 없어서 로그인 실패');
           return NextResponse.json(
             { ok: false, error: '파트너 프로필을 찾을 수 없습니다. 관리자에게 문의해주세요.' },
             { status: 500 }
@@ -403,7 +403,7 @@ export async function POST(req: Request) {
               logger.log('[Partner Login] 기존 Gest 계정 정액제 계약서 자동 생성 완료:', { userId: affiliateUser.id });
             }
           } catch (contractError: any) {
-            console.error('[Partner Login] Gest 계정 정액제 계약서 확인/생성 실패:', contractError);
+            logger.error('[Partner Login] Gest 계정 정액제 계약서 확인/생성 실패:', contractError);
             // 계약서 생성 실패해도 로그인은 계속 진행
           }
         }
@@ -441,7 +441,7 @@ export async function POST(req: Request) {
         });
         logger.log('[Partner Login] 세션 생성 완료:', { sessionId: session.id });
       } catch (sessionError: any) {
-        console.error('[Partner Login] 세션 생성 실패:', sessionError);
+        logger.error('[Partner Login] 세션 생성 실패:', sessionError);
         return NextResponse.json(
           { ok: false, error: '세션 생성 중 오류가 발생했습니다.' },
           { status: 500 }
@@ -528,12 +528,30 @@ export async function POST(req: Request) {
               { status: 400 }
             );
           }
+
+          // [H-5] 유료 고객 계정 보호: 1101로 유료 고객 비밀번호/상태 덮어쓰기 차단
+          const isPayingCustomer = testUser.customerStatus === 'active' || testUser.customerStatus === null;
+          const isNotTestSource = testUser.customerSource !== 'test-guide' && testUser.customerSource !== 'trial-invite-link';
+          if (isPayingCustomer && isNotTestSource) {
+            logger.warn('[Login] 테스트 모드 로그인 차단: 유료 고객 계정 보호', { userId: testUser.id });
+            return NextResponse.json(
+              { ok: false, error: '이미 정식 서비스를 이용 중인 계정입니다. 상담 매니저가 안내드린 비밀번호로 로그인해주세요.' },
+              { status: 400 }
+            );
+          }
         }
 
+        // [C-1] 신규 계정 생성 시 전화번호 필수 검증 (phone 없으면 무제한 유령 계정 생성 방지)
+        if (!testUser && (!phone || !/^[0-9]{10,11}$/.test(phone.trim()))) {
+          return NextResponse.json(
+            { ok: false, error: '연락처(10~11자리 숫자)를 입력해주세요.' },
+            { status: 400 }
+          );
+        }
 
         logger.log('[Login] 테스트 모드 사용자 조회 결과:', { found: !!testUser, userId: testUser?.id, customerStatus: testUser?.customerStatus, customerSource: testUser?.customerSource });
 
-        // 사용자가 없으면 자동 생성 (테스트 모드) - 이름/전화번호 아무거나 입력해도 생성
+        // 사용자가 없으면 자동 생성 (테스트 모드)
         if (!testUser) {
           logger.log('[Login] 테스트 모드 신규 사용자 생성 시작');
           const now = new Date();
@@ -541,7 +559,7 @@ export async function POST(req: Request) {
             const newUser = await prisma.user.create({
               data: {
                 name: name || '3일체험고객', // 이름이 없으면 기본값
-                phone: phone || `test-${Date.now()}`, // 전화번호가 없으면 임시값
+                phone: phone!.trim(), // C-1: 위에서 검증된 유효한 전화번호만 사용
                 password: normalizedTestPassword,
                 onboarded: false,
                 loginCount: 1,
@@ -783,18 +801,18 @@ export async function POST(req: Request) {
         }
 
         // 테스트 모드 활성화
-        // 비밀번호 1101로 로그인하면 무조건 무료체험 사용자로 전환 (유료 고객이어도 무시)
         // 72시간 경과 시 'test-locked'로 이미 설정되었으므로 덮어쓰지 않음
-        const shouldSetTestStatus = !isExpired; // 72시간 경과가 아니면 무조건 'test'로 설정
+        // [H-5] 유료 고객 보호: 이미 위의 isPrivileged/isPayingCustomer 체크에서 차단됨
+        const shouldSetTestStatus = !isExpired;
         await prisma.user.update({
           where: { id: testUser.id },
           data: {
-            ...(shouldSetTestStatus && { customerStatus: 'test' }), // 무조건 무료체험 모드로 전환 (유료 고객 상태 무시)
+            ...(shouldSetTestStatus && { customerStatus: 'test' }),
             testModeStartedAt: testModeStartedAt || now, // null 체크 후 할당
             isLocked: false,
             isHibernated: false,
             loginCount: { increment: 1 },
-            customerSource: trialCode ? 'trial-invite-link' : 'test-guide', // 무조건 무료체험 사용자로 전환 (유료 고객이어도 무시)
+            customerSource: trialCode ? 'trial-invite-link' : 'test-guide',
             password: normalizedTestPassword, // 비밀번호는 항상 1101로 업데이트
           },
         });
@@ -846,6 +864,7 @@ export async function POST(req: Request) {
         });
 
         // 기존 UserTrip 삭제 조건: 상품이 다르거나, endDate가 과거(만료된 여행) → 재생성
+        // ※ 첫 로그인에 D-3으로 생성 후 자연스럽게 D-2→D-1→D-DAY 진행 (재로그인해도 유지)
         const isTripExpired = existingTrip?.endDate
           ? new Date() > new Date(existingTrip.endDate)
           : false;
@@ -879,8 +898,9 @@ export async function POST(req: Request) {
           try {
             logger.log('[Auth Login] 테스트 모드: ✅ SAMPLE-MED-001 상품 찾음, UserTrip 생성 시작');
 
-            // 출발일: 로그인 당일 (브리핑 API가 오늘 날짜로 Itinerary 조회하므로 당일 시작)
+            // 출발일: 로그인 날짜 + 3일 (D-3 모달 체험 제공, 출발 전 설렘 경험)
             const startDate = new Date(now);
+            startDate.setDate(startDate.getDate() + 3);
             startDate.setHours(0, 0, 0, 0);
 
             // 종료 날짜 계산 (출발일 + (days - 1)일)
@@ -1041,8 +1061,8 @@ export async function POST(req: Request) {
               dday: Math.ceil((startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
             });
           } catch (tripError) {
-            console.error('[Auth Login] Test mode: Failed to auto-create UserTrip:', tripError);
-            console.error('[Auth Login] Test mode: UserTrip creation error details:', {
+            logger.error('[Auth Login] Test mode: Failed to auto-create UserTrip:', tripError);
+            logger.error('[Auth Login] Test mode: UserTrip creation error details:', {
               error: tripError instanceof Error ? tripError.message : String(tripError),
               stack: tripError instanceof Error ? tripError.stack : undefined,
               name: tripError instanceof Error ? tripError.name : undefined,
@@ -1054,13 +1074,13 @@ export async function POST(req: Request) {
             // 나중에 관리자가 확인할 수 있도록
           }
         } else if (existingTrip && product && existingTrip.productId === product.id) {
-          logger.log('[Auth Login] 테스트 모드: 기존 UserTrip이 SAMPLE-MED-001임, UserTrip 생성 건너뜀:', {
+          logger.log('[Auth Login] 테스트 모드: 기존 UserTrip 유지 (D-3→D-2→D-1→D-DAY 진행 중):', {
             userId: testUser.id,
             tripId: existingTrip.id,
             productId: existingTrip.productId,
           });
         } else if (!product) {
-          console.error('[Auth Login] 테스트 모드: ❌ SAMPLE-MED-001 상품을 찾을 수 없습니다!');
+          logger.error('[Auth Login] 테스트 모드: ❌ SAMPLE-MED-001 상품을 찾을 수 없습니다!');
           logger.warn('[Auth Login] Test mode: SAMPLE-MED-001 product not found');
         }
 
@@ -1158,9 +1178,9 @@ export async function POST(req: Request) {
         const errorStack = testModeError instanceof Error ? testModeError.stack : undefined;
         const errorName = testModeError instanceof Error ? testModeError.name : undefined;
 
-        console.error('[Auth Login] ❌ 테스트 모드 로그인 오류 발생!');
-        console.error('[Auth Login] Test mode error:', testModeError);
-        console.error('[Auth Login] Test mode error details:', {
+        logger.error('[Auth Login] ❌ 테스트 모드 로그인 오류 발생!');
+        logger.error('[Auth Login] Test mode error:', testModeError);
+        logger.error('[Auth Login] Test mode error details:', {
           error: errorMessage,
           stack: errorStack,
           errorName: errorName,
@@ -1171,8 +1191,8 @@ export async function POST(req: Request) {
 
         // Prisma 오류인 경우 추가 정보 출력
         if (testModeError && typeof testModeError === 'object' && 'code' in testModeError) {
-          console.error('[Auth Login] Prisma error code:', (testModeError as any).code);
-          console.error('[Auth Login] Prisma error meta:', (testModeError as any).meta);
+          logger.error('[Auth Login] Prisma error code:', (testModeError as any).code);
+          logger.error('[Auth Login] Prisma error meta:', (testModeError as any).meta);
         }
 
         // 테스트 모드 처리 중 에러 발생 시 에러 반환
@@ -1322,7 +1342,7 @@ export async function POST(req: Request) {
           csrfToken: session.csrfToken,
         });
       } catch (communityError: any) {
-        console.error('[Auth Login] Community login error:', communityError);
+        logger.error('[Auth Login] Community login error:', communityError);
         return NextResponse.json({
           ok: false,
           error: process.env.NODE_ENV === 'development'
@@ -1424,7 +1444,7 @@ export async function POST(req: Request) {
             });
             logger.log('[Admin Login] 관리자 계정 생성 완료:', { userId: adminUser.id });
           } catch (createError: any) {
-            console.error('[Admin Login] 관리자 계정 생성 실패:', createError);
+            logger.error('[Admin Login] 관리자 계정 생성 실패:', createError);
             // 중복 키 에러인 경우 다시 조회 시도
             if (createError?.code === 'P2002') {
               adminUser = await prisma.user.findFirst({
@@ -1537,8 +1557,8 @@ export async function POST(req: Request) {
           csrfToken: session.csrfToken,
         });
       } catch (adminError: any) {
-        console.error('[Admin Login] 관리자 로그인 처리 중 오류:', adminError);
-        console.error('[Admin Login] 오류 상세:', {
+        logger.error('[Admin Login] 관리자 로그인 처리 중 오류:', adminError);
+        logger.error('[Admin Login] 오류 상세:', {
           message: adminError instanceof Error ? adminError.message : String(adminError),
           stack: adminError instanceof Error ? adminError.stack : undefined,
           name: adminError instanceof Error ? adminError.name : undefined,
@@ -1727,7 +1747,7 @@ export async function POST(req: Request) {
           activeUser = newUser;
           logger.log('[Login] 3800 신규 사용자 생성 완료:', { userId: activeUser.id, phone, name });
         } catch (createError) {
-          console.error('[Login] 3800 신규 사용자 생성 실패:', createError);
+          logger.error('[Login] 3800 신규 사용자 생성 실패:', createError);
           return NextResponse.json({
             ok: false,
             error: '사용자 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
@@ -1788,7 +1808,7 @@ export async function POST(req: Request) {
           },
         });
       } catch (updateError) {
-        console.error('[Login] 활성 고객 상태 업데이트 실패:', updateError);
+        logger.error('[Login] 활성 고객 상태 업데이트 실패:', updateError);
         throw updateError;
       }
 
@@ -1969,8 +1989,8 @@ export async function POST(req: Request) {
 
           logger.log('[Login] 3800: ✅ REAL-CRUISE-01 폴백 UserTrip 생성 완료:', userTrip.id);
         } catch (tripError) {
-          console.error('[Login] 3800: Failed to auto-create UserTrip:', tripError);
-          console.error('[Login] 3800: UserTrip creation error details:', {
+          logger.error('[Login] 3800: Failed to auto-create UserTrip:', tripError);
+          logger.error('[Login] 3800: UserTrip creation error details:', {
             error: tripError instanceof Error ? tripError.message : String(tripError),
             stack: tripError instanceof Error ? tripError.stack : undefined,
             name: tripError instanceof Error ? tripError.name : undefined,
@@ -2041,8 +2061,8 @@ export async function POST(req: Request) {
         authLogger.loginSuccess(userId, clientIp);
 
         // 생애주기 관리: 백그라운드 처리 (응답 속도에 영향 없음)
-        reactivateUser(userId).catch((e: unknown) => console.error('[Login] 재활성화 실패 (무시):', e));
-        updateLastActive(userId).catch((e: unknown) => console.error('[Login] 활동 시각 업데이트 실패 (무시):', e));
+        reactivateUser(userId).catch((e: unknown) => logger.error('[Login] 재활성화 실패 (무시):', e));
+        updateLastActive(userId).catch((e: unknown) => logger.error('[Login] 활동 시각 업데이트 실패 (무시):', e));
 
         logger.log('[Login] 활성 고객 로그인 완료:', { userId, phone, name });
 
@@ -2052,7 +2072,7 @@ export async function POST(req: Request) {
           csrfToken: session.csrfToken,
         });
       } catch (sessionError) {
-        console.error('[Login] 세션 생성 실패:', sessionError);
+        logger.error('[Login] 세션 생성 실패:', sessionError);
         throw sessionError;
       }
     }
@@ -2350,10 +2370,10 @@ export async function POST(req: Request) {
       csrfToken: session.csrfToken, // 클라이언트에 CSRF 토큰 전달
     });
   } catch (e) {
-    console.error('[Auth Login] Internal Error:', e);
+    logger.error('[Auth Login] Internal Error:', e);
     const errorMessage = e instanceof Error ? e.message : 'Unknown error';
     const errorStack = e instanceof Error ? e.stack : undefined;
-    console.error('[Auth Login] Error details:', {
+    logger.error('[Auth Login] Error details:', {
       errorMessage,
       errorStack,
       errorName: e instanceof Error ? e.name : 'Unknown',

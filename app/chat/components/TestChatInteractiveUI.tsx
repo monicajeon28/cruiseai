@@ -9,6 +9,21 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { ChatInputMode } from '@/lib/types';
+import { logger } from '@/lib/logger';
+import { getDdayMessage } from '@/lib/date-utils';
+
+interface DdayMessages {
+  messages: Record<string, { title: string; message: string }>;
+}
+
+let ddayMessagesCache: DdayMessages | null = null;
+const loadDdayMessages = async (): Promise<DdayMessages> => {
+  if (!ddayMessagesCache) {
+    const m = await import('@/data/dday_messages.json');
+    ddayMessagesCache = m.default as DdayMessages;
+  }
+  return ddayMessagesCache;
+};
 
 // 성능 최적화: 큰 컴포넌트들을 동적 임포트
 const ChatClientShell = dynamic(() => import('./ChatClientShell'), {
@@ -43,6 +58,10 @@ const GenieAITutorial = dynamic(() => import('./GenieAITutorial'), {
   ssr: false,
 });
 
+const DdayPushModal = dynamic(() => import('@/components/DdayPushModal'), {
+  ssr: false,
+});
+
 export default function TestChatInteractiveUI() {
   const [mode, setMode] = useState<ChatInputMode>('general');
   
@@ -54,14 +73,21 @@ export default function TestChatInteractiveUI() {
     cruiseName: string;
     destination: string;
     startDate: string;
+    startDateIso: string;
     endDate: string;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
+  // D-Day 모달 상태
+  const [showDdayModal, setShowDdayModal] = useState(false);
+  const [ddayMessageData, setDdayMessageData] = useState<{ title: string; message: string } | null>(null);
+  const [hasShownDdayModal, setHasShownDdayModal] = useState(false);
+  const [ddayMessagesData, setDdayMessagesData] = useState<DdayMessages | null>(null);
+
   // 여행 종료 상태 (테스트 모드는 72시간 후 종료)
   const [tripExpired, setTripExpired] = useState(false);
   const [expiredMessage, setExpiredMessage] = useState<string>('');
-  
+
   // 튜토리얼 상태
   const [showTutorial, setShowTutorial] = useState(false);
   
@@ -98,12 +124,13 @@ export default function TestChatInteractiveUI() {
         if (tripResponse.ok) {
           const tripData = await tripResponse.json();
           if (tripData.data) {
-            const trip = tripData.data;
+            const t = tripData.data;
             setTrip({
-              cruiseName: trip.cruiseName || '크루즈 여행',
-              destination: trip.itineraries?.map((it: any) => it.country).join(', ') || '목적지 미정',
-              startDate: new Date(trip.startDate).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) + '부터',
-              endDate: new Date(trip.endDate).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) + '까지',
+              cruiseName: t.cruiseName || '크루즈 여행',
+              destination: t.itineraries?.map((it: any) => it.country).join(', ') || '목적지 미정',
+              startDate: new Date(t.startDate).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) + '부터',
+              startDateIso: t.startDate,
+              endDate: new Date(t.endDate).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) + '까지',
             });
           }
         }
@@ -127,7 +154,7 @@ export default function TestChatInteractiveUI() {
           }
         }
       } catch (error) {
-        console.error('[TestChatInteractiveUI] Error loading user data:', error);
+        logger.error('[TestChatInteractiveUI] Error loading user data:', error);
       } finally {
         setIsLoading(false);
       }
@@ -136,6 +163,47 @@ export default function TestChatInteractiveUI() {
     loadUserData();
   }, []);
   
+  // D-Day 메시지 사전 로딩
+  useEffect(() => {
+    loadDdayMessages()
+      .then(data => setDdayMessagesData(data))
+      .catch(() => setDdayMessagesData({ messages: {} }));
+  }, []);
+
+  // D-Day 모달 트리거 (trip 로드 + 메시지 준비 후)
+  useEffect(() => {
+    if (hasShownDdayModal || !trip || !ddayMessagesData) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let startDateObj: Date;
+    try {
+      startDateObj = new Date(trip.startDateIso);
+      startDateObj.setHours(0, 0, 0, 0);
+    } catch {
+      return;
+    }
+
+    if (today <= startDateObj) {
+      const diffTime = startDateObj.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      const messages = ddayMessagesData.messages;
+      const numericKeys = Object.keys(messages)
+        .map(Number)
+        .filter(k => !isNaN(k))
+        .sort((a, b) => b - a);
+      const matchKey = numericKeys.find(k => k <= diffDays);
+      const ddayKey = matchKey !== undefined ? matchKey.toString() : null;
+      if (ddayKey && messages[ddayKey]) {
+        setDdayMessageData(messages[ddayKey]);
+        setShowDdayModal(true);
+        setHasShownDdayModal(true);
+      }
+    }
+  }, [trip, hasShownDdayModal, ddayMessagesData]);
+
   // 튜토리얼 표시 여부 확인 (사용자 정보 로드 후)
   useEffect(() => {
     if (!userId || isLoading) return;
@@ -216,8 +284,8 @@ export default function TestChatInteractiveUI() {
       
       {/* 채팅창 - 화면의 80%+ 차지 (여행 종료 시 숨김) */}
       {!tripExpired && (
-        <div className="mx-auto max-w-6xl w-full flex-1">
-          <ChatClientShell mode={mode} />
+        <div className="mx-auto max-w-6xl w-full">
+          <ChatClientShell mode={mode} scrollable />
         </div>
       )}
       
@@ -227,8 +295,16 @@ export default function TestChatInteractiveUI() {
       {/* 관리자 메시지 팝업 */}
       <AdminMessageModal />
       
-      {/* DdayPushModal은 테스트 모드에서는 표시하지 않음 */}
-      {/* (테스트 고객은 샘플 여행 정보를 사용하므로 D-Day 모달이 의미 없음) */}
+      {/* D-Day 모달 (테스트 모드에서도 활성화 — startDate=오늘이므로 D-0 메시지 표시) */}
+      {showDdayModal && ddayMessageData && userId !== undefined && trip && (
+        <DdayPushModal
+          userId={String(userId)}
+          userName={userName}
+          trip={{ cruiseName: trip.cruiseName, destination: trip.destination, startDate: trip.startDate, endDate: trip.endDate }}
+          message={{ d: getDdayMessage(trip.startDateIso, trip.endDate, userPhone), title: ddayMessageData.title, html: ddayMessageData.message }}
+          onClose={() => setShowDdayModal(false)}
+        />
+      )}
       
       {/* 지니 AI 튜토리얼 (테스트 모드 전용) */}
       {showTutorial && (

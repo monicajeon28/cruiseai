@@ -1,6 +1,7 @@
 'use client';
 
 import { logger } from '@/lib/logger';
+import { showError } from '@/components/ui/Toast';
 import type { ChatInputMode } from '@/lib/types';
 import dynamic from 'next/dynamic';
 import { ChatInputPayload } from '@/components/chat/types';
@@ -33,8 +34,10 @@ const ENABLE_CHAT_HISTORY = true; // 채팅 히스토리 활성화
 
 export default function ChatClientShell({
   mode,
+  scrollable = false,
 }: {
   mode: ChatInputMode;
+  scrollable?: boolean;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true); // 초기 로딩 상태
@@ -45,6 +48,7 @@ export default function ChatClientShell({
   const prevModeRef = useRef<ChatInputMode | null>(null); // 이전 모드 추적
   const hasLoadedHistoryRef = useRef(false); // 히스토리 로드 여부 추적
   const abortControllerRef = useRef<AbortController | null>(null); // 히스토리 fetch 취소용
+  const streamAbortControllerRef = useRef<AbortController | null>(null); // 스트리밍 취소용
   const [isTestMode, setIsTestMode] = useState(false); // test 모드 여부
 
   // test 모드 확인
@@ -54,7 +58,7 @@ export default function ChatClientShell({
         const testModeInfo = await checkTestModeClient();
         setIsTestMode(testModeInfo.isTestMode);
       } catch (error) {
-        console.error('[ChatClientShell] Test mode check error:', error);
+        logger.error('[ChatClientShell] Test mode check error:', error);
         setIsTestMode(false);
       }
     };
@@ -132,7 +136,7 @@ export default function ChatClientShell({
           isAborted = true;
           return;
         }
-        console.error('[ChatClientShell] 히스토리 로드 실패:', error);
+        logger.error('[ChatClientShell] 히스토리 로드 실패:', error);
       } finally {
         setIsLoading(false);
         // abort된 경우(타임아웃/모드 전환)에는 true로 세팅하지 않음 → 재로드 가능하도록 유지
@@ -160,6 +164,8 @@ export default function ChatClientShell({
       if (process.env.NODE_ENV === 'development') {
         logger.log('[ChatClientShell] Mode changed from', prevModeRef.current, 'to', mode, '- Clearing messages');
       }
+      // 모드 변경 시 진행 중인 스트리밍 취소
+      streamAbortControllerRef.current?.abort();
       // 빈 상태 UI는 ChatWindow에서 처리하므로 메시지는 비워둠
       setMessages([]);
       setIsSending(false);
@@ -207,17 +213,16 @@ export default function ChatClientShell({
         return base;
       });
 
-      await fetch('/api/chat/history', {
+      await csrfFetch('/api/chat/history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           messages: apiMessages,
           sessionId, // 모드별 세션 ID
         }),
       });
     } catch (error) {
-      console.error('[ChatClientShell] 히스토리 저장 실패:', error);
+      logger.error('[ChatClientShell] 히스토리 저장 실패:', error);
     }
   };
 
@@ -268,11 +273,17 @@ export default function ChatClientShell({
           });
         }
 
+        // 이전 스트리밍 취소, 새 AbortController 생성
+        streamAbortControllerRef.current?.abort();
+        const streamController = new AbortController();
+        streamAbortControllerRef.current = streamController;
+
         const response = await fetch('/api/chat/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify(requestBody),
+          signal: streamController.signal,
         });
 
         // 개발 환경에서만 디버그 로그
@@ -296,11 +307,11 @@ export default function ChatClientShell({
           try {
             const errorData = await response.json();
             errorMessage = errorData.error || errorData.details || errorMessage;
-            console.error('[ChatClientShell] Stream API error:', errorData);
+            logger.error('[ChatClientShell] Stream API error:', errorData);
           } catch (e) {
             const errorText = await response.text().catch(() => '');
             errorMessage = errorText || errorMessage;
-            console.error('[ChatClientShell] Stream API error (text):', errorText);
+            logger.error('[ChatClientShell] Stream API error (text):', errorText);
           }
 
           // 스트리밍 메시지를 에러 메시지로 교체
@@ -330,112 +341,123 @@ export default function ChatClientShell({
         }
 
         let readCount = 0;
-        while (true) {
-          const { done, value } = await reader.read();
-          readCount++;
-          if (isDev) {
-            logger.log('[ChatClientShell] Read #' + readCount + ', done:', done, 'hasValue:', !!value);
-          }
-
-          if (done) {
+        try {
+          while (true) {
+            if (streamController.signal.aborted) break;
+            const { done, value } = await reader.read();
+            readCount++;
             if (isDev) {
-              logger.log('[ChatClientShell] Stream done, total reads:', readCount, 'accumulated:', accumulatedText.substring(0, 100));
+              logger.log('[ChatClientShell] Read #' + readCount + ', done:', done, 'hasValue:', !!value);
             }
-            if (accumulatedText.length === 0) {
-              // 에러는 항상 로깅
-              console.warn('[ChatClientShell] No text accumulated! This might indicate a server-side issue.');
-              // 사용자에게 에러 메시지 표시
-              setMessages((prevMessages) =>
-                prevMessages.map((msg) =>
-                  msg.id === streamingMessageId
-                    ? { ...msg, text: '죄송합니다. 응답을 받지 못했습니다. 잠시 후 다시 시도해주세요.' }
-                    : msg
-                )
-              );
-            }
-            break;
-          }
 
-          if (!value) {
-            if (isDev) {
-              console.warn('[ChatClientShell] No value in chunk, continuing...');
-            }
-            continue;
-          }
-
-          const chunk = decoder.decode(value, { stream: true });
-          if (isDev) {
-            logger.log('[ChatClientShell] Received chunk #' + readCount + ', length:', chunk.length, 'content:', chunk.substring(0, 200));
-          }
-          const lines = chunk.split('\n');
-          if (isDev) {
-            logger.log('[ChatClientShell] Split into', lines.length, 'lines');
-          }
-
-          for (const line of lines) {
-            if (line.startsWith('0:')) {
-              // 텍스트 데이터 추출
-              try {
-                const jsonStr = line.substring(2);
-                const parsed = JSON.parse(jsonStr);
-                if (isDev) {
-                  logger.log('[ChatClientShell] Parsed text:', typeof parsed, parsed?.substring?.(0, 50));
-                }
-
-                if (parsed && typeof parsed === 'string') {
-                  accumulatedText += parsed;
-
-                  // 메시지 업데이트
-                  setMessages((prevMessages) =>
-                    prevMessages.map((msg) =>
-                      msg.id === streamingMessageId
-                        ? { ...msg, text: accumulatedText }
-                        : msg
-                    )
-                  );
-                } else {
-                  if (isDev) {
-                    console.warn('[ChatClientShell] Parsed value is not a string:', typeof parsed, parsed);
-                  }
-                }
-              } catch (e) {
-                // 에러는 항상 로깅
-                console.error('[ChatClientShell] JSON parse error:', e, 'line:', line.substring(0, 100));
+            if (done) {
+              if (isDev) {
+                logger.log('[ChatClientShell] Stream done, total reads:', readCount, 'accumulated:', accumulatedText.substring(0, 100));
               }
-            } else if (line.trim() && isDev) {
-              logger.log('[ChatClientShell] Non-matching line:', line.substring(0, 100));
+              if (accumulatedText.length === 0) {
+                logger.warn('[ChatClientShell] No text accumulated! This might indicate a server-side issue.');
+                // 사용자에게 에러 메시지 표시
+                setMessages((prevMessages) =>
+                  prevMessages.map((msg) =>
+                    msg.id === streamingMessageId
+                      ? { ...msg, text: '죄송합니다. 응답을 받지 못했습니다. 잠시 후 다시 시도해주세요.' }
+                      : msg
+                  )
+                );
+              }
+              break;
+            }
+
+            if (!value) {
+              if (isDev) {
+                logger.warn('[ChatClientShell] No value in chunk, continuing...');
+              }
+              continue;
+            }
+
+            const chunk = decoder.decode(value, { stream: true });
+            if (isDev) {
+              logger.log('[ChatClientShell] Received chunk #' + readCount + ', length:', chunk.length, 'content:', chunk.substring(0, 200));
+            }
+            const lines = chunk.split('\n');
+            if (isDev) {
+              logger.log('[ChatClientShell] Split into', lines.length, 'lines');
+            }
+
+            for (const line of lines) {
+              if (line.startsWith('0:')) {
+                // 텍스트 데이터 추출
+                try {
+                  const jsonStr = line.substring(2);
+                  const parsed = JSON.parse(jsonStr);
+                  if (isDev) {
+                    logger.log('[ChatClientShell] Parsed text:', typeof parsed, parsed?.substring?.(0, 50));
+                  }
+
+                  if (parsed && typeof parsed === 'string') {
+                    accumulatedText += parsed;
+
+                    // 메시지 업데이트
+                    setMessages((prevMessages) =>
+                      prevMessages.map((msg) =>
+                        msg.id === streamingMessageId
+                          ? { ...msg, text: accumulatedText }
+                          : msg
+                      )
+                    );
+                  } else {
+                    if (isDev) {
+                      logger.warn('[ChatClientShell] Parsed value is not a string:', typeof parsed, parsed);
+                    }
+                  }
+                } catch (e) {
+                  logger.error('[ChatClientShell] JSON parse error:', e, 'line:', line.substring(0, 100));
+                }
+              } else if (line.trim() && isDev) {
+                logger.log('[ChatClientShell] Non-matching line:', line.substring(0, 100));
+              }
             }
           }
+        } finally {
+          reader.cancel();
         }
 
-        // 스트리밍 완료 후 최종 메시지 ID 업데이트 및 히스토리 저장
-        setMessages((prevMessages) => {
-          const updated = prevMessages.map((msg) =>
-            msg.id === streamingMessageId
-              ? { ...msg, id: Date.now().toString() }
-              : msg
-          );
+        // abort된 경우(모드 변경/언마운트) 완료 처리 스킵
+        if (!streamController.signal.aborted) {
+          // 스트리밍 완료 후 최종 메시지 ID 업데이트 및 히스토리 저장
+          setMessages((prevMessages) => {
+            const updated = prevMessages.map((msg) =>
+              msg.id === streamingMessageId
+                ? { ...msg, id: Date.now().toString() }
+                : msg
+            );
 
-          // 히스토리 저장 (debounce)
-          if (ENABLE_CHAT_HISTORY && saveTimeoutRef.current) {
-            clearTimeout(saveTimeoutRef.current);
+            // 히스토리 저장 (debounce)
+            if (ENABLE_CHAT_HISTORY && saveTimeoutRef.current) {
+              clearTimeout(saveTimeoutRef.current);
+            }
+            if (ENABLE_CHAT_HISTORY) {
+              saveTimeoutRef.current = setTimeout(() => {
+                saveChatHistory(updated);
+              }, 1000); // 1초 후 저장
+            }
+
+            return updated;
+          });
+
+          // TTS: 스트리밍 완료 후 AI 응답을 음성으로 읽기 (사용자 설정 확인)
+          if (accumulatedText && tts.getEnabled()) {
+            const plainText = extractPlainText(accumulatedText);
+            tts.speak(plainText);
           }
-          if (ENABLE_CHAT_HISTORY) {
-            saveTimeoutRef.current = setTimeout(() => {
-              saveChatHistory(updated);
-            }, 1000); // 1초 후 저장
-          }
-
-          return updated;
-        });
-
-        // TTS: 스트리밍 완료 후 AI 응답을 음성으로 읽기 (사용자 설정 확인)
-        if (accumulatedText && tts.getEnabled()) {
-          const plainText = extractPlainText(accumulatedText);
-          tts.speak(plainText);
         }
       } else {
         // 다른 모드는 기존 API 사용 (구조화된 응답)
+        // 이전 요청 취소 후 새 AbortController 생성
+        streamAbortControllerRef.current?.abort();
+        const nonStreamController = new AbortController();
+        streamAbortControllerRef.current = nonStreamController;
+
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -446,6 +468,7 @@ export default function ChatClientShell({
             from: payload.from,
             to: payload.to,
           }),
+          signal: nonStreamController.signal,
         });
 
         if (!response.ok) {
@@ -519,7 +542,7 @@ export default function ChatClientShell({
         }
       }
     } catch (error) {
-      console.error('[ChatClientShell] Error sending message:', error);
+      logger.error('[ChatClientShell] Error sending message:', error);
 
       // 에러 타입에 따라 다른 메시지 표시
       let errorText = '네트워크 오류가 발생했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.';
@@ -565,7 +588,7 @@ export default function ChatClientShell({
     setIsDeleting(true);
 
     try {
-      const response = await fetch('/api/chat/history', {
+      const response = await csrfFetch('/api/chat/history', {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -580,12 +603,12 @@ export default function ChatClientShell({
           logger.log('채팅 기록이 삭제되었습니다.');
         }
       } else {
-        console.error('Failed to delete chat history:', response.statusText);
-        alert('채팅 기록 삭제에 실패했습니다. 다시 시도해 주세요.');
+        logger.error('Failed to delete chat history:', response.statusText);
+        showError('채팅 기록 삭제에 실패했습니다. 다시 시도해 주세요.');
       }
     } catch (error) {
-      console.error('Error deleting chat history:', error);
-      alert('네트워크 오류가 발생했습니다. 다시 시도해 주세요.');
+      logger.error('Error deleting chat history:', error);
+      showError('네트워크 오류가 발생했습니다. 다시 시도해 주세요.');
     } finally {
       setIsDeleting(false);
     }
@@ -622,47 +645,20 @@ export default function ChatClientShell({
   //   loadChatHistory();
   // }, []); // 빈 의존성 배열: 컴포넌트 마운트 시 한 번만 실행
 
-  // 채팅 기록 저장하기 (messages 변경 시 자동 저장, debounce 적용)
+  // 클린업: unmount 시 saveTimeout 및 스트리밍 취소
   useEffect(() => {
-    // 로딩 중이거나 메시지가 비어있으면 저장하지 않음
-    if (isLoading || messages.length === 0) return;
-
-    // 이전 타이머가 있으면 취소
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    // 1초 후에 저장 (debounce)
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        const response = await csrfFetch('/api/chat/history', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ messages }),
-        });
-
-        if (!response.ok) {
-          console.error('Failed to save chat history:', response.statusText);
-        }
-      } catch (error) {
-        console.error('Error saving chat history:', error);
-      }
-    }, 1000); // 1초 debounce
-
-    // 클린업: 컴포넌트 언마운트 시 타이머 정리
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
+      streamAbortControllerRef.current?.abort();
     };
-  }, [messages, isLoading]); // messages가 변경될 때마다 실행
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
       {isLoading ? (
-        <div className="flex items-center justify-center" style={{ minHeight: '60vh' }}>
+        <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
             <p className="text-gray-600">대화 내역을 불러오는 중...</p>
@@ -707,12 +703,12 @@ export default function ChatClientShell({
             if (!latestShowMeMessage) return null;
 
             return (
-              <div className="px-3 pt-3 pb-2 bg-gray-50 border-t border-gray-200">
+              <div className="shrink-0 px-3 pt-3 pb-2 bg-gray-50 border-t border-gray-200">
                 <div className="flex items-center gap-2 text-base font-bold mb-2">
                   <span>📁</span>
                   <span>하위 폴더에서 더 찾아보기</span>
                 </div>
-                <div className="grid grid-cols-3 md:grid-cols-5 gap-2 mb-2">
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide snap-x snap-mandatory scroll-smooth mb-2">
                   {latestShowMeMessage.subfolders!.slice(0, 10).map((subfolder, idx) => (
                     <button
                       key={idx}
@@ -728,16 +724,17 @@ export default function ChatClientShell({
                         await onSend(payload);
                       }}
                       className="
+                        flex-shrink-0 snap-start
                         flex flex-col items-center justify-center gap-1
-                        px-3 py-3
+                        min-w-[72px] h-16
+                        px-2 py-2
                         bg-white
                         border-2 border-[#051C2C]/20
-                        rounded-lg
+                        rounded-xl
                         shadow-sm
                         hover:shadow-lg
                         hover:border-[#FDB931]
-                        text-sm font-bold
-                        min-h-[80px]
+                        text-xs font-bold
                         active:scale-95
                         transition-all
                       "
@@ -754,7 +751,7 @@ export default function ChatClientShell({
             );
           })()}
 
-          <div className="px-3 pb-3 pt-2 bg-white border-t">
+          <div className="shrink-0 px-3 pt-2 bg-white border-t" style={{ paddingBottom: scrollable ? 'env(safe-area-inset-bottom, 0px)' : 'calc(5rem + env(safe-area-inset-bottom))' }}>
             <InputBar mode={mode} onSend={onSend} disabled={isSending} />
             {isSending && (
               <div className="text-center text-sm text-gray-500 mt-2">
