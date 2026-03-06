@@ -5,8 +5,19 @@ import { usePathname } from 'next/navigation';
 // 하단 패딩을 표시할 경로 (하단 툴바가 있는 경로와 동일)
 // 오직 지니가이드와 지니가이드 3일체험에서만 패딩 적용
 const SHOW_BOTTOM_PADDING_PATHS = [
-  '/chat',      // 지니가이드 (크루즈 가이드 지니 AI)
-  '/chat-test', // 지니가이드 3일체험
+  // h-[100dvh] + overflow-hidden 전략 사용 경로는 제외:
+  //   - chat, translator: 내부에서 safe-area 처리 완료
+  //   - map, map-test: h-[100dvh]+overflow-hidden 구조 → 외부 패딩이 main 높이에 영향 없음
+  //                    safe-area는 map 내부에서 직접 처리 필요
+  '/chat-test',       // 지니가이드 3일체험 (min-h-screen 기반)
+  '/checklist',       // 체크리스트 (min-h-screen 기반)
+  '/checklist-test',  // 체크리스트 3일체험 (min-h-screen 기반)
+  '/tools',           // 도구 (min-h-screen 기반)
+  '/tools-test',      // 도구 3일체험 (min-h-screen 기반)
+  '/wallet',          // 환전계산기 (min-h-screen 기반)
+  '/wallet-test',     // 환전계산기 3일체험 (min-h-screen 기반)
+  '/profile',         // 프로필 (min-h-screen 기반)
+  '/profile-test',    // 프로필 3일체험 (min-h-screen 기반)
 ];
 
 /**

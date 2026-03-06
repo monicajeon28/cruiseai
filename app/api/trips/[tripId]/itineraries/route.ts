@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 /**
  * GET /api/trips/[tripId]/itineraries
@@ -61,7 +62,7 @@ export async function GET(
         };
       } catch (e) {
         // 날짜 파싱 실패 시 무시하고 전체 조회
-        console.warn('[Itineraries API] Invalid date parameter:', dateParam);
+        logger.warn('[Itineraries API] Invalid date parameter:', dateParam);
       }
     }
 
@@ -86,7 +87,7 @@ export async function GET(
       data: itineraries,
     });
   } catch (error) {
-    console.error('[Itineraries API] Error:', error);
+    logger.error('[Itineraries API] Error:', error);
     return NextResponse.json(
       { ok: false, error: 'Internal server error' },
       { status: 500 }

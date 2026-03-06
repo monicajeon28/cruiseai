@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync } from 'fs';
 import path from 'path';
+import { logger } from '@/lib/logger';
 
 interface Terminal {
   name: string;
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('[API] 터미널 검색 오류:', error);
+    logger.error('[API] 터미널 검색 오류:', error);
     return NextResponse.json(
       { error: '터미널 검색 중 오류가 발생했습니다' },
       { status: 500 }

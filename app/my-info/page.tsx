@@ -7,6 +7,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FiArrowLeft, FiEdit2, FiTrash2, FiEye, FiMessageCircle, FiHeart, FiStar, FiSave, FiX } from 'react-icons/fi';
+import { showError, showSuccess } from '@/components/ui/Toast';
+import { logger } from '@/lib/logger';
 
 interface Post {
   id: number;
@@ -132,11 +134,11 @@ export default function MyInfoPage() {
       if (data.ok) {
         setPosts(posts.filter(p => p.id !== postId));
       } else {
-        alert(data.error || '게시글 삭제에 실패했습니다.');
+        showError(data.error || '게시글 삭제에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Failed to delete post:', error);
-      alert('게시글 삭제 중 오류가 발생했습니다.');
+      logger.error('Failed to delete post:', error);
+      showError('게시글 삭제 중 오류가 발생했습니다.');
     }
   };
 
@@ -155,13 +157,13 @@ export default function MyInfoPage() {
       if (response.ok && data.ok) {
         // 리뷰 목록에서 제거
         setReviews(reviews.filter(r => r.id !== reviewId));
-        alert('리뷰가 삭제되었습니다.');
+        showSuccess('리뷰가 삭제되었습니다.');
       } else {
-        alert(data.error || '리뷰 삭제에 실패했습니다.');
+        showError(data.error || '리뷰 삭제에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Failed to delete review:', error);
-      alert('리뷰 삭제 중 오류가 발생했습니다.');
+      logger.error('Failed to delete review:', error);
+      showError('리뷰 삭제 중 오류가 발생했습니다.');
     }
   };
 
@@ -184,17 +186,17 @@ export default function MyInfoPage() {
       if (data.ok) {
         setComments(comments.filter(c => c.id !== commentId));
       } else {
-        alert(data.error || '댓글 삭제에 실패했습니다.');
+        showError(data.error || '댓글 삭제에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Failed to delete comment:', error);
-      alert('댓글 삭제 중 오류가 발생했습니다.');
+      logger.error('Failed to delete comment:', error);
+      showError('댓글 삭제 중 오류가 발생했습니다.');
     }
   };
 
   const handleSave = async () => {
     if (!editName.trim() || !editPhone.trim()) {
-      alert('이름과 연락처를 모두 입력해주세요.');
+      showError('이름과 연락처를 모두 입력해주세요.');
       return;
     }
 
@@ -215,15 +217,15 @@ export default function MyInfoPage() {
       const data = await response.json();
 
       if (!response.ok || !data.ok) {
-        alert(data.error || '정보 저장에 실패했습니다.');
+        showError(data.error || '정보 저장에 실패했습니다.');
         return;
       }
 
-      alert('정보가 저장되었습니다.');
+      showSuccess('정보가 저장되었습니다.');
       setIsEditing(false);
       fetchMyInfo();
     } catch (err) {
-      alert('정보 저장 중 오류가 발생했습니다.');
+      showError('정보 저장 중 오류가 발생했습니다.');
     } finally {
       setSaving(false);
     }

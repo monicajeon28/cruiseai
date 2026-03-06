@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 import { resolveGeminiModelName } from '@/lib/ai/geminiModel';
 import {
   detectAdvisorType,
@@ -17,6 +18,11 @@ import {
 
 export async function POST(req: Request) {
   try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ ok: false, error: '인증이 필요합니다.' }, { status: 401 });
+    }
+
     const { prompt, useAdvisor, context } = await req.json();
     const apiKey = process.env.GEMINI_API_KEY;
     const model = resolveGeminiModelName();
@@ -26,6 +32,12 @@ export async function POST(req: Request) {
     }
     if (!prompt || typeof prompt !== 'string') {
       return NextResponse.json({ ok: false, error: 'prompt required' }, { status: 400 });
+    }
+    if (prompt.length > 2000) {
+      return NextResponse.json({ ok: false, error: '질문이 너무 깁니다.' }, { status: 400 });
+    }
+    if (context && typeof context === 'string' && context.length > 2000) {
+      return NextResponse.json({ ok: false, error: '컨텍스트가 너무 깁니다.' }, { status: 400 });
     }
 
     // AI 고문 모드 처리
@@ -60,9 +72,9 @@ ${prompt}
       const data = await res.json();
 
       if (data.error) {
-        console.error('[API /ask] Advisor mode - Gemini API error:', data.error);
+        logger.error('[API /ask] Advisor mode - Gemini API error');
         return NextResponse.json(
-          { ok: false, error: data.error.message || 'AI 고문 응답 생성 중 오류가 발생했습니다' },
+          { ok: false, error: 'AI 고문 응답 생성 중 오류가 발생했습니다.' },
           { status: 500 }
         );
       }
@@ -83,9 +95,8 @@ ${prompt}
       });
     }
 
-    // 사용자 정보 및 여행 정보 가져오기
+    // 사용자 정보 및 여행 정보 가져오기 (최상단에서 인증된 user 재사용)
     let userContext = '';
-    const user = await getSessionUser();
     if (user) {
       const latestTrip = await prisma.trip.findFirst({
         where: { userId: user.id },
@@ -169,9 +180,9 @@ ${prompt}
 
     // 에러 처리
     if (data.error) {
-      console.error('[API /ask] Gemini API error:', data.error);
+      logger.error('[API /ask] Gemini API error');
       return NextResponse.json(
-        { ok: false, error: data.error.message || 'AI 응답 생성 중 오류가 발생했습니다' },
+        { ok: false, error: 'AI 응답 생성 중 오류가 발생했습니다.' },
         { status: 500 }
       );
     }
@@ -179,15 +190,14 @@ ${prompt}
     // 응답 추출
     const text =
       data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
-      data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.mimeType ||
       '죄송해요. 답변을 생성하지 못했어요. 다시 시도해주세요.';
 
     // text와 answer 둘 다 반환하여 호환성 유지
     return NextResponse.json({ ok: true, text, answer: text });
   } catch (e: any) {
-    console.error('[API /ask] Error:', e);
+    logger.error('[API /ask] Error', { message: e?.message || String(e) });
     return NextResponse.json(
-      { ok: false, error: String(e?.message || e) },
+      { ok: false, error: 'AI 응답 중 오류가 발생했습니다.' },
       { status: 500 }
     );
   }

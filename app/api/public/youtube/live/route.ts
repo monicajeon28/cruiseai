@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 // YouTube 라이브 방송 조회 API
 
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const CHANNEL_ID = 'UCKLDsk4iNXT1oYJ5ikUFggQ'; // 크루즈닷AI지니
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error fetching YouTube Live:', error);
+    logger.error('Error fetching YouTube Live:', error);
     return NextResponse.json(
       { ok: false, error: 'Internal server error' },
       { status: 500 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
 
 interface UsePushNotificationsReturn {
   isSupported: boolean;
@@ -45,7 +46,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       const subscription = await registration.pushManager.getSubscription();
       setIsSubscribed(!!subscription);
     } catch (err) {
-      console.error('[Push] 구독 상태 확인 오류:', err);
+      logger.error('[Push] 구독 상태 확인 오류:', err);
     }
   };
 
@@ -65,7 +66,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       const registration = await navigator.serviceWorker.register('/sw.js', {
         scope: '/',
       });
-      console.log('[Push] Service Worker 등록 완료:', registration);
+      logger.log('[Push] Service Worker 등록 완료:', registration);
 
       // 2. 알림 권한 요청
       const permission = await Notification.requestPermission();
@@ -83,7 +84,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
       });
-      console.log('[Push] 푸시 구독 완료:', subscription);
+      logger.log('[Push] 푸시 구독 완료:', subscription);
 
       // 4. 서버에 구독 정보 저장 (실패해도 구독은 성공한 것으로 처리)
       try {
@@ -95,26 +96,26 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         });
 
         if (!response.ok) {
-          console.warn('[Push] 서버에 구독 정보 저장 실패, 하지만 브라우저 구독은 성공:', response.status);
+          logger.warn('[Push] 서버에 구독 정보 저장 실패, 하지만 브라우저 구독은 성공:', response.status);
           // 서버 저장 실패는 경고만 하고 계속 진행 (브라우저 구독은 성공했으므로)
         } else {
-          console.log('[Push] 서버에 구독 정보 저장 완료');
+          logger.log('[Push] 서버에 구독 정보 저장 완료');
         }
       } catch (saveError) {
-        console.warn('[Push] 서버에 구독 정보 저장 중 오류 발생, 하지만 브라우저 구독은 성공:', saveError);
+        logger.warn('[Push] 서버에 구독 정보 저장 중 오류 발생, 하지만 브라우저 구독은 성공:', saveError);
         // 서버 저장 실패는 경고만 하고 계속 진행
       }
 
       // 브라우저 구독이 성공했으면 isSubscribed를 true로 설정
       setIsSubscribed(true);
-      console.log('[Push] 알림 구독이 완료되었습니다');
+      logger.log('[Push] 알림 구독이 완료되었습니다');
       
       // 구독 상태를 다시 확인하여 확실히 업데이트
       await checkSubscriptionStatus();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다';
       setError(errorMsg);
-      console.error('[Push] 오류:', errorMsg);
+      logger.error('[Push] 오류:', errorMsg);
     } finally {
       setIsLoading(false);
     }

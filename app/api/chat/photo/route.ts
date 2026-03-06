@@ -3,16 +3,29 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { resolveGeminiModelName } from '@/lib/ai/geminiModel';
+import { getSessionUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 export const runtime = 'nodejs';   // edge 금지 (Prisma/라이브러리 충돌 방지)
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
 export async function POST(req: Request) {
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ ok: false, messages: [{ type: 'text', text: '인증이 필요합니다.' }] }, { status: 401 });
+  }
+
   const form = await req.formData();
   const question = String(form.get('question') || '');
   const file = form.get('image') as File | null;
 
   if (!file) {
-    return NextResponse.json({ ok:false, messages:[{type:'text', text:'이미지를 찾을 수 없어요.'}]}, { status:400 });
+    return NextResponse.json({ ok: false, messages: [{ type: 'text', text: '이미지를 찾을 수 없어요.' }] }, { status: 400 });
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    return NextResponse.json({ ok: false, messages: [{ type: 'text', text: '이미지 크기는 5MB 이하여야 합니다.' }] }, { status: 400 });
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
@@ -32,14 +45,14 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true,
-      messages: [{ type:'text', text }]
+      messages: [{ type: 'text', text }]
     });
 
-  } catch (e:any) {
-    console.error(e);
+  } catch (e: any) {
+    logger.error('[Chat Photo API] Error', { message: e?.message || String(e) });
     return NextResponse.json({
-      ok:false,
-      messages:[{ type:'text', text:'이미지 분석 중 오류가 발생했어요.' }]
-    }, { status:500 });
+      ok: false,
+      messages: [{ type: 'text', text: '이미지 분석 중 오류가 발생했어요.' }]
+    }, { status: 500 });
   }
 }

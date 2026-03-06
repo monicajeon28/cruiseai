@@ -1,4 +1,5 @@
 import { resolveGeminiModelName } from '@/lib/ai/geminiModel';
+import { logger } from '@/lib/logger';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
@@ -85,12 +86,12 @@ export async function scanPassport(
   expiryDate?: string;
   residentNum?: string; // 주민번호 앞 7자리 (자동 생성)
 }> {
-  console.log('[scanPassport] 함수 호출 시작, mimeType:', mimeType);
+  logger.log('[scanPassport] 함수 호출 시작, mimeType:', mimeType);
   
   // 프로젝트 표준: GEMINI_API_KEY 우선 사용 (크루즈가이드 지니와 동일)
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
   
-  console.log('[scanPassport] API Key 확인:', {
+  logger.log('[scanPassport] API Key 확인:', {
     GEMINI_API_KEY: process.env.GEMINI_API_KEY ? 'Set (✅ Using this)' : 'Not set',
     GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY ? 'Set' : 'Not set',
     GOOGLE_GEMINI_API_KEY: process.env.GOOGLE_GEMINI_API_KEY ? 'Set' : 'Not set',
@@ -98,12 +99,12 @@ export async function scanPassport(
   });
   
   if (!apiKey) {
-    console.error('[scanPassport] Error: API Key가 설정되지 않았습니다.');
-    console.error('[scanPassport] .env 파일에 GEMINI_API_KEY를 설정해주세요.');
+    logger.error('[scanPassport] Error: API Key가 설정되지 않았습니다.');
+    logger.error('[scanPassport] .env 파일에 GEMINI_API_KEY를 설정해주세요.');
     throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.');
   }
 
-  console.log('[scanPassport] API Key 확인 완료, Gemini AI 초기화 중...');
+  logger.log('[scanPassport] API Key 확인 완료, Gemini AI 초기화 중...');
   
   try {
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
@@ -111,7 +112,7 @@ export async function scanPassport(
     
     const genAI = new GoogleGenerativeAI(apiKey);
     const modelName = resolveGeminiModelName();
-    console.log('[scanPassport] 모델명:', modelName);
+    logger.log('[scanPassport] 모델명:', modelName);
     
     const model = genAI.getGenerativeModel({ model: modelName });
 
@@ -172,15 +173,15 @@ Do not include any markdown formatting (like \`\`\`json) or comments. Just the r
 
 `;
 
-    console.log('[scanPassport] Gemini API 호출 중...');
+    logger.log('[scanPassport] Gemini API 호출 중...');
     const result = await model.generateContent([
       { text: prompt },
       { inlineData: { data: base64Image, mimeType } },
     ]);
 
-    console.log('[scanPassport] Gemini API 응답 수신, 텍스트 추출 중...');
+    logger.log('[scanPassport] Gemini API 응답 수신, 텍스트 추출 중...');
     const responseText = result.response.text().trim();
-    console.log('[scanPassport] 응답 텍스트 (처음 200자):', responseText.substring(0, 200));
+    logger.log('[scanPassport] 응답 텍스트 (처음 200자):', responseText.substring(0, 200));
     
     // 1. 응답 정제 로직: 마크다운 코드 블록 제거
     let cleanText = responseText;
@@ -194,21 +195,21 @@ Do not include any markdown formatting (like \`\`\`json) or comments. Just the r
       cleanText = jsonMatch[0];
     }
     
-    console.log('[scanPassport] 정제된 텍스트 (처음 200자):', cleanText.substring(0, 200));
-    console.log('[scanPassport] JSON 파싱 시도 중...');
+    logger.log('[scanPassport] 정제된 텍스트 (처음 200자):', cleanText.substring(0, 200));
+    logger.log('[scanPassport] JSON 파싱 시도 중...');
     
     // 2. JSON 파싱 안전장치
     let passportData;
     try {
       passportData = JSON.parse(cleanText);
     } catch (parseError: any) {
-      console.error('[scanPassport] JSON 파싱 실패:', parseError);
-      console.error('[scanPassport] JSON 파싱 실패 - 원본 텍스트 (전체):', responseText);
-      console.error('[scanPassport] JSON 파싱 실패 - 정제된 텍스트 (전체):', cleanText);
+      logger.error('[scanPassport] JSON 파싱 실패:', parseError);
+      logger.error('[scanPassport] JSON 파싱 실패 - 원본 텍스트 (전체):', responseText);
+      logger.error('[scanPassport] JSON 파싱 실패 - 정제된 텍스트 (전체):', cleanText);
       throw new Error(`Gemini 응답 파싱 실패: ${parseError.message}`);
     }
     
-    console.log('[scanPassport] JSON 파싱 완료:', {
+    logger.log('[scanPassport] JSON 파싱 완료:', {
       korName: passportData.korName ? '있음' : '없음',
       passportNo: passportData.passportNo ? '있음' : '없음',
     });
@@ -230,7 +231,7 @@ Do not include any markdown formatting (like \`\`\`json) or comments. Just the r
       }
       
       // 형식이 맞지 않으면 null 처리
-      console.warn('[scanPassport] 날짜 형식 오류:', dateStr, '-> null 처리');
+      logger.warn('[scanPassport] 날짜 형식 오류:', dateStr, '-> null 처리');
       return undefined;
     };
 
@@ -297,11 +298,11 @@ Do not include any markdown formatting (like \`\`\`json) or comments. Just the r
           if (genderCode) {
             // 주민번호 앞 7자리 생성 (생년월일 6자리 + 하이픈 + 성별코드 1자리)
             residentNumPrefix = `${birthDateStr}-${genderCode}`;
-            console.log('[scanPassport] 주민번호 앞 7자리 자동 생성:', residentNumPrefix);
+            logger.log('[scanPassport] 주민번호 앞 7자리 자동 생성:', residentNumPrefix);
           }
         }
       } catch (error) {
-        console.warn('[scanPassport] 주민번호 생성 실패:', error);
+        logger.warn('[scanPassport] 주민번호 생성 실패:', error);
       }
     }
 
@@ -320,9 +321,9 @@ Do not include any markdown formatting (like \`\`\`json) or comments. Just the r
       residentNum: residentNumPrefix, // 주민번호 앞 7자리 자동 생성
     };
   } catch (error: any) {
-    console.error('[scanPassport] Error:', error);
-    console.error('[scanPassport] Error Stack:', error.stack);
-    console.error('[scanPassport] Error Details:', {
+    logger.error('[scanPassport] Error:', error);
+    logger.error('[scanPassport] Error Stack:', error.stack);
+    logger.error('[scanPassport] Error Details:', {
       message: error.message,
       name: error.name,
       code: error.code,

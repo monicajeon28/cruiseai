@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { FiStar } from 'react-icons/fi';
 import Link from 'next/link';
-import { PRODUCT_TAGS } from '@/components/admin/ProductTagsSelector';
+import { PRODUCT_TAGS } from '@/lib/product-tags';
 import ProductReviewsModal from './ProductReviewsModal';
 
 interface ProductCardProps {

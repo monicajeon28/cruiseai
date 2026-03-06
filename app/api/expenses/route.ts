@@ -22,7 +22,8 @@ export async function GET(req: NextRequest) {
     }
 
     const tripIdParam = req.nextUrl.searchParams.get('tripId');
-    const tripId = tripIdParam ? parseInt(tripIdParam) : undefined;
+    const parsedTripId = tripIdParam ? parseInt(tripIdParam) : undefined;
+    const tripId = parsedTripId !== undefined && isNaN(parsedTripId) ? undefined : parsedTripId;
 
     const expenses = await prisma.expense.findMany({
       where: tripId 
@@ -163,12 +164,18 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const userTripId = tripId ? parseInt(tripId) : undefined;
+    const userTripIdRaw = tripId ? parseInt(tripId) : undefined;
+    const userTripId = userTripIdRaw !== undefined && isNaN(userTripIdRaw) ? undefined : userTripIdRaw;
+
+    const expenseId = parseInt(id);
+    if (isNaN(expenseId)) {
+      return NextResponse.json({ ok: false, error: '유효하지 않은 지출 ID입니다' }, { status: 400 });
+    }
 
     // 지출 소유권 확인
     const existingExpense = await prisma.expense.findFirst({
       where: {
-        id: parseInt(id),
+        id: expenseId,
         userId: user.id,
         ...(userTripId ? { userTripId } : {}),
       },
@@ -188,7 +195,7 @@ export async function PUT(req: NextRequest) {
 
     // DB 업데이트
     const updatedExpense = await prisma.expense.update({
-      where: { id: parseInt(id) },
+      where: { id: expenseId },
       data: {
         ...(date ? { date: new Date(date) } : {}),
         ...(category !== undefined ? { category } : {}),

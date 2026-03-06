@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { logger } from '@/lib/logger';
 
 // 런타임에만 평가되도록 함수로 변경 (빌드 타임 번들링 방지)
 function getPublicRoot() {
@@ -97,11 +98,11 @@ export function getPhotoPool(): { url: string; title: string; tags: string[]; fo
         const files = walk(PHOTOS_DIR);
         cachedPool = files.map(toItem);
       } else {
-        console.warn('[Photos Search] 크루즈정보사진 폴더가 없습니다:', PHOTOS_DIR);
+        logger.warn('[Photos Search] 크루즈정보사진 폴더가 없습니다:', PHOTOS_DIR);
         cachedPool = [];
       }
     } catch (error) {
-      console.error('[Photos Search] 폴더 접근 오류:', error);
+      logger.error('[Photos Search] 폴더 접근 오류:', error);
       cachedPool = [];
     }
   }
@@ -126,7 +127,7 @@ function buildAliasIndex(map: Record<string, any>) {
         for (const k of Object.keys(aliases)) if (k) idx.set(squash(k), primary);
       }
     } catch (e) {
-      console.warn('[photos] skipping invalid alias entry for', primary, e);
+      logger.warn('[photos] skipping invalid alias entry for', primary, e);
       idx.set(squash(primary), primary);
     }
   }
@@ -212,7 +213,7 @@ export async function getSubfolders(folderName: string): Promise<Array<{ name: s
     }
   });
   
-  console.log('[getSubfolders] Debug:', {
+  logger.log('[getSubfolders] Debug:', {
     folderName,
     lastFolderName,
     folderPhotosCount: folderPhotos.length,

@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 import { scanPassport } from '@/lib/gemini';
+import { logger } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -143,7 +144,7 @@ export async function POST(req: NextRequest) {
       } catch (error: any) {
         return NextResponse.json({
           ok: false,
-          error: `여권 인식에 실패했습니다: ${error.message}\n다시 촬영해주세요.`,
+          error: '여권 인식에 실패했습니다. 다시 촬영해주세요.',
         }, { status: 400 });
       }
     }
@@ -294,9 +295,9 @@ export async function POST(req: NextRequest) {
     }, { status: 400 });
 
   } catch (error: any) {
-    console.error('[Passport Flow API] Error:', error);
+    logger.error('[Passport Flow API] Error:', error);
     return NextResponse.json(
-      { ok: false, error: `오류가 발생했습니다: ${error.message}` },
+      { ok: false, error: '여권 처리 중 오류가 발생했습니다.' },
       { status: 500 }
     );
   }

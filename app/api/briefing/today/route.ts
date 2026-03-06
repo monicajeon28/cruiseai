@@ -20,20 +20,20 @@ export async function GET(_req: NextRequest) {
       return NextResponse.json({ ok: false, message: 'Unauthorized' }, { status: 401 });
     }
 
-    logger.log('[Briefing API] 사용자 인증 성공:', { 
-      userId: user.id, 
-      name: user.name, 
-      phone: user.phone,
-      onboarded: user.onboarded 
-    });
+    logger.log('[Briefing API] 사용자 인증 성공:', { userId: user.id });
 
-    // 사용자의 전체 여행 수 조회 (몇번째 여행 표시용)
-    const tripCount = await prisma.userTrip.count({
-      where: { userId: user.id },
-    });
+    // 사용자의 전체 여행 수 + 테스트 모드 여부 병렬 조회
+    const [tripCount, userMeta] = await Promise.all([
+      prisma.userTrip.count({ where: { userId: user.id } }),
+      prisma.user.findUnique({
+        where: { id: user.id },
+        select: { customerStatus: true },
+      }),
+    ]);
+    const isTestUser = userMeta?.customerStatus === 'test' || userMeta?.customerStatus === 'test-locked';
 
     // 최신 여행(온보딩 정보) 조회 - createdAt desc로 최신 온보딩 정보 가져오기
-    logger.log('[Briefing API] 사용자 UserTrip 조회 시작:', { userId: user.id, name: user.name });
+    logger.log('[Briefing API] 사용자 UserTrip 조회 시작:', { userId: user.id });
     
     const allTrips = await prisma.userTrip.findMany({
       where: {
@@ -62,17 +62,7 @@ export async function GET(_req: NextRequest) {
       },
     });
 
-    logger.log('[Briefing API] 사용자 전체 Trip 목록:', {
-      userId: user.id,
-      tripCount: allTrips.length,
-      trips: allTrips.map((t: (typeof allTrips)[number]) => ({
-        id: t.id,
-        cruiseName: t.cruiseName,
-        startDate: t.startDate,
-        endDate: t.endDate,
-        createdAt: t.createdAt,
-      })),
-    });
+    logger.log('[Briefing API] 사용자 Trip 목록:', { userId: user.id, tripCount: allTrips.length });
 
     // 오늘 활성 여행 우선, 다음 예정 여행, 최신 여행 순으로 선택
     const todayMidnight = new Date();
@@ -95,29 +85,10 @@ export async function GET(_req: NextRequest) {
       allTrips[0] ||
       null;
 
-    logger.log('[Briefing API] 사용자 Trip 조회 결과:', {
-      userId: user.id,
-      found: !!activeTrip,
-      userTripId: activeTrip?.id,
-      cruiseName: activeTrip?.cruiseName,
-      startDate: activeTrip?.startDate,
-      endDate: activeTrip?.endDate,
-      nights: activeTrip?.nights,
-      days: activeTrip?.days,
-      createdAt: activeTrip?.createdAt,
-      hasCruiseProduct: !!activeTrip?.CruiseProduct,
-      productCode: activeTrip?.CruiseProduct?.productCode,
-      hasItineraryPattern: !!activeTrip?.CruiseProduct?.itineraryPattern,
-      itineraryPatternType: typeof activeTrip?.CruiseProduct?.itineraryPattern,
-      itineraryPatternSample: activeTrip?.CruiseProduct?.itineraryPattern 
-        ? (Array.isArray(activeTrip.CruiseProduct.itineraryPattern) 
-            ? activeTrip.CruiseProduct.itineraryPattern.slice(0, 3)
-            : String(activeTrip.CruiseProduct.itineraryPattern).substring(0, 200))
-        : null,
-    });
+    logger.log('[Briefing API] 사용자 Trip 조회 결과:', { userId: user.id, found: !!activeTrip });
 
     if (!activeTrip) {
-      console.warn('[Briefing API] Trip을 찾을 수 없음:', { userId: user.id });
+      logger.warn('[Briefing API] Trip을 찾을 수 없음:', { userId: user.id });
       return NextResponse.json({
         ok: true,
         hasTrip: false,
@@ -459,7 +430,7 @@ export async function GET(_req: NextRequest) {
     });
 
     if (itinerariesWithCountry.length === 0) {
-      console.warn('[Briefing API] ⚠️ Itinerary에 국가 정보가 없습니다. itineraryPattern에서 추출을 시도합니다.');
+      logger.warn('[Briefing API] ⚠️ Itinerary에 국가 정보가 없습니다. itineraryPattern에서 추출을 시도합니다.');
     }
 
     itinerariesWithCountry.forEach((it: (typeof allItineraries)[number]) => {
@@ -532,14 +503,14 @@ export async function GET(_req: NextRequest) {
           }
         });
       } catch (e) {
-        console.error('[Briefing API] itineraryPattern 파싱 실패:', e);
+        logger.error('[Briefing API] itineraryPattern 파싱 실패:', e);
       }
     }
 
     // 4순위: uniqueCountries가 여전히 비어있으면 경고 로그
     if (uniqueCountries.size === 0) {
-      console.warn('[Briefing API] ⚠️ 모든 방법으로 국가를 찾지 못함. 날씨 정보를 생성할 수 없습니다.');
-      console.warn('[Briefing API] 디버깅 정보:', {
+      logger.warn('[Briefing API] ⚠️ 모든 방법으로 국가를 찾지 못함. 날씨 정보를 생성할 수 없습니다.');
+      logger.warn('[Briefing API] 디버깅 정보:', {
         userTripId: activeTrip.id, // UserTrip의 id 사용
         destination: activeTrip.destination,
         destinationType: typeof activeTrip.destination,
@@ -569,15 +540,15 @@ export async function GET(_req: NextRequest) {
     
     // uniqueCountries가 비어있으면 더 자세한 디버깅 정보 출력
     if (uniqueCountries.size === 0) {
-      console.error('[Briefing API] ❌ 국가 추출 실패 - 상세 디버깅 정보:');
-      console.error('[Briefing API] 1. Trip.destination:', {
+      logger.error('[Briefing API] ❌ 국가 추출 실패 - 상세 디버깅 정보:');
+      logger.error('[Briefing API] 1. Trip.destination:', {
         destination: activeTrip.destination,
         destinationType: typeof activeTrip.destination,
         isArray: Array.isArray(activeTrip.destination),
         isObject: typeof activeTrip.destination === 'object' && activeTrip.destination !== null,
       });
-      console.error('[Briefing API] 2. Itinerary 테이블:', {
-        userTripId: activeTrip.id, // UserTrip의 id 사용
+      logger.error('[Briefing API] 2. Itinerary 테이블:', {
+        userTripId: activeTrip.id,
         itineraryCount: allItineraries.length,
         itinerariesWithCountry: itinerariesWithCountry.length,
         sampleItineraries: allItineraries.slice(0, 3).map((it: (typeof allItineraries)[number]) => ({
@@ -587,24 +558,39 @@ export async function GET(_req: NextRequest) {
           location: it.location,
         })),
       });
-      console.error('[Briefing API] 3. CruiseProduct.itineraryPattern:', {
+      logger.error('[Briefing API] 3. CruiseProduct.itineraryPattern:', {
         hasCruiseProduct: !!activeTrip.CruiseProduct,
         hasItineraryPattern: !!activeTrip.CruiseProduct?.itineraryPattern,
         itineraryPatternType: typeof activeTrip.CruiseProduct?.itineraryPattern,
-        itineraryPatternValue: activeTrip.CruiseProduct?.itineraryPattern 
+        itineraryPatternValue: activeTrip.CruiseProduct?.itineraryPattern
           ? (typeof activeTrip.CruiseProduct.itineraryPattern === 'string'
               ? activeTrip.CruiseProduct.itineraryPattern.substring(0, 1000)
               : JSON.stringify(activeTrip.CruiseProduct.itineraryPattern).substring(0, 1000))
           : null,
       });
-      
+
       // extractCountryCodesFromItineraryPattern 직접 테스트
       if (activeTrip.CruiseProduct?.itineraryPattern) {
         try {
           const testCountryCodes = extractCountryCodesFromItineraryPattern(activeTrip.CruiseProduct.itineraryPattern);
-          console.error('[Briefing API] 4. extractCountryCodesFromItineraryPattern 테스트 결과:', testCountryCodes);
+          logger.error('[Briefing API] 4. extractCountryCodesFromItineraryPattern 테스트 결과:', testCountryCodes);
         } catch (e) {
-          console.error('[Briefing API] 4. extractCountryCodesFromItineraryPattern 테스트 실패:', e);
+          logger.error('[Briefing API] 4. extractCountryCodesFromItineraryPattern 테스트 실패:', e);
+        }
+      }
+    }
+
+    // 최후 fallback: 모든 추출 실패 시 todayItinerary.country 직접 사용
+    if (uniqueCountries.size === 0) {
+      const fallbackCountryRaw = todayItinerary?.country || tomorrowItinerary?.country;
+      if (fallbackCountryRaw && fallbackCountryRaw !== 'KR') {
+        // 2자리 ISO 코드이면 바로 사용, 한글이면 역매핑
+        const code = fallbackCountryRaw.length === 2
+          ? fallbackCountryRaw.toUpperCase()
+          : COUNTRY_NAME_TO_CODE[fallbackCountryRaw] ?? null;
+        if (code && code !== 'KR') {
+          uniqueCountries.set(code, todayItinerary?.location || null);
+          logger.log('[Briefing API] fallback: todayItinerary.country 사용:', { raw: fallbackCountryRaw, code });
         }
       }
     }
@@ -691,12 +677,27 @@ export async function GET(_req: NextRequest) {
           });
           timeString = formatter.format(now);
         } catch (error) {
-          console.error(`[Briefing API] Error formatting time for ${countryCode}:`, error);
+          logger.error(`[Briefing API] Error formatting time for ${countryCode}:`, error);
         }
 
-        let temp = 20;
-        let condition = '맑음';
-        let icon = '☀️';
+        // 테스트 유저: API 호출 없이 더미 데이터 즉시 반환
+        if (isTestUser) {
+          return {
+            country: COUNTRY_NAMES[countryCode] || countryCode,
+            countryCode,
+            location,
+            temp: 22 as number | null,
+            condition: '체험 데이터' as string | null,
+            icon: '🌤️' as string | null,
+            time: timeString,
+            isDummyWeather: true,
+          };
+        }
+
+        // 실유저: 실제 날씨 API 호출 (실패 시 null 반환 - 가짜 데이터 절대 없음)
+        let temp: number | null = null;
+        let condition: string | null = null;
+        let icon: string | null = null;
 
         // Redis 캐시 키 (1시간 단위: YYYY-MM-DDTHH)
         const weatherCacheKey = `weather:${countryCode}:${new Date().toISOString().slice(0, 13)}`;
@@ -718,14 +719,13 @@ export async function GET(_req: NextRequest) {
           }
         }
 
-        // 2단계: 캐시 미스 시 WeatherAPI 호출
+        // 2단계: 캐시 미스 시 WeatherAPI 호출 (5초 타임아웃)
         if (!cacheHit && WEATHER_API_KEY) {
           try {
             const cityQuery = COUNTRY_DEFAULT_CITY[countryCode] || countryCode;
             logger.log(`[Briefing API] WeatherAPI 호출: ${countryCode} → ${cityQuery}`);
-            // 3초 타임아웃: Vercel Hobby 10s 제한 내에 완료하기 위함
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
             try {
               const weatherRes = await fetch(
                 `https://api.weatherapi.com/v1/current.json?key=${WEATHER_API_KEY}&q=${encodeURIComponent(cityQuery)}&lang=ko`,
@@ -738,28 +738,27 @@ export async function GET(_req: NextRequest) {
                 condition = wd.current.condition.text;
                 icon = getWeatherIcon(wd.current.condition.code, wd.current.is_day);
                 logger.log(`[Briefing API] WeatherAPI 성공: ${countryCode} → ${temp}°C, ${condition}`);
-                // Redis에 캐시 저장 (1시간 TTL)
                 if (weatherRedis) {
                   weatherRedis.set(weatherCacheKey, { temp, condition, icon }, { ex: 3600 }).catch(() => {});
                 }
               } else {
                 clearTimeout(timeoutId);
                 const errBody = await weatherRes.text();
-                console.error(`[Briefing API] WeatherAPI 실패: ${countryCode}, status=${weatherRes.status}, body=${errBody}`);
+                logger.error(`[Briefing API] WeatherAPI 실패: ${countryCode}, status=${weatherRes.status}, body=${errBody}`);
               }
             } catch (fetchErr: any) {
               clearTimeout(timeoutId);
               if (fetchErr.name === 'AbortError') {
-                console.warn(`[Briefing API] WeatherAPI 타임아웃 (3s): ${countryCode} - 더미 데이터 사용`);
+                logger.warn(`[Briefing API] WeatherAPI 타임아웃 (5s): ${countryCode}`);
               } else {
                 throw fetchErr;
               }
             }
           } catch (e) {
-            console.error(`[Briefing API] WeatherAPI fetch 예외: ${countryCode}:`, e);
+            logger.error(`[Briefing API] WeatherAPI fetch 예외: ${countryCode}:`, e);
           }
         } else if (!cacheHit) {
-          console.warn('[Briefing API] WEATHER_API_KEY 환경변수가 없음 - 더미 날씨 사용');
+          logger.warn('[Briefing API] WEATHER_API_KEY 환경변수가 없음');
         }
 
         return {
@@ -770,6 +769,7 @@ export async function GET(_req: NextRequest) {
           condition,
           icon,
           time: timeString,
+          isDummyWeather: false,
         };
       })
     );
@@ -777,15 +777,12 @@ export async function GET(_req: NextRequest) {
     logger.log('[Briefing API] Weathers array:', weathers);
 
     // 기존 단일 weather 필드도 유지 (하위 호환성)
-    const weather = weathers.length > 0 ? {
+    const weather = weathers.length > 0 && weathers[0].temp !== null ? {
       temp: weathers[0].temp,
       condition: weathers[0].condition,
       icon: weathers[0].icon,
-    } : {
-      temp: 24,
-      condition: '맑음',
-      icon: '☀️',
-    };
+      isDummyWeather: weathers[0].isDummyWeather ?? false,
+    } : null;
 
     return NextResponse.json({
       ok: true,
@@ -823,7 +820,7 @@ export async function GET(_req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('GET /api/briefing/today error:', error);
+    logger.error('GET /api/briefing/today error:', error);
     return NextResponse.json(
       { ok: false, message: 'Server error' },
       { status: 500 }

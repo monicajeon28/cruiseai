@@ -5,13 +5,14 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { checkTestMode } from '@/lib/test-mode';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
     const testModeInfo = await checkTestMode();
     return NextResponse.json(testModeInfo);
   } catch (error) {
-    console.error('[TestMode API] Error:', error);
+    logger.error('[TestMode API] Error:', error);
     return NextResponse.json(
       {
         isTestMode: false,

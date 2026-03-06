@@ -4,6 +4,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 // 한글 도시명 → 영문 도시명 매핑 (WeatherAPI 호환)
 const CITY_NAME_MAP: Record<string, string> = {
@@ -100,7 +101,6 @@ function convertCityName(city: string): string {
     return mapped;
   }
   // 매핑에 없으면 그대로 반환 (WeatherAPI가 처리하도록)
-  console.log(`[Weather API] 도시명 매핑 없음: ${city}`);
   return city;
 }
 
@@ -108,7 +108,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const city = searchParams.get('city');
-    const days = parseInt(searchParams.get('days') || '14');
+    const rawDays = parseInt(searchParams.get('days') || '3', 10);
+    const days = isNaN(rawDays) ? 3 : Math.min(Math.max(rawDays, 1), 14); // 1~14일 제한
 
     if (!city) {
       return NextResponse.json(
@@ -121,16 +122,15 @@ export async function GET(request: NextRequest) {
     const apiKey = process.env.WEATHER_API_KEY;
 
     if (!apiKey) {
-      console.error('[Weather API] WEATHER_API_KEY 환경변수가 설정되지 않았습니다.');
+      logger.error('[Weather API] WEATHER_API_KEY 환경변수가 설정되지 않았습니다.');
       return NextResponse.json(
-        { ok: false, error: 'WEATHER_API_KEY 환경변수가 설정되지 않았습니다.' },
+        { ok: false, error: '날씨 서비스를 일시적으로 사용할 수 없습니다' },
         { status: 500 }
       );
     }
 
     // 한글 도시명을 영문으로 변환
     const englishCity = convertCityName(city);
-    console.log(`[Weather API] 도시명 변환: ${city} → ${englishCity}`);
 
     // WeatherAPI.com 직접 호출
     const response = await fetch(
@@ -141,10 +141,9 @@ export async function GET(request: NextRequest) {
     );
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Weather API] API 응답 오류:', response.status, errorText);
+      logger.error('[Weather API] API 응답 오류:', response.status);
       return NextResponse.json(
-        { ok: false, error: `날씨 API 요청 실패: ${response.status}` },
+        { ok: false, error: '날씨 정보를 가져오는 중 오류가 발생했습니다' },
         { status: 500 }
       );
     }
@@ -156,9 +155,9 @@ export async function GET(request: NextRequest) {
       data: weatherData,
     });
   } catch (error: any) {
-    console.error('[Weather API] 오류:', error);
+    logger.error('[Weather API] 오류:', error);
     return NextResponse.json(
-      { ok: false, error: error.message || '날씨 정보를 가져오는 중 오류가 발생했습니다.' },
+      { ok: false, error: '날씨 정보를 가져오는 중 오류가 발생했습니다' },
       { status: 500 }
     );
   }

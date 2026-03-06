@@ -3,6 +3,7 @@ import 'server-only';
 import { cache } from 'react';
 import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export const SESSION_COOKIE = 'cg.sid.v2';
 
@@ -39,7 +40,7 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
     const u = sess.User;
     return { id: u.id, name: u.name, phone: u.phone, onboarded: !!u.onboarded, role: u.role };
   } catch (error: any) {
-    console.error('[getSessionUser] Error:', error);
+    logger.error('[getSessionUser] Error:', error);
     return null;
   }
 });
@@ -115,7 +116,7 @@ export async function checkAdminAuth(): Promise<AdminAuthResult> {
       user: { id: user.id, name: user.name, role: user.role },
     };
   } catch (error: any) {
-    console.error('[checkAdminAuth] Error:', error);
+    logger.error('[checkAdminAuth] Error:', error);
     return { isAdmin: false, user: null, error: error.message };
   }
 }
@@ -192,7 +193,7 @@ export async function checkAdminOrAffiliateAuth(): Promise<AdminAuthResult> {
       user: { id: user.id, name: user.name, role: user.role },
     };
   } catch (error: any) {
-    console.error('[checkAdminOrAffiliateAuth] Error:', error);
+    logger.error('[checkAdminOrAffiliateAuth] Error:', error);
     return { isAdmin: false, user: null, error: error.message };
   }
 }

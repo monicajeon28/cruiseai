@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { validateEnv } from "@/lib/env";
 import { initializeApp } from "@/lib/init";
+import { logger } from "@/lib/logger";
 import Providers from "./providers";
 import ConditionalBottomNavBar from "@/components/layout/ConditionalBottomNavBar";
 import ConditionalBottomPadding from "@/components/layout/ConditionalBottomPadding";
@@ -11,20 +12,20 @@ import PWASetup from "@/components/PWASetup";
 
 if (typeof window === "undefined") {
   validateEnv();
-  initializeApp().catch((err) => console.error("[Layout] 초기화 오류:", err));
+  initializeApp().catch((err) => logger.error("[Layout] 초기화 오류:", err));
 }
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://guide.cruisedot.co.kr'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL ?? 'https://cruiseai.co.kr'),
   title: "크루즈 가이드 - AI 여행 도우미",
   description: "AI 가이드 크루즈닷과 함께하는 특별한 크루즈 여행. 실시간 AI 안내, 통번역, 기항지 지도, 체크리스트까지.",
   manifest: "/manifest.json",
   openGraph: {
     title: "크루즈 가이드 - AI 여행 도우미",
     description: "AI 가이드 크루즈닷과 함께하는 특별한 크루즈 여행",
-    url: process.env.NEXT_PUBLIC_BASE_URL || "https://guide.cruisedot.co.kr",
+    url: process.env.NEXT_PUBLIC_BASE_URL || "https://cruiseai.co.kr",
     siteName: "크루즈 가이드",
     locale: "ko_KR",
     type: "website",

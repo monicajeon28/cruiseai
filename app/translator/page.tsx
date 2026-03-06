@@ -159,6 +159,7 @@ export default function TranslatorPage() {
   const recRef = useRef<SpeechRecognition | null>(null);
   const isProcessingRef = useRef(false); // race condition 방지
   const interimTextRef = useRef(''); // stale closure 방지용 ref
+  const speakTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // speak setTimeout cleanup
   const [listening, setListening] = useState<'none' | 'pressing' | 'recording'>('none');
   const [preview, setPreview] = useState('');
   const [finalText, setFinalText] = useState(''); // 최종 확정된 텍스트
@@ -237,7 +238,7 @@ export default function TranslatorPage() {
       window.webkitSpeechRecognition || (window as any).SpeechRecognition;
 
     if (!SR) {
-      console.warn('이 브라우저는 음성 인식을 지원하지 않습니다.');
+      logger.warn('이 브라우저는 음성 인식을 지원하지 않습니다.');
       recRef.current = null; // 명시적으로 null 설정
       return;
     }
@@ -249,7 +250,7 @@ export default function TranslatorPage() {
     recog.lang = 'ko-KR'; // 기본 언어 (나중에 변경됨)
 
     recog.onerror = (e: any) => {
-      console.warn('[SpeechRecognition error]', e?.error);
+      logger.warn('[SpeechRecognition error]', e?.error);
       // 권한 문제 등 친절 메시지 (TODO: 사용자에게 알림)
     };
     recog.onend = () => {
@@ -268,6 +269,7 @@ export default function TranslatorPage() {
       recRef.current = null;
       micStreamRef.current?.getTracks().forEach(track => track.stop());
       micStreamRef.current = null;
+      if (speakTimeoutRef.current) clearTimeout(speakTimeoutRef.current);
     };
   }, []);
 
@@ -294,7 +296,7 @@ export default function TranslatorPage() {
 
       if (!res.ok) {
         const errorText = await res.text().catch(() => '');
-        console.error('[Pronunciation] API error:', res.status, res.statusText, errorText);
+        logger.error('[Pronunciation] API error:', res.status, res.statusText, errorText);
 
         // 재시도 (최대 2번)
         if (retryCount < 2) {
@@ -310,7 +312,7 @@ export default function TranslatorPage() {
       logger.log('[Pronunciation] API response:', JSON.stringify(data, null, 2));
 
       if (!data.ok) {
-        console.error('[Pronunciation] API returned error:', data.error);
+        logger.error('[Pronunciation] API returned error:', data.error);
 
         // 재시도 (최대 2번)
         if (retryCount < 2) {
@@ -325,7 +327,7 @@ export default function TranslatorPage() {
       let pronunciation = data?.pronunciation || '';
 
       if (!pronunciation) {
-        console.error('[Pronunciation] Empty pronunciation in API response:', data);
+        logger.error('[Pronunciation] Empty pronunciation in API response:', data);
 
         // 재시도 (최대 2번)
         if (retryCount < 2) {
@@ -355,7 +357,7 @@ export default function TranslatorPage() {
 
       return pronunciation;
     } catch (error: any) {
-      console.warn('[Pronunciation] Error:', error);
+      logger.warn('[Pronunciation] Error:', error);
 
       // 재시도 (최대 2번)
       if (retryCount < 2) {
@@ -396,7 +398,7 @@ export default function TranslatorPage() {
       });
 
       if (!res.ok) {
-        console.error('[Translation] API error:', res.status, res.statusText);
+        logger.error('[Translation] API error:', res.status, res.statusText);
 
         // Rate limit 에러 (429) - 사용자 친화적 메시지
         if (res.status === 429) {
@@ -426,20 +428,20 @@ export default function TranslatorPage() {
 
       // ⚠️ 중요: 번역 실패 감지
       if (!data.ok) {
-        console.error('[Translation] API returned error:', data.error);
+        logger.error('[Translation] API returned error:', data.error);
         // 에러 시 원문 반환 (alert 제거 - 사용자 경험 개선)
         return { translated: text, pronunciation: '' };
       }
 
       // 에러 메시지 감지
       if (translated && (translated.includes('번역 중 오류가 발생했습니다') || translated.includes('번역에 실패했습니다'))) {
-        console.error('[Translation] Error message in response');
+        logger.error('[Translation] Error message in response');
         return { translated: text, pronunciation: '' }; // 원문 반환
       }
 
       // 번역 결과가 없거나 빈 문자열인 경우
       if (!translated || translated.trim() === '') {
-        console.error('[Translation] Empty translation received');
+        logger.error('[Translation] Empty translation received');
         return { translated: text, pronunciation: '' }; // 원문 반환
       }
 
@@ -448,13 +450,13 @@ export default function TranslatorPage() {
       const trimmedOriginal = text.trim();
 
       if (trimmedTranslated === trimmedOriginal && trimmedOriginal.length > 3) {
-        console.warn('[Translation] Translation same as original - returning original');
+        logger.warn('[Translation] Translation same as original - returning original');
         return { translated: text, pronunciation: '' }; // 원문 반환 (alert 제거)
       }
 
       return { translated: trimmedTranslated, pronunciation: '' };
     } catch (error: any) {
-      console.error('[Translation] Error:', error);
+      logger.error('[Translation] Error:', error);
       return { translated: text, pronunciation: '' }; // 에러 시 원문 반환
     }
   }
@@ -502,7 +504,7 @@ export default function TranslatorPage() {
     try {
       recRef.current.abort?.(); // 혹시 켜져있으면 끊고 시작
     } catch (e) {
-      console.error("Error aborting speech recognition:", e);
+      logger.error("Error aborting speech recognition:", e);
     }
 
     setListening('pressing');
@@ -612,7 +614,7 @@ export default function TranslatorPage() {
           showError('인터넷 연결을 확인해주세요.', '네트워크 오류가 발생했습니다.');
         } else {
           // 다른 에러는 조용히 로그만
-          console.error('[Speech Recognition Error]', errorType);
+          logger.error('[Speech Recognition Error]', errorType);
         }
       };
 
@@ -629,7 +631,7 @@ export default function TranslatorPage() {
         }
 
         // 권한이 거부된 경우만 에러 처리
-        console.error('[Speech Recognition Start Error]', startError);
+        logger.error('[Speech Recognition Start Error]', startError);
         setListening('none');
         setPreview('');
 
@@ -637,7 +639,7 @@ export default function TranslatorPage() {
           showWarning('주소창 🔒 아이콘 > 마이크 허용 후 새로고침(F5)해주세요.', '마이크 권한이 필요합니다.');
         } else {
           // 다른 오류는 조용히 처리
-          console.error('[Speech Recognition Start]', startError);
+          logger.error('[Speech Recognition Start]', startError);
         }
         return;
       }
@@ -660,7 +662,7 @@ export default function TranslatorPage() {
       }
 
       // 권한이 거부된 경우만 에러 처리
-      console.error('[Start Speech Recognition Error]', error);
+      logger.error('[Start Speech Recognition Error]', error);
       setListening('none');
       setPreview('');
 
@@ -668,7 +670,7 @@ export default function TranslatorPage() {
         showWarning('주소창 🔒 아이콘 > 마이크 허용 후 새로고침(F5)해주세요.', '마이크 권한이 필요합니다.');
       } else {
         // 예상치 못한 에러는 조용히 로그만
-        console.error('[Speech Recognition] Unexpected error:', error);
+        logger.error('[Speech Recognition] Unexpected error:', error);
       }
     }
   }
@@ -723,12 +725,13 @@ export default function TranslatorPage() {
       // 에러 메시지는 TTS로 읽지 않음
       if (!isError) {
         // iOS/Android에서 gesture context 유지를 위해 setTimeout 사용
-        setTimeout(() => {
+        if (speakTimeoutRef.current) clearTimeout(speakTimeoutRef.current);
+        speakTimeoutRef.current = setTimeout(() => {
           speak(translated, pair.to.code);
         }, 10);
       }
     } catch (error) {
-      console.error('[stopPressToTalk] Unexpected error:', error);
+      logger.error('[stopPressToTalk] Unexpected error:', error);
     } finally {
       isProcessingRef.current = false; // 예외 여부와 무관하게 항상 해제
       // 마이크 트랙 해제 (모바일 마이크 점유 표시 제거, 다음 클릭 시 재획득)

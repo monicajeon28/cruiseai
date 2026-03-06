@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic'; // 동적 데이터는 캐시 X
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
+import { logger } from '@/lib/logger';
 
 const SESSION_COOKIE = 'cg.sid.v2';
 
@@ -73,7 +74,7 @@ export async function GET(req: Request) {
       });
     }
   } catch (error) {
-    console.error('[Feedback API] GET error:', error);
+    logger.error('[Feedback API] GET error:', error);
     return NextResponse.json(
       { ok: false, error: 'Internal server error' },
       { status: 500 }
@@ -152,7 +153,7 @@ export async function POST(req: Request) {
       message: 'Feedback saved successfully',
     });
   } catch (error) {
-    console.error('[Feedback API] POST error:', error);
+    logger.error('[Feedback API] POST error:', error);
     return NextResponse.json(
       { ok: false, error: 'Internal server error' },
       { status: 500 }

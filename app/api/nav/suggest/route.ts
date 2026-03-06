@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 import terminalsData from '@/data/terminals.json'
 import { normalizeCountry } from '@/lib/nav/country'
 import { resolveTerminalByText, type POI, type Terminal, TERMINALS, norm, buildTokens } from '@/lib/terminals' // Import POI, buildTokens, and norm from lib/terminals
@@ -96,7 +97,7 @@ export async function GET(req: Request) {
     const firstWord = q.trim().split(/\s+/)[0];
     cnQ = normalizeCountry(firstWord) || resolveCountryFromText(firstWord);
     if (cnQ) {
-      console.log('[nav/suggest] ✅ Extracted country from first word:', { q, firstWord, cnQ });
+      logger.log('[nav/suggest] ✅ Extracted country from first word:', { q, firstWord, cnQ });
     }
     
     // 2순위: 국가명 + 키워드 패턴에서 국가명 추출
@@ -109,7 +110,7 @@ export async function GET(req: Request) {
         const extractedCountry = normalizeCountry(countryPart) || resolveCountryFromText(countryPart);
         if (extractedCountry) {
           cnQ = extractedCountry;
-          console.log('[nav/suggest] ✅ Extracted country from pattern:', { q, countryPart, cnQ });
+          logger.log('[nav/suggest] ✅ Extracted country from pattern:', { q, countryPart, cnQ });
         }
       }
     }
@@ -126,7 +127,7 @@ export async function GET(req: Request) {
           const extractedCountry = normalizeCountry(cleanCountryPart) || resolveCountryFromText(cleanCountryPart);
           if (extractedCountry) {
             cnQ = extractedCountry;
-            console.log('[nav/suggest] ✅ Extracted country from reverse pattern:', { q, cleanCountryPart, cnQ });
+            logger.log('[nav/suggest] ✅ Extracted country from reverse pattern:', { q, cleanCountryPart, cnQ });
           }
         }
       }
@@ -136,12 +137,12 @@ export async function GET(req: Request) {
     if (!cnQ) {
       cnQ = normalizeCountry(q) || resolveCountryFromText(q);
       if (cnQ) {
-        console.log('[nav/suggest] ✅ Extracted country from full string:', { q, cnQ });
+        logger.log('[nav/suggest] ✅ Extracted country from full string:', { q, cnQ });
       }
     }
     
     // 최종 국가 추출 로그
-    console.log('[nav/suggest] Country extraction result:', { q, cnQ, isCruiseQuery });
+    logger.log('[nav/suggest] Country extraction result:', { q, cnQ, isCruiseQuery });
     
     if (cnQ) {
       if (isCruiseQuery) {
@@ -155,7 +156,7 @@ export async function GET(req: Request) {
           }
           return { id: p.id, label, subtitle: p.city };
         });
-        console.log('[nav/suggest] ✅ Country + cruise/port query - SUCCESS:', { 
+        logger.log('[nav/suggest] ✅ Country + cruise/port query - SUCCESS:', { 
           q, 
           cnQ, 
           terminalsCount: items.length,
@@ -164,12 +165,12 @@ export async function GET(req: Request) {
         
         // 크루즈 터미널이 없으면 일반 검색으로 fallback
         if (items.length === 0) {
-          console.log('[nav/suggest] ⚠️ No terminals found for country, falling back to general search');
+          logger.log('[nav/suggest] ⚠️ No terminals found for country, falling back to general search');
           cnQ = null; // fall through to general search
         } else {
           // 성공적으로 크루즈 터미널을 찾았으므로 여기서 반환
           const unique = Array.from(new Map(items.map(i => [i.id, i])).values()).slice(0, 20);
-          console.log('[nav/suggest] ✅ Returning country cruise terminals:', unique.length);
+          logger.log('[nav/suggest] ✅ Returning country cruise terminals:', unique.length);
           return NextResponse.json({ items: unique });
         }
       } else {
@@ -195,7 +196,7 @@ export async function GET(req: Request) {
           }),
         ].slice(0, 12); // 최대 12개 (2줄에 6개씩)
         
-        console.log('[nav/suggest] ✅ Country only query:', { 
+        logger.log('[nav/suggest] ✅ Country only query:', { 
           q, 
           cnQ, 
           airportsCount: airports.length,
@@ -231,7 +232,7 @@ export async function GET(req: Request) {
         }),
       ].slice(0, 12); // 최대 12개 (2줄에 6개씩)
       
-      console.log('[nav/suggest] ✅ Initial suggestions (no query):', {
+      logger.log('[nav/suggest] ✅ Initial suggestions (no query):', {
         airportsCount: majorAirports.length,
         terminalsCount: majorTerminals.length,
         totalItems: items.length
@@ -284,7 +285,7 @@ export async function GET(req: Request) {
         
         // 디버그 로그 (포트로 시작하는 검색 시)
         if (ql.includes('포트') || ql.startsWith('포트')) {
-          console.log('[nav/suggest] Port search - POI check:', {
+          logger.log('[nav/suggest] Port search - POI check:', {
             id: p.id,
             name_ko: p.name_ko,
             name: p.name,
@@ -350,7 +351,7 @@ export async function GET(req: Request) {
       }).slice(0, 12);
       
       // 디버그 로그 추가 (상세)
-      console.log('[nav/suggest] ✅ General search - detailed:', { 
+      logger.log('[nav/suggest] ✅ General search - detailed:', { 
         q, 
         ql,
         qnorm,
@@ -374,7 +375,7 @@ export async function GET(req: Request) {
     // 3) 목적지 힌트(출발지)가 있으면 그 나라 우선
     const cnHint = normalizeCountry(hint) || resolveCountryFromText(hint);
     
-    console.log('[nav/suggest] Dest slot:', { q, ql, hint, cnHint, isCruiseQuery });
+    logger.log('[nav/suggest] Dest slot:', { q, ql, hint, cnHint, isCruiseQuery });
     
     if (!q) {
       // 도착지 비어있으면 공항과 크루즈 터미널 모두 제안 (출발지 국가 기준)
@@ -412,7 +413,7 @@ export async function GET(req: Request) {
         return { id: p.id, label, subtitle: p.city };
       }).slice(0, 20);
       
-      console.log('[nav/suggest] ✅ Dest cruise query with hint country:', { 
+      logger.log('[nav/suggest] ✅ Dest cruise query with hint country:', { 
         q, 
         cnHint, 
         terminalsCount: items.length,
@@ -430,7 +431,7 @@ export async function GET(req: Request) {
         return { id: p.id, label, subtitle: p.city };
       }).slice(0, 20);
       
-      console.log('[nav/suggest] ✅ Dest cruise query without hint:', { 
+      logger.log('[nav/suggest] ✅ Dest cruise query without hint:', { 
         q, 
         terminalsCount: items.length
       });
@@ -520,7 +521,7 @@ export async function GET(req: Request) {
   
   // 에러 처리: 결과가 없을 때 사용자 친화적 메시지
   if (unique.length === 0 && q) {
-    console.log('[nav/suggest] No results found:', { slot, q, hint });
+    logger.log('[nav/suggest] No results found:', { slot, q, hint });
   }
   
   return NextResponse.json({ items: unique })

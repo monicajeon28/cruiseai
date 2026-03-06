@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiArrowLeft, FiDownload, FiShare2, FiMapPin, FiDollarSign, FiBook, FiGlobe } from 'react-icons/fi';
-import Image from 'next/image';
+import { logger } from '@/lib/logger';
 
 /**
  * 여행 추억 리포트 페이지
@@ -67,7 +67,7 @@ export default function MemoriesPage({ params }: { params: { tripId: string } })
           }
         }
       } catch (error) {
-        console.error('Error loading memories:', error);
+        logger.error('Error loading memories:', error);
       } finally {
         setIsLoading(false);
       }
@@ -109,7 +109,7 @@ export default function MemoriesPage({ params }: { params: { tripId: string } })
   const categoryData = Object.entries(statistics.expensesByCategory).map(([category, amount]) => ({
     category,
     amount,
-    percentage: (amount / statistics.totalExpense) * 100,
+    percentage: statistics.totalExpense > 0 ? (amount / statistics.totalExpense) * 100 : 0,
   })).sort((a, b) => b.amount - a.amount);
 
   const categoryLabels: Record<string, string> = {
@@ -305,6 +305,34 @@ export default function MemoriesPage({ params }: { params: { tripId: string } })
                   <p className="text-gray-700 leading-relaxed text-lg whitespace-pre-wrap">
                     {diary.content}
                   </p>
+                  {/* 사진 갤러리 */}
+                  {(() => {
+                    let photos: string[] = [];
+                    if (Array.isArray(diary.photos)) {
+                      photos = diary.photos.filter((p: unknown) => typeof p === 'string');
+                    } else if (typeof diary.photos === 'string') {
+                      try {
+                        const parsed = JSON.parse(diary.photos);
+                        if (Array.isArray(parsed)) photos = parsed.filter((p: unknown) => typeof p === 'string');
+                      } catch { /* 단일 URL 문자열인 경우 */ photos = [diary.photos]; }
+                    }
+                    if (photos.length === 0) return null;
+                    return (
+                      <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {photos.map((photoUrl: string, photoIdx: number) => (
+                          <div key={photoIdx} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={photoUrl}
+                              alt={`사진 ${photoIdx + 1}`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
             </div>

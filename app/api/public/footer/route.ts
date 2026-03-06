@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { logger } from '@/lib/logger';
 
 const FOOTER_DATA_FILE = path.join(process.cwd(), 'data', 'footer-data.json');
 
@@ -81,9 +82,9 @@ export async function GET() {
     const footerData = await readFooterData();
     return NextResponse.json({ ok: true, data: footerData });
   } catch (error) {
-    console.error('[Public Footer API GET] Error:', error);
+    logger.error('[Public Footer API GET] Error');
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : 'Failed to fetch footer data' },
+      { ok: false, error: '데이터를 불러올 수 없습니다' },
       { status: 500 }
     );
   }

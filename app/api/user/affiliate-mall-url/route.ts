@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
 import { getAffiliateOwnershipForUsers } from '@/lib/affiliate/customer-ownership';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 /**
  * GET /api/user/affiliate-mall-url
@@ -86,7 +87,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('[User Affiliate Mall URL] Error:', error);
+    logger.error('[User Affiliate Mall URL] Error:', error);
     return NextResponse.json(
       { ok: false, error: 'Failed to get affiliate mall URL', mallUrl: '/products' },
       { status: 500 }

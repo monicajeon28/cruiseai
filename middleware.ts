@@ -22,6 +22,7 @@ const PUBLIC = [
 // 가이드 앱 보호 경로 (세션 필요)
 const PROTECTED = [
   '/chat', '/chat-test',
+  '/tools', '/tools-test',
   '/translator', '/translator-test',
   '/my-trips',
   '/wallet', '/wallet-test',
@@ -52,9 +53,9 @@ export async function middleware(req: NextRequest) {
     const origin = req.headers.get('origin');
     const host = req.headers.get('host');
 
-    // guide.cruisedot.co.kr 포함 Same-Origin은 무조건 통과
+    // cruiseai.co.kr Same-Origin은 무조건 통과
     const isCustomDomain = host && (
-      host.includes('cruisedot.co.kr') ||
+      host.includes('cruiseai.co.kr') ||
       host.includes('localhost')
     );
     const isSameOrigin = !origin ||
@@ -134,6 +135,7 @@ export async function middleware(req: NextRequest) {
     if (userMode === 'test') {
       const testPathMap = [
         { regular: '/chat', test: '/chat-test' },
+        { regular: '/tools', test: '/tools-test' },
         { regular: '/translator', test: '/translator-test' },
         { regular: '/wallet', test: '/wallet-test' },
         { regular: '/map', test: '/map-test' },
@@ -173,6 +175,7 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     '/chat/:path*', '/chat-test/:path*',
+    '/tools/:path*', '/tools-test/:path*',
     '/translator/:path*', '/translator-test/:path*',
     '/my-trips/:path*',
     '/wallet/:path*', '/wallet-test/:path*',

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 const COUNTRY_NAMES: Record<string, string> = {
   'IT': '이탈리아', 'GR': '그리스', 'HR': '크로아티아',
@@ -154,7 +155,7 @@ export async function GET(_req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[itinerary/current] Error:', error);
+    logger.error('[itinerary/current] Error:', error);
     return NextResponse.json({ ok: false, error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }

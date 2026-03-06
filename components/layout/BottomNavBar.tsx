@@ -48,12 +48,8 @@ const navItems: NavItem[] = [
 
 export default function BottomNavBar() {
   const pathname = usePathname();
-  const isTestMode = pathname?.includes('/chat-test') || 
-                     pathname?.includes('/tools-test') || 
-                     pathname?.includes('/translator-test') || 
-                     pathname?.includes('/profile-test') ||
-                     pathname?.includes('/checklist-test') ||
-                     pathname?.includes('/wallet-test');
+  const TEST_MODE_PATHS = ['/chat-test', '/tools-test', '/translator-test', '/profile-test', '/checklist-test', '/wallet-test', '/map-test'];
+  const isTestMode = TEST_MODE_PATHS.some(p => pathname?.startsWith(p));
   
   // 루트(/), /login, /admin으로 시작하는 모든 경로에서는 하단 메뉴 숨김
   if (

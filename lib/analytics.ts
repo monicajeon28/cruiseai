@@ -3,6 +3,8 @@
  * 기존 기능은 건드리지 않고 추적만 추가
  */
 
+import { logger } from '@/lib/logger';
+
 type TrackOptions = {
   action: string;
   page?: string;
@@ -29,7 +31,7 @@ export async function trackActivity(options: TrackOptions): Promise<void> {
     });
   } catch (error) {
     // 추적 실패는 무시 (사용자 경험에 영향 없음)
-    console.debug('[Analytics] Tracking failed (ignored):', error);
+    logger.debug('[Analytics] Tracking failed (ignored):', error);
   }
 }
 

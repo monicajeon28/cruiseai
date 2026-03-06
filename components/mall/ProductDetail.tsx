@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { createPortal } from 'react-dom';
 import { FiStar, FiCheck, FiX, FiEdit2, FiSave, FiEdit3, FiMaximize2, FiChevronLeft, FiAlertCircle } from 'react-icons/fi';
 import { getKoreanCruiseLineName, getKoreanShipName, formatTravelPeriod } from '@/lib/utils/cruiseNames';
-import { PRODUCT_TAGS } from '@/components/admin/ProductTagsSelector';
+import { PRODUCT_TAGS } from '@/lib/product-tags';
 import DOMPurify from 'isomorphic-dompurify';
 import LiveViewerCount from '@/components/marketing/LiveViewerCount';
 import RemainingRooms from '@/components/marketing/RemainingRooms';

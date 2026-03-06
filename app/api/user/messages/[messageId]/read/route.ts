@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 // POST: 메시지 확인 처리
 export async function POST(
@@ -69,7 +70,7 @@ export async function POST(
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('[User Messages Read POST] Error:', error);
+    logger.error('[User Messages Read POST] Error:', error);
     return NextResponse.json(
       { ok: false, error: 'Failed to mark message as read' },
       { status: 500 }

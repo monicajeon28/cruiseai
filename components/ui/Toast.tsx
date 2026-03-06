@@ -91,7 +91,7 @@ function Toast({ toast, onClose }: ToastProps) {
             setIsLeaving(true);
             setTimeout(() => onClose(toast.id), 300);
           }}
-          className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+          className="flex-shrink-0 min-h-0 h-auto p-1 text-gray-400 hover:text-gray-600 transition-colors"
           aria-label="닫기"
         >
           <FiX size={20} />

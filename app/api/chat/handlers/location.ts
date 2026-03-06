@@ -2,12 +2,13 @@ import type { TextMessage } from "@/lib/chat-types";
 import { buildSearchUrl } from "@/lib/maps";
 import { resolveTerminal } from "@/lib/resolve";
 import { parseSingleDestNav } from "@/lib/parsers";
+import { logger } from "@/lib/logger";
 
 // msg 헬퍼 제거
 
 export async function tryHandleTerminalLocation(text: string): Promise<TextMessage | null> {
   const placeQuery = parseSingleDestNav(text);
-  console.log("[handler/location] parseSinglePlaceQuery:", placeQuery);
+  logger.log("[handler/location] parseSinglePlaceQuery:", placeQuery);
 
   if (placeQuery) {
     const terminal = resolveTerminal(placeQuery.destination);

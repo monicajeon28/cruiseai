@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { scrapeYoutubeShorts } from '@/lib/youtubeScraper';
+import { logger } from '@/lib/logger';
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const CHANNEL_ID = 'UCKLDsk4iNXT1oYJ5ikUFggQ'; // 크루즈닷AI지니
@@ -12,7 +13,7 @@ const CHANNEL_ID = 'UCKLDsk4iNXT1oYJ5ikUFggQ'; // 크루즈닷AI지니
 async function fallbackWithScrapedShorts(maxResults: number, reason?: string) {
   try {
     if (reason) {
-      console.warn(`[YouTube Shorts API] ${reason}`);
+      logger.warn(`[YouTube Shorts API] ${reason}`);
     }
     const shorts = await scrapeYoutubeShorts(maxResults);
     return NextResponse.json({
@@ -21,7 +22,7 @@ async function fallbackWithScrapedShorts(maxResults: number, reason?: string) {
       source: 'scraped',
     });
   } catch (error) {
-    console.error('[YouTube Shorts API] Scraper fallback failed:', error);
+    logger.error('[YouTube Shorts API] Scraper fallback failed:', error);
     return NextResponse.json(
       { ok: false, error: 'YouTube Shorts 데이터를 불러오지 못했습니다.' },
       { status: 502 }
@@ -127,7 +128,7 @@ export async function GET(request: NextRequest) {
       source: 'api',
     });
   } catch (error) {
-    console.error('Error fetching YouTube Shorts:', error);
+    logger.error('Error fetching YouTube Shorts:', error);
     return fallbackWithScrapedShorts(maxResults, 'Unexpected error from YouTube API. Using scraped data.');
   }
 }

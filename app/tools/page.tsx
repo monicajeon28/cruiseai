@@ -141,8 +141,8 @@ export default function ToolsPage() {
                 <span className="text-3xl">{t.emoji}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-bold text-base text-gray-900 leading-tight">{t.label}</div>
-                <div className="text-sm text-gray-500 mt-0.5 truncate">{t.desc}</div>
+                <div className="font-bold text-lg text-gray-900 leading-tight">{t.label}</div>
+                <div className="text-base text-gray-500 mt-0.5 truncate">{t.desc}</div>
               </div>
               <FiChevronRight size={20} className="text-gray-400 flex-shrink-0" />
             </Link>

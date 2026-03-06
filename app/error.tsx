@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect } from 'react';
+import { logger } from '@/lib/logger';
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -12,7 +13,7 @@ export default function ErrorPage({ error, reset }: ErrorProps) {
   useEffect(() => {
     // 개발 환경에서는 콘솔에 에러 로그 출력
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error boundary caught:', error);
+      logger.error('Error boundary caught:', error);
     }
   }, [error]);
 

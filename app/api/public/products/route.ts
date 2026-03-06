@@ -8,6 +8,7 @@ export const revalidate = 600;    // 10분 캐싱 - 동시 1000명 접속 시 DB
 
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 /**
  * GET: 상품 목록 조회
@@ -109,30 +110,10 @@ export async function GET(req: NextRequest) {
         },
       });
     } catch (queryError: any) {
-      console.error('[Public Products API] AffiliateProduct query error:', queryError);
-      console.error('[Public Products API] Query error details:', {
-        message: queryError?.message,
-        name: queryError?.name,
-        code: queryError?.code,
-        stack: queryError?.stack,
-      });
+      logger.error('[Public Products API] AffiliateProduct query error', { code: (queryError as any)?.code ?? (queryError as any)?.name });
       // 쿼리 에러 발생 시 빈 배열 반환
       activeAffiliateProducts = [];
     }
-
-    // 디버깅: AffiliateProduct 조회 결과 로그
-    console.log('[Public Products API] Active AffiliateProducts:', {
-      count: activeAffiliateProducts.length,
-      productCodes: activeAffiliateProducts.map(ap => ap.productCode),
-      now: now.toISOString(),
-      details: activeAffiliateProducts.map(ap => ({
-        productCode: ap.productCode,
-        status: ap.status,
-        isPublished: ap.isPublished,
-        effectiveFrom: ap.effectiveFrom?.toISOString(),
-        effectiveTo: ap.effectiveTo?.toISOString(),
-      })),
-    });
 
     const affiliateProductCodes = new Set(
       activeAffiliateProducts.map(ap => ap.productCode)
@@ -140,7 +121,6 @@ export async function GET(req: NextRequest) {
 
     // 어필리에이트 수당이 완료된 상품이 없으면 빈 배열 반환
     if (affiliateProductCodes.size === 0) {
-      console.log('[Public Products API] No active affiliate products found');
       return NextResponse.json({
         ok: true,
         products: [],
@@ -152,8 +132,6 @@ export async function GET(req: NextRequest) {
         },
       });
     }
-
-    console.log('[Public Products API] Looking for CruiseProducts with codes:', Array.from(affiliateProductCodes));
 
     // 상품 조회 (어필리에이트 수당이 완료된 상품만, saleStatus는 선택적)
     let allProducts = await prisma.cruiseProduct.findMany({
@@ -217,15 +195,8 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    console.log('[Public Products API] Found CruiseProducts:', {
-      count: allProducts.length,
-      productCodes: allProducts.map(p => p.productCode),
-      saleStatuses: allProducts.map(p => p.saleStatus),
-    });
-
     // CruiseProduct가 없으면 빈 배열 반환
     if (allProducts.length === 0) {
-      console.log('[Public Products API] No CruiseProducts found for affiliate product codes');
       return NextResponse.json({
         ok: true,
         products: [],
@@ -748,9 +719,6 @@ export async function GET(req: NextRequest) {
           if (koreanName.includes(keywordLower) || keywordLower.includes(koreanName) ||
               (englishName && (englishName.includes(keywordLower) || keywordLower.includes(englishName))) ||
               cruiseLineLower.includes(keywordLower) || keywordLower.includes(cruiseLineLower)) {
-            if (process.env.NODE_ENV === 'development' && product.productCode === 'POP-NEW-001') {
-              console.log('[DEBUG KEYWORD] POP-NEW-001 MATCHED in cruiseLine:', cruiseLineLower);
-            }
             return true;
           }
         }
@@ -767,9 +735,6 @@ export async function GET(req: NextRequest) {
           if (koreanName.includes(keywordLower) || keywordLower.includes(koreanName) ||
               (englishName && (englishName.includes(keywordLower) || keywordLower.includes(englishName))) ||
               shipNameLower.includes(keywordLower) || keywordLower.includes(shipNameLower)) {
-            if (process.env.NODE_ENV === 'development' && product.productCode === 'POP-NEW-001') {
-              console.log('[DEBUG KEYWORD] POP-NEW-001 MATCHED in shipName:', shipNameLower);
-            }
             return true;
           }
         }
@@ -830,67 +795,43 @@ export async function GET(req: NextRequest) {
                 const destinationMatches = destinations.some((dest: any) => {
                   const destStr = dest.toString();
                   const destLower = destStr.toLowerCase();
-                  
-                  // 디버깅: POP-NEW-001 상품 확인 (개발 환경에서만)
-                  const isDebugProduct = process.env.NODE_ENV === 'development' && product.productCode === 'POP-NEW-001';
-                  if (isDebugProduct) {
-                    console.log('[DEBUG KEYWORD] POP-NEW-001 destination:', destStr, 'keyword:', keywordLower);
-                  }
-                  
+
                   // 전체 문자열에서 키워드 검색
                   if (destLower.includes(keywordLower)) {
-                    if (isDebugProduct) {
-                      console.log('[DEBUG KEYWORD] POP-NEW-001 matched in full string');
-                    }
                     return true;
                   }
-                  
+
                   // "국가 - 도시" 형식에서 도시명 추출하여 검색
                   if (destLower.includes(' - ')) {
                     const cityPart = destLower.split(' - ')[1]?.trim() || '';
                     // 도시명 한글 부분 검색 (예: "시애틀 (Seattle)" -> "시애틀")
                     const cityKorean = cityPart.split('(')[0].trim();
                     if (cityKorean.includes(keywordLower) || keywordLower.includes(cityKorean)) {
-                      if (isDebugProduct) {
-                        console.log('[DEBUG KEYWORD] POP-NEW-001 matched in cityKorean:', cityKorean);
-                      }
                       return true;
                     }
                     // 괄호 안의 영문 도시명도 검색 (예: "시애틀 (Seattle)")
                     const cityInParens = cityPart.match(/\(([^)]+)\)/)?.[1]?.toLowerCase() || '';
                     if (cityInParens && (cityInParens.includes(keywordLower) || keywordLower.includes(cityInParens))) {
-                      if (isDebugProduct) {
-                        console.log('[DEBUG KEYWORD] POP-NEW-001 matched in cityInParens:', cityInParens);
-                      }
                       return true;
                     }
                     // 국가명도 검색 (예: "미국 - 시애틀"에서 "미국" 검색)
                     const countryPart = destLower.split(' - ')[0]?.trim() || '';
                     const countryKorean = countryPart.split('(')[0].trim();
                     if (countryKorean.includes(keywordLower) || keywordLower.includes(countryKorean)) {
-                      if (isDebugProduct) {
-                        console.log('[DEBUG KEYWORD] POP-NEW-001 matched in countryKorean:', countryKorean);
-                      }
                       return true;
                     }
                   } else {
                     // "국가" 형식만 있는 경우 (예: "미국")
                     const countryKorean = destLower.split('(')[0].trim();
                     if (countryKorean.includes(keywordLower) || keywordLower.includes(countryKorean)) {
-                      if (isDebugProduct) {
-                        console.log('[DEBUG KEYWORD] POP-NEW-001 matched in country only:', countryKorean);
-                      }
                       return true;
                     }
                   }
-                  
+
                   return false;
                 });
-                
+
                 if (destinationMatches) {
-                  if (process.env.NODE_ENV === 'development' && product.productCode === 'POP-NEW-001') {
-                    console.log('[DEBUG KEYWORD] POP-NEW-001 MATCHED in keyword search');
-                  }
                   return true;
                 }
               }
@@ -1075,10 +1016,10 @@ export async function GET(req: NextRequest) {
             }
           }
         } catch (e) {
-          console.error('Failed to parse layout:', e);
+          // 파싱 실패 시 무시
         }
       }
-      
+
       // itineraryPattern에서 destination 추출 (country 필드에서 추출)
       if (!destination && product.itineraryPattern) {
         try {
@@ -1112,7 +1053,7 @@ export async function GET(req: NextRequest) {
             destination = pattern.destination;
           }
         } catch (e) {
-          console.error('[Public Products API] itineraryPattern 파싱 실패:', e);
+          // 파싱 실패 시 무시
         }
       }
       
@@ -1163,64 +1104,6 @@ export async function GET(req: NextRequest) {
     // limit=1000인 경우 (연관검색어 생성용) 전체 상품 반환
     const responseProducts = isThemeRequest || (limit >= 1000) ? productsWithDestination : paginatedProducts;
     
-    // limit=1000인 경우 recommendedKeywords 포함 여부 로그 (상세)
-    if (limit >= 1000) {
-      const productsWithKeywords = responseProducts.filter((p: any) => {
-        return p.recommendedKeywords && (
-          (Array.isArray(p.recommendedKeywords) && p.recommendedKeywords.length > 0) ||
-          (typeof p.recommendedKeywords === 'string' && p.recommendedKeywords.trim())
-        );
-      });
-      
-      // 각 상품의 recommendedKeywords 추출 과정 로그
-      const detailedLog = responseProducts.slice(0, 5).map((p: any) => {
-        let extractedKeywords: string[] | null = null;
-        
-        // MallProductContent.layout에서 추출 시도
-        if (p.mallProductContent?.layout) {
-          try {
-            const layout = typeof p.mallProductContent.layout === 'string' 
-              ? JSON.parse(p.mallProductContent.layout) 
-              : p.mallProductContent.layout;
-            if (layout?.recommendedKeywords) {
-              if (Array.isArray(layout.recommendedKeywords)) {
-                extractedKeywords = layout.recommendedKeywords;
-              } else if (typeof layout.recommendedKeywords === 'string') {
-                try {
-                  extractedKeywords = JSON.parse(layout.recommendedKeywords);
-                } catch {
-                  extractedKeywords = [layout.recommendedKeywords];
-                }
-              }
-            }
-          } catch (e) {
-            // 파싱 실패
-          }
-        }
-        
-        return {
-          productCode: p.productCode,
-          hasMallContent: !!p.mallProductContent,
-          hasLayout: !!p.mallProductContent?.layout,
-          layoutRecommendedKeywords: extractedKeywords,
-          productRecommendedKeywords: p.recommendedKeywords,
-          finalRecommendedKeywords: p.recommendedKeywords || extractedKeywords
-        };
-      });
-      
-      console.log('[Public Products API] Products with recommendedKeywords (detailed):', {
-        total: responseProducts.length,
-        withKeywords: productsWithKeywords.length,
-        sampleProducts: detailedLog,
-        allKeywords: productsWithKeywords.flatMap((p: any) => {
-          const keywords = Array.isArray(p.recommendedKeywords) 
-            ? p.recommendedKeywords 
-            : (typeof p.recommendedKeywords === 'string' ? [p.recommendedKeywords] : []);
-          return keywords.map((kw: string) => ({ productCode: p.productCode, keyword: kw }));
-        })
-      });
-    }
-    
     return NextResponse.json({
       ok: true,
       products: responseProducts,
@@ -1232,22 +1115,11 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('[Public Products API] GET error:', error);
-    console.error('[Public Products API] Error message:', error?.message);
-    console.error('[Public Products API] Error stack:', error?.stack);
-    console.error('[Public Products API] Error name:', error?.name);
-    console.error('[Public Products API] Error code:', error?.code);
+    logger.error('[Public Products API] GET error', { code: (error as any)?.code ?? (error as any)?.name });
     return NextResponse.json(
       {
         ok: false,
         error: '상품 목록을 불러올 수 없습니다.',
-        message: error?.message || 'Unknown error',
-        details: process.env.NODE_ENV === 'development' ? {
-          message: error?.message,
-          name: error?.name,
-          code: error?.code,
-          stack: error?.stack,
-        } : undefined
       },
       { status: 500 }
     );

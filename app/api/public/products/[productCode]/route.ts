@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 /**
  * GET: 상품 상세 정보 조회
@@ -26,7 +27,7 @@ export async function GET(
       );
     }
 
-    console.log('[Public Product Detail API] 조회 시작:', productCode);
+    logger.log('[Public Product Detail API] 조회 시작');
 
     // 어필리에이트 상품 유효성 확인
     // 구매몰에 표시되려면:
@@ -62,7 +63,7 @@ export async function GET(
     });
 
     if (!affiliateProduct) {
-      console.warn('[Public Product Detail API] 유효한 어필리에이트 상품이 없음:', productCode);
+      logger.warn('[Public Product Detail API] 유효한 어필리에이트 상품이 없음');
       return NextResponse.json(
         { ok: false, error: '상품을 찾을 수 없습니다.' },
         { status: 404 }
@@ -100,31 +101,22 @@ export async function GET(
     });
 
     if (!product) {
-      console.warn('[Public Product Detail API] 상품을 찾을 수 없음:', productCode);
+      logger.warn('[Public Product Detail API] 상품을 찾을 수 없음');
       return NextResponse.json(
         { ok: false, error: '상품을 찾을 수 없습니다.' },
         { status: 404 }
       );
     }
 
-    console.log('[Public Product Detail API] 상품 조회 성공:', {
-      productCode: product.productCode,
-      hasItineraryPattern: !!product.itineraryPattern,
-    });
-
     return NextResponse.json({
       ok: true,
       product,
     });
   } catch (error) {
-    console.error('[Public Product Detail API] GET error:', error);
-    console.error('[Public Product Detail API] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    const err = error as Error & { code?: string; name?: string };
+    logger.error('[Public Product Detail API] GET error:', { code: err?.code ?? err?.name });
     return NextResponse.json(
-      { 
-        ok: false, 
-        error: '상품 정보를 불러올 수 없습니다.',
-        details: error instanceof Error ? error.message : String(error)
-      },
+      { ok: false, error: '상품 정보를 불러올 수 없습니다' },
       { status: 500 }
     );
   }

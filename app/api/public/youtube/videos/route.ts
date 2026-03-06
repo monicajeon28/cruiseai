@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { scrapeYoutubeVideos } from '@/lib/youtubeScraper';
+import { logger } from '@/lib/logger';
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const CHANNEL_ID = 'UCKLDsk4iNXT1oYJ5ikUFggQ'; // 크루즈닷AI지니
@@ -12,7 +13,7 @@ const CHANNEL_ID = 'UCKLDsk4iNXT1oYJ5ikUFggQ'; // 크루즈닷AI지니
 async function fallbackWithScrapedVideos(maxResults: number, reason?: string) {
   try {
     if (reason) {
-      console.warn(`[YouTube Videos API] ${reason}`);
+      logger.warn(`[YouTube Videos API] ${reason}`);
     }
     const videos = await scrapeYoutubeVideos(maxResults);
     return NextResponse.json({
@@ -21,7 +22,7 @@ async function fallbackWithScrapedVideos(maxResults: number, reason?: string) {
       source: 'scraped',
     });
   } catch (error) {
-    console.error('[YouTube Videos API] Scraper fallback failed:', error);
+    logger.error('[YouTube Videos API] Scraper fallback failed:', error);
     return NextResponse.json(
       { ok: false, error: 'YouTube 영상을 불러오지 못했습니다.' },
       { status: 502 }
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
     );
 
     if (!channelResponse.ok) {
-      console.error('YouTube API Error (channels):', await channelResponse.text());
+      logger.error('YouTube API Error (channels):', await channelResponse.text());
       return fallbackWithScrapedVideos(
         maxResults,
         `Failed to fetch channel info (HTTP ${channelResponse.status})`
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
     );
 
     if (!playlistResponse.ok) {
-      console.error('YouTube API Error (playlistItems):', await playlistResponse.text());
+      logger.error('YouTube API Error (playlistItems):', await playlistResponse.text());
       return fallbackWithScrapedVideos(
         maxResults,
         `Failed to fetch playlist videos (HTTP ${playlistResponse.status})`
@@ -138,7 +139,7 @@ export async function GET(request: NextRequest) {
       source: 'api',
     });
   } catch (error) {
-    console.error('Error fetching YouTube videos:', error);
+    logger.error('Error fetching YouTube videos:', error);
     return fallbackWithScrapedVideos(maxResults, 'Unexpected error from YouTube API. Using scraped data.');
   }
 }

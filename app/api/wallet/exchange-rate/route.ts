@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 // 환율 API - ExchangeRate-API 사용 (무료, 하루 1500회 제한)
 // 대안: Open Exchange Rates, Fixer.io 등
@@ -17,7 +18,7 @@ async function fetchExchangeRates(): Promise<ExchangeRates> {
   try {
     // 캐시 확인
     if (cachedRates && Date.now() - cachedRates.timestamp < CACHE_DURATION) {
-      console.log('[Exchange Rate API] Using cached rates');
+      logger.debug('[Exchange Rate API] Using cached rates');
       return cachedRates.rates;
     }
 
@@ -39,10 +40,10 @@ async function fetchExchangeRates(): Promise<ExchangeRates> {
       timestamp: Date.now(),
     };
 
-    console.log('[Exchange Rate API] Fetched new rates from API');
+    logger.debug('[Exchange Rate API] Fetched new rates from API');
     return rates;
   } catch (error) {
-    console.error('[Exchange Rate API] Error fetching rates:', error);
+    logger.error('[Exchange Rate API] Error fetching rates:', error);
 
     // 폴백: 고정 환율 (최근 평균치)
     return {
@@ -111,7 +112,7 @@ export async function GET(req: NextRequest) {
       timestamp: cachedRates?.timestamp || Date.now(),
     });
   } catch (error) {
-    console.error('[API /wallet/exchange-rate] Error:', error);
+    logger.error('[API /wallet/exchange-rate] Error:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch exchange rate' },
       { status: 500 }
@@ -157,7 +158,7 @@ export async function POST(req: NextRequest) {
       timestamp: cachedRates?.timestamp || Date.now(),
     });
   } catch (error) {
-    console.error('[API /wallet/exchange-rate POST] Error:', error);
+    logger.error('[API /wallet/exchange-rate POST] Error:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch exchange rates' },
       { status: 500 }

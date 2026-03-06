@@ -3,6 +3,7 @@
 
 import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
+import { logger } from '@/lib/logger';
 
 const SESSION_COOKIE = 'cg.sid.v2';
 const TEST_MODE_COOKIE = 'cg.test-mode';
@@ -83,7 +84,7 @@ export async function checkTestMode(): Promise<TestModeInfo> {
       testModeEndAt,
     };
   } catch (error) {
-    console.error('[TestMode] Error checking test mode:', error);
+    logger.error('[TestMode] Error checking test mode:', error);
     return {
       isTestMode: false,
       testModeStartedAt: null,
@@ -115,7 +116,7 @@ export async function checkTestModeClient(): Promise<TestModeInfo> {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('[TestMode] Client check error:', error);
+    logger.error('[TestMode] Client check error:', error);
     return {
       isTestMode: false,
       testModeStartedAt: null,

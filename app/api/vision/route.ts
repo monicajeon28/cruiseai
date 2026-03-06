@@ -6,13 +6,23 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { resolveGeminiModelName } from '@/lib/ai/geminiModel';
+import { logger } from '@/lib/logger';
+import { getSessionUser } from '@/lib/session';
 
-const apiKey = process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(apiKey);
+const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || '';
+const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 export async function POST(request: NextRequest) {
   try {
-    if (!apiKey) {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: '인증이 필요합니다.' },
+        { status: 401 }
+      );
+    }
+
+    if (!apiKey || !genAI) {
       return NextResponse.json(
         { success: false, error: 'GEMINI_API_KEY가 설정되지 않았습니다.' },
         { status: 500 }
@@ -25,6 +35,14 @@ export async function POST(request: NextRequest) {
     if (!file) {
       return NextResponse.json(
         { success: false, error: '이미지 파일이 없습니다.' },
+        { status: 400 }
+      );
+    }
+
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { success: false, error: '이미지 크기는 5MB 이하여야 합니다.' },
         { status: 400 }
       );
     }
@@ -102,11 +120,11 @@ export async function POST(request: NextRequest) {
       fullResponse: text,
     });
   } catch (err: any) {
-    console.error('[Vision API Error]', err?.message || err);
+    logger.error('[Vision API Error]', { message: err?.message || String(err) });
     return NextResponse.json(
       {
         success: false,
-        error: err?.message || '이미지 분석 중 오류가 발생했습니다.',
+        error: '이미지 분석 중 오류가 발생했습니다.',
         originalText: '',
         translatedText: '이미지 분석에 실패했습니다. 다시 시도해주세요.',
       },

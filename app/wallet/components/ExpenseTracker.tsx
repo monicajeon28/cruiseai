@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { FiPlus, FiTrash2, FiCalendar, FiAlertCircle, FiEdit2, FiCheck, FiX } from 'react-icons/fi';
 import { logger } from '@/lib/logger';
+import { showError, showSuccess, showWarning } from '@/components/ui/Toast';
 
 type Currency = {
   code: string;
@@ -264,13 +265,13 @@ export default function ExpenseTracker() {
   // 지출 추가
   const handleAddExpense = async () => {
     if (!description.trim()) {
-      alert('지출 내용을 입력해주세요.');
+      showError('지출 내용을 입력해주세요.');
       return;
     }
 
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      alert('올바른 금액을 입력해주세요.');
+      showError('올바른 금액을 입력해주세요.');
       return;
     }
 
@@ -352,7 +353,7 @@ export default function ExpenseTracker() {
       // 성공 메시지는 표시하지 않음 (자동 저장이므로)
     } catch (error: any) {
       logger.error('[ExpenseTracker] Add expense error:', error);
-      alert(`지출 추가 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`);
+      showError('지출 추가 중 오류가 발생했습니다. 다시 시도해주세요.');
     } finally {
       setLoading(false);
     }
@@ -373,7 +374,7 @@ export default function ExpenseTracker() {
       // localStorage에 저장 시도
       const saved = saveToLocalStorage([]);
       if (!saved) {
-        alert('로컬 저장소에 저장하는 중 오류가 발생했습니다. 페이지를 새로고침해주세요.');
+        showError('저장 중 오류가 발생했습니다. 페이지를 새로고침해주세요.');
         // 저장 실패 시 다시 로드
         await loadData();
         return;
@@ -392,20 +393,18 @@ export default function ExpenseTracker() {
         if (res.ok) {
           const result = await res.json();
           logger.debug('[ExpenseTracker] All expenses deleted:', result.deletedCount);
-          alert(`모든 지출 기록이 삭제되었습니다. (${result.deletedCount || expenses.length}개)`);
+          showSuccess(`모든 지출 기록이 삭제되었습니다. (${result.deletedCount || expenses.length}개)`);
         } else {
           logger.warn('[ExpenseTracker] API delete all failed, but local delete succeeded');
-          // localStorage는 성공했으므로 성공 메시지 표시
-          alert(`모든 지출 기록이 삭제되었습니다. (${expenses.length}개)\n서버 동기화는 나중에 자동으로 시도됩니다.`);
+          showSuccess(`모든 지출 기록이 삭제되었습니다. (${expenses.length}개)`);
         }
       } catch (apiError) {
         logger.warn('[ExpenseTracker] API delete all error, but local delete succeeded:', apiError);
-        // localStorage는 성공했으므로 성공 메시지 표시
-        alert(`모든 지출 기록이 삭제되었습니다. (${expenses.length}개)\n서버 동기화는 나중에 자동으로 시도됩니다.`);
+        showSuccess(`모든 지출 기록이 삭제되었습니다. (${expenses.length}개)`);
       }
     } catch (error: any) {
       logger.error('[ExpenseTracker] Reset all error:', error);
-      alert(error.message || '삭제 중 오류가 발생했습니다.');
+      showError(error.message || '삭제 중 오류가 발생했습니다.');
       // 에러 발생 시 다시 로드
       await loadData();
     } finally {
@@ -441,7 +440,7 @@ export default function ExpenseTracker() {
       }
     } catch (error: any) {
       logger.error('[ExpenseTracker] Delete error:', error);
-      alert(error.message || '삭제 중 오류가 발생했습니다.');
+      showError(error.message || '삭제 중 오류가 발생했습니다.');
       // 에러 발생 시 다시 로드
       await loadData();
     } finally {
@@ -469,7 +468,7 @@ export default function ExpenseTracker() {
   const handleSaveEdit = async (id: number | string) => {
     const amountNum = parseFloat(editingAmount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      alert('올바른 금액을 입력해주세요.');
+      showError('올바른 금액을 입력해주세요.');
       return;
     }
 
@@ -533,7 +532,7 @@ export default function ExpenseTracker() {
       setEditingDescription('');
     } catch (error: any) {
       logger.error('[ExpenseTracker] Update error:', error);
-      alert(error.message || '수정 중 오류가 발생했습니다.');
+      showError(error.message || '수정 중 오류가 발생했습니다.');
       await loadData();
     } finally {
       setLoading(false);
@@ -657,6 +656,8 @@ export default function ExpenseTracker() {
             </select>
             <input
               type="number"
+              inputMode="decimal"
+              pattern="[0-9]*"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="금액"
@@ -755,6 +756,8 @@ export default function ExpenseTracker() {
                             <div className="flex-1 flex flex-col gap-2">
                               <input
                                 type="number"
+                                inputMode="decimal"
+                                pattern="[0-9]*"
                                 value={editingAmount}
                                 onChange={(e) => setEditingAmount(e.target.value)}
                                 placeholder="금액"

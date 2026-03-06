@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('환율 API 오류:', error);
+    logger.error('환율 API 오류:', error);
     
     // 백업 환율 (대략적인 값) - KRW와 USD 기준
     const fallbackRatesKRW: { [key: string]: number } = {

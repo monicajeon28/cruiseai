@@ -28,11 +28,9 @@ export default function ProfileTestWrapper({ children }: { children: React.React
         clearAllLocalStorage();
         window.location.href = '/login-test';
       } else {
-        console.error('로그아웃 실패');
         alert('로그아웃에 실패했습니다. 다시 시도해주세요.');
       }
-    } catch (error) {
-      console.error('로그아웃 요청 중 오류 발생:', error);
+    } catch {
       alert('로그아웃 중 오류가 발생했습니다.');
     }
   };

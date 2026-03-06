@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 // 국가명을 통화 코드로 매핑
 const COUNTRY_TO_CURRENCY: Record<string, { code: string; symbol: string; name: string }> = {
@@ -79,11 +80,15 @@ export async function GET(req: NextRequest) {
 
     // 여행지가 있으면 여행지 통화 우선 추가
     if (latestTrip) {
-      const destinations = Array.isArray(latestTrip.destination)
-        ? latestTrip.destination
-        : [latestTrip.destination];
+      const rawDest = latestTrip.destination;
+      // Prisma Json? 타입: null/string/string[] 등 다양한 형태 안전 처리
+      const destinations: string[] = Array.isArray(rawDest)
+        ? (rawDest as unknown[]).filter((d): d is string => typeof d === 'string')
+        : typeof rawDest === 'string'
+        ? [rawDest]
+        : [];
 
-      destinations.forEach((dest: string) => {
+      destinations.forEach((dest) => {
         const currency = extractCurrency(dest);
         if (currency) {
           const country = dest.split('-')[0].trim();
@@ -92,37 +97,26 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 기본 주요 통화 모두 추가 (여행지와 상관없이)
-    const allCurrencies = [
+    // 기본 필수 통화 (KRW + USD만 — 여행지 없을 때 최소 기본값)
+    const essentialCurrencies = [
       { code: 'KRW', symbol: '₩', name: '원', country: '한국' },
       { code: 'USD', symbol: '$', name: '달러', country: '미국' },
-      { code: 'JPY', symbol: '¥', name: '엔', country: '일본' },
-      { code: 'CNY', symbol: '¥', name: '위안', country: '중국' },
-      { code: 'TWD', symbol: 'NT$', name: '달러', country: '대만' },
-      { code: 'HKD', symbol: 'HK$', name: '달러', country: '홍콩' },
-      { code: 'SGD', symbol: 'S$', name: '달러', country: '싱가포르' },
-      { code: 'THB', symbol: '฿', name: '바트', country: '태국' },
-      { code: 'VND', symbol: '₫', name: '동', country: '베트남' },
-      { code: 'PHP', symbol: '₱', name: '페소', country: '필리핀' },
-      { code: 'MYR', symbol: 'RM', name: '링깃', country: '말레이시아' },
-      { code: 'IDR', symbol: 'Rp', name: '루피아', country: '인도네시아' },
-      { code: 'EUR', symbol: '€', name: '유로', country: '유럽' },
-      { code: 'GBP', symbol: '£', name: '파운드', country: '영국' },
-      { code: 'CHF', symbol: 'CHF', name: '프랑', country: '스위스' },
-      { code: 'AUD', symbol: 'A$', name: '달러', country: '호주' },
-      { code: 'NZD', symbol: 'NZ$', name: '달러', country: '뉴질랜드' },
-      { code: 'CAD', symbol: 'C$', name: '달러', country: '캐나다' },
-      { code: 'RUB', symbol: '₽', name: '루블', country: '러시아' },
-      { code: 'TRY', symbol: '₺', name: '리라', country: '터키' },
-      { code: 'AED', symbol: 'د.إ', name: '디르함', country: 'UAE' },
     ];
 
-    // 여행지 통화가 없는 경우에만 추가
-    allCurrencies.forEach(currency => {
-      if (!currencySet.has(currency.code)) {
-        currencySet.set(currency.code, currency);
+    // 여행지 기반 통화가 없으면 KRW+USD만 포함
+    // 여행지 통화가 있으면 해당 통화들 + KRW만 포함
+    if (currencySet.size === 0) {
+      essentialCurrencies.forEach(c => currencySet.set(c.code, c));
+    } else {
+      // KRW가 없으면 추가 (항상 포함)
+      if (!currencySet.has('KRW')) {
+        currencySet.set('KRW', essentialCurrencies[0]);
       }
-    });
+      // USD가 없으면 추가 (국제 기준 통화)
+      if (!currencySet.has('USD')) {
+        currencySet.set('USD', essentialCurrencies[1]);
+      }
+    }
 
     const currencies = Array.from(currencySet.values());
 
@@ -136,7 +130,7 @@ export async function GET(req: NextRequest) {
       tripId: latestTrip?.id,
     });
   } catch (error) {
-    console.error('[API /wallet/countries] Error:', error);
+    logger.error('[API /wallet/countries] Error:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch countries' },
       { status: 500 }

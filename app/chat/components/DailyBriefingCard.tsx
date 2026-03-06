@@ -1,8 +1,9 @@
 'use client';
 
 import { logger } from '@/lib/logger';
+import { showError, showWarning } from '@/components/ui/Toast';
 import { useState, useEffect, useRef } from 'react';
-import { FiChevronDown, FiChevronUp, FiMapPin, FiClock, FiSun, FiCalendar, FiPlus, FiX, FiBell } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiMapPin, FiClock, FiSun, FiCalendar, FiPlus, FiX, FiBell, FiEdit2 } from 'react-icons/fi';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BriefingSkeleton } from '@/components/ui/Skeleton';
@@ -39,18 +40,20 @@ type BriefingData = {
   dday: number;
   ddayType: 'departure' | 'return';
   weather: {
-    temp: number;
-    condition: string;
-    icon: string;
-  };
+    temp: number | null;
+    condition: string | null;
+    icon: string | null;
+    isDummyWeather?: boolean;
+  } | null;
   weathers?: Array<{
     country: string;
     countryCode?: string;
     location: string | null;
-    temp: number;
-    condition: string;
-    icon: string;
-    time?: string; // 현재 시간 추가
+    temp: number | null;
+    condition: string | null;
+    icon: string | null;
+    time?: string;
+    isDummyWeather?: boolean;
   }>;
 };
 
@@ -76,11 +79,17 @@ export default function DailyBriefingCard() {
     return isTestMode ? '/profile-test' : '/profile';
   };
   
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [briefing, setBriefing] = useState<BriefingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [isAddingSchedule, setIsAddingSchedule] = useState(false); // 일정 추가 중 플래그
+  const [editingSchedule, setEditingSchedule] = useState<ScheduleItem | null>(null); // 수정 중인 일정
+  const [editTime, setEditTime] = useState('');
+  const [editTitle, setEditTitle] = useState('');
+  const [editAlarm, setEditAlarm] = useState(true);
+  const [editAlarmTime, setEditAlarmTime] = useState('');
+  const [isEditingSchedule, setIsEditingSchedule] = useState(false);
   const [showWeatherModal, setShowWeatherModal] = useState(false);
   const [selectedWeatherData, setSelectedWeatherData] = useState<WeatherResponse | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
@@ -100,15 +109,18 @@ export default function DailyBriefingCard() {
   const [ddayPopup, setDdayPopup] = useState<{ title: string; message: string } | null>(null); // D-day 팝업 상태
   const [user, setUser] = useState<{ name: string | null } | null>(null); // 사용자 정보
   const briefingDateRef = useRef<string | null>(null); // briefing.date 변경 추적용 (무한 리렌더링 방지)
+  const schedulesRef = useRef<ScheduleItem[]>([]); // setInterval stale closure 방지용
   const [kstTime, setKstTime] = useState<string>(''); // 한국 시간 (KST)
 
   // 한국 시간 기준 날짜 생성 함수 (공통 함수로 분리)
-  const getKoreanDateString = (offsetDays = 0) => {
+  const getKSTDateString = (offsetDays = 0): string => {
     const now = new Date();
-    now.setDate(now.getDate() + offsetDays);
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
+    // UTC 기준 시각에 +9시간 더한 후 UTC 날짜 필드로 읽기 (디바이스 시간대 무관)
+    const kstMs = now.getTime() + 9 * 60 * 60 * 1000 + offsetDays * 24 * 60 * 60 * 1000;
+    const kstDate = new Date(kstMs);
+    const year = kstDate.getUTCFullYear();
+    const month = String(kstDate.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(kstDate.getUTCDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
 
@@ -144,7 +156,7 @@ export default function DailyBriefingCard() {
       const newDay = String(date.getDate()).padStart(2, '0');
       return `${newYear}-${newMonth}-${newDay}`;
     } catch (error) {
-      console.error('[DailyBriefingCard] getTomorrowDate 오류:', error, { dateStr });
+      logger.error('[DailyBriefingCard] getTomorrowDate 오류:', error, { dateStr });
       throw error;
     }
   };
@@ -160,6 +172,9 @@ export default function DailyBriefingCard() {
       });
     }
   }, []);
+
+  // schedulesRef 동기화: setInterval stale closure 방지
+  useEffect(() => { schedulesRef.current = schedules; }, [schedules]);
 
   // 한국 시간(KST) 초기화
   useEffect(() => {
@@ -177,15 +192,11 @@ export default function DailyBriefingCard() {
   }, []);
 
   // 서버에서 일정 불러오기 함수 (공통 함수로 분리)
-  const loadSchedules = async (date: string) => {
-    // 스마트폰 현재 시간 기준으로 오늘/내일 판단
+  const loadSchedules = async (date: string, type: 'today' | 'tomorrow') => {
+    // type 인자로 오늘/내일 판단 (UTC 재계산 제거 → KST race condition 방지)
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0]; // YYYY-MM-DD 형식
-    const tomorrowDate = new Date(now);
-    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-    const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
-    
-    logger.log(`[DailyBriefingCard] loadSchedules 호출: date=${date}, 오늘=${todayStr}, 내일=${tomorrowStr}`);
+
+    logger.log(`[DailyBriefingCard] loadSchedules 호출: date=${date}, type=${type}`);
     
     try {
       const response = await fetch(`/api/schedules?date=${date}`, {
@@ -212,102 +223,97 @@ export default function DailyBriefingCard() {
           
           // 현재 시간 기준으로 과거 일정 필터링 (핸드폰 시간 기준)
           const currentTime = now.getHours() * 60 + now.getMinutes(); // 분 단위로 변환
-          
-          const filterPastSchedules = (items: ScheduleItem[], targetDate: string) => {
-            // 스마트폰 현재 날짜 기준으로 판단
-            if (targetDate === todayStr) {
+
+          const filterPastSchedules = (items: ScheduleItem[]) => {
+            // type 인자로 오늘/내일 판단 (UTC 재계산 제거 → KST race condition 방지)
+            if (type === 'today') {
               // 오늘 날짜면 현재 시간 이후 일정만 표시
               return items.filter((item) => {
                 const [hours, minutes] = item.time.split(':').map(Number);
                 const scheduleTime = hours * 60 + minutes;
                 return scheduleTime >= currentTime;
               });
-            } else if (targetDate === tomorrowStr) {
+            } else if (type === 'tomorrow') {
               // 내일 날짜면 모든 일정 표시 (내일 일정은 시간이 지나도 표시)
               return items;
             }
-            // 다른 날짜면 모든 일정 표시
+            // 다른 경우 모든 일정 표시
             return items;
           };
-          
-          // 스마트폰 현재 날짜 기준으로 오늘/내일 판단
-          if (date === todayStr) {
-            const filteredSchedules = filterPastSchedules(scheduleItems, date);
+
+          // type 인자로 오늘/내일 판단 (UTC 재계산 제거 → KST race condition 방지)
+          if (type === 'today') {
+            const filteredSchedules = filterPastSchedules(scheduleItems);
             logger.log(`[DailyBriefingCard] 오늘 일정 설정 (스마트폰 시간 기준):`, filteredSchedules.length, '개 (전체:', scheduleItems.length, '개)');
-            
+
             // 과거 일정이 있으면 서버에서 삭제하고 알람도 제거
             const pastSchedules = scheduleItems.filter((item) => {
               const [hours, minutes] = item.time.split(':').map(Number);
               const scheduleTime = hours * 60 + minutes;
               return scheduleTime < currentTime;
             });
-            
-            // 과거 일정 삭제 및 알람 제거
-            pastSchedules.forEach(async (schedule) => {
-              if (schedule.id) {
+
+            // 과거 일정 삭제 및 알람 제거 (Promise.allSettled: 일부 실패해도 나머지 처리)
+            await Promise.allSettled(
+              pastSchedules.map(async (schedule) => {
+                if (!schedule.id) return;
                 try {
-                  // 알람이 설정되어 있으면 알람도 제거
                   if (schedule.alarm) {
-                    // alarmTime이 있으면 그 시간으로 제거, 없으면 일정 시간으로 제거
                     const alarmDateTime = schedule.alarmTime || schedule.time;
                     removeAlarm(date, alarmDateTime);
                     logger.log(`[DailyBriefingCard] 과거 일정 알람 제거:`, alarmDateTime, schedule.title);
                   }
-                  
-                  // 서버에서 일정 삭제
                   await fetch(`/api/schedules?id=${schedule.id}`, {
                     method: 'DELETE',
                     credentials: 'include',
                   });
                   logger.log(`[DailyBriefingCard] 과거 일정 삭제:`, schedule.id, schedule.time);
                 } catch (error) {
-                  console.error(`[DailyBriefingCard] 과거 일정 삭제 실패:`, error);
+                  logger.error(`[DailyBriefingCard] 과거 일정 삭제 실패:`, error);
                 }
-              }
-            });
-            
+              })
+            );
+
             setSchedules(filteredSchedules);
             // 저장된 일정의 알람 재설정 (오늘 일정, 미래 일정만)
-            filteredSchedules.forEach(async (schedule: ScheduleItem) => {
-              if (schedule.alarm && schedule.alarmTime) {
+            await Promise.allSettled(
+              filteredSchedules.map(async (schedule: ScheduleItem) => {
+                if (!schedule.alarm || !schedule.alarmTime) return;
                 try {
-                  // alarmTime이 있으면 그 시간에 알람 설정, 없으면 일정 시간에 알람 설정
                   const alarmDateTime = schedule.alarmTime || schedule.time;
                   await scheduleAlarm(date, alarmDateTime, schedule.title);
                 } catch (alarmError) {
-                  console.error('[DailyBriefingCard] 알람 재설정 실패:', alarmError, { date, alarmTime: schedule.alarmTime });
+                  logger.error('[DailyBriefingCard] 알람 재설정 실패:', alarmError, { date, alarmTime: schedule.alarmTime });
                 }
-              }
-            });
-          } else if (date === tomorrowStr) {
+              })
+            );
+          } else if (type === 'tomorrow') {
             // 내일 일정은 모든 일정 표시 (시간이 지나도 표시)
             logger.log(`[DailyBriefingCard] 내일 일정 설정 (스마트폰 시간 기준):`, scheduleItems.length, '개');
-            
+
             setTomorrowSchedules(scheduleItems);
             // 저장된 일정의 알람 재설정 (내일 일정)
-            scheduleItems.forEach(async (schedule: ScheduleItem) => {
-              if (schedule.alarm && schedule.alarmTime) {
+            await Promise.allSettled(
+              scheduleItems.map(async (schedule: ScheduleItem) => {
+                if (!schedule.alarm || !schedule.alarmTime) return;
                 try {
-                  // alarmTime이 있으면 그 시간에 알람 설정, 없으면 일정 시간에 알람 설정
                   const alarmDateTime = schedule.alarmTime || schedule.time;
                   await scheduleAlarm(date, alarmDateTime, schedule.title);
                 } catch (alarmError) {
-                  console.error('[DailyBriefingCard] 알람 재설정 실패:', alarmError, { date, alarmTime: schedule.alarmTime });
+                  logger.error('[DailyBriefingCard] 알람 재설정 실패:', alarmError, { date, alarmTime: schedule.alarmTime });
                 }
-              }
-            });
-          } else {
-            console.warn(`[DailyBriefingCard] 일정 날짜가 오늘/내일이 아님:`, { date, todayStr, tomorrowStr });
+              })
+            );
           }
           return scheduleItems;
         } else {
-          console.warn(`[DailyBriefingCard] loadSchedules 응답 형식 오류:`, data);
+          logger.warn(`[DailyBriefingCard] loadSchedules 응답 형식 오류:`, data);
         }
       } else {
-        console.error(`[DailyBriefingCard] loadSchedules API 실패: status=${response.status}`);
+        logger.error(`[DailyBriefingCard] loadSchedules API 실패: status=${response.status}`);
       }
     } catch (error) {
-      console.error(`[DailyBriefingCard] Error loading schedules for ${date}:`, error);
+      logger.error(`[DailyBriefingCard] Error loading schedules for ${date}:`, error);
       // 서버 실패 시 localStorage 백업 시도 (마이그레이션용)
       const savedSchedules = localStorage.getItem(`dailySchedules-${date}`);
       if (savedSchedules) {
@@ -316,14 +322,14 @@ export default function DailyBriefingCard() {
           const scheduleItems = Array.isArray(parsed)
             ? parsed.filter((s: ScheduleItem) => !s.date || s.date === date)
             : [];
-          if (date === todayStr) {
+          if (type === 'today') {
             setSchedules(scheduleItems);
-          } else if (date === tomorrowStr) {
+          } else if (type === 'tomorrow') {
             setTomorrowSchedules(scheduleItems);
           }
           return scheduleItems;
         } catch (e) {
-          console.error('Error parsing localStorage backup:', e);
+          logger.error('Error parsing localStorage backup:', e);
         }
       }
     }
@@ -340,7 +346,7 @@ export default function DailyBriefingCard() {
           setUser({ name: data.user?.name || data.data?.name || null });
         }
       } catch (error) {
-        console.error('[DailyBriefingCard] 사용자 정보 로드 실패:', error);
+        logger.error('[DailyBriefingCard] 사용자 정보 로드 실패:', error);
       }
     };
     loadUser();
@@ -418,7 +424,7 @@ export default function DailyBriefingCard() {
         logger.log('[DailyBriefingCard] D-day 메시지 파일 요청:', '/data/dday_messages.json');
         const response = await fetch('/data/dday_messages.json', { cache: 'no-store' });
         if (!response.ok) {
-          console.error('[DailyBriefingCard] D-day 메시지 파일 로드 실패:', response.status, response.statusText);
+          logger.error('[DailyBriefingCard] D-day 메시지 파일 로드 실패:', response.status, response.statusText);
           return;
         }
         
@@ -427,18 +433,19 @@ export default function DailyBriefingCard() {
         const ddayMessage = data.messages?.[ddayKey];
         
         if (!ddayMessage) {
-          console.warn('[DailyBriefingCard] D-day 메시지 없음:', { ddayKey, availableKeys: Object.keys(data.messages || {}) });
+          logger.warn('[DailyBriefingCard] D-day 메시지 없음:', { ddayKey, availableKeys: Object.keys(data.messages || {}) });
           return;
         }
 
         logger.log('[DailyBriefingCard] D-day 메시지 찾음:', ddayMessage);
 
-        // 메시지 변수 치환
+        // 메시지 변수 치환 (XSS 방지: 사용자 데이터 HTML 이스케이프)
+        const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         const fillMessage = (text: string) => {
           return (text || '')
-            .replaceAll('[고객명]', user.name || '고객')
-            .replaceAll('[크루즈명]', briefing.cruiseName || '크루즈')
-            .replaceAll('[목적지]', briefing.today?.country || briefing.tomorrow?.country || '목적지');
+            .replaceAll('[고객명]', escHtml(user.name || '고객'))
+            .replaceAll('[크루즈명]', escHtml(briefing.cruiseName || '크루즈'))
+            .replaceAll('[목적지]', escHtml(briefing.today?.country || briefing.tomorrow?.country || '목적지'));
         };
 
         const title = fillMessage(ddayMessage.title);
@@ -459,12 +466,9 @@ export default function DailyBriefingCard() {
             return;
           }
 
-          // 오늘 날짜 가져오기
-          const today = new Date();
-          const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
-          const tomorrow = new Date(today);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          const tomorrowStr = tomorrow.toISOString().split('T')[0];
+          // 오늘 날짜 가져오기 (KST 기준)
+          const todayStr = getKSTDateString(0);
+          const tomorrowStr = getKSTDateString(1);
           
           // D-day 알람 키 (중복 방지)
           const todayAlarmKey = `dday-alarm-${ddayKey}-${todayStr}`;
@@ -492,7 +496,7 @@ export default function DailyBriefingCard() {
                 logger.log('[DailyBriefingCard] 오늘 D-day 알람 설정 완료:', { ddayKey, ddayType: briefing.ddayType, date: todayStr, alarmTime });
               }
             } catch (error) {
-              console.error('[DailyBriefingCard] 오늘 D-day 알람 설정 실패:', error);
+              logger.error('[DailyBriefingCard] 오늘 D-day 알람 설정 실패:', error);
             }
           }
           
@@ -505,15 +509,15 @@ export default function DailyBriefingCard() {
                 logger.log('[DailyBriefingCard] 내일 D-day 알람 설정 완료:', { ddayKey, ddayType: briefing.ddayType, date: tomorrowStr, alarmTime });
               }
             } catch (error) {
-              console.error('[DailyBriefingCard] 내일 D-day 알람 설정 실패:', error);
+              logger.error('[DailyBriefingCard] 내일 D-day 알람 설정 실패:', error);
             }
           }
         };
 
         // D-day 알람 설정 실행 (출발일 기준 및 종료일 기준 모두)
-        setupDdayAlarm();
+        await setupDdayAlarm();
       } catch (error) {
-        console.error('[DailyBriefingCard] D-day 메시지 로드 실패:', error);
+        logger.error('[DailyBriefingCard] D-day 메시지 로드 실패:', error);
       }
     })();
   }, [briefing, user, pathname]);
@@ -529,41 +533,20 @@ export default function DailyBriefingCard() {
 
         if (response.ok) {
           const data = await response.json();
-          logger.log('[DailyBriefingCard] API response:', { 
-            ok: data.ok, 
-            hasTrip: data.hasTrip, 
-            hasBriefing: !!data.briefing,
-            briefing: data.briefing,
-            message: data.message,
-            hasWeathers: !!data.briefing?.weathers,
-            weathersCount: data.briefing?.weathers?.length,
-            weathers: data.briefing?.weathers,
-            dday: data.briefing?.dday,
-            ddayType: data.briefing?.ddayType
-          });
-          
-          // 전체 응답 데이터를 JSON으로 출력 (디버깅용)
-          logger.log('[DailyBriefingCard] Full API response data:', JSON.stringify(data, null, 2));
-          
           if (data.ok && data.hasTrip && data.briefing) {
-            logger.log('[DailyBriefingCard] 브리핑 설정:', data.briefing);
             setBriefing(data.briefing);
           } else {
-            console.warn('[DailyBriefingCard] 브리핑을 표시할 수 없음:', {
+            logger.warn('[DailyBriefingCard] 브리핑을 표시할 수 없음:', {
               ok: data.ok,
               hasTrip: data.hasTrip,
-              hasBriefing: !!data.briefing,
               message: data.message,
-              fullData: data // 전체 데이터도 출력
             });
-            // 전체 응답 데이터도 JSON으로 출력
-            logger.log('[DailyBriefingCard] Full response (cannot display):', JSON.stringify(data, null, 2));
           }
         } else {
-          console.error('[DailyBriefingCard] 브리핑 API 오류:', response.status, response.statusText);
+          logger.error('[DailyBriefingCard] 브리핑 API 오류:', response.status, response.statusText);
         }
       } catch (error) {
-        console.error('Error loading briefing:', error);
+        logger.error('Error loading briefing:', error);
       } finally {
         setIsLoading(false);
       }
@@ -584,7 +567,7 @@ export default function DailyBriefingCard() {
     if (dateStr.includes('T')) {
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) {
-        console.error('[DailyBriefingCard] normalizeDate: Invalid ISO date:', dateStr);
+        logger.error('[DailyBriefingCard] normalizeDate: Invalid ISO date:', dateStr);
         return dateStr; // 원본 반환
       }
       const year = date.getFullYear();
@@ -599,7 +582,7 @@ export default function DailyBriefingCard() {
     }
     
     // 형식이 맞지 않는 경우 원본 반환
-    console.warn('[DailyBriefingCard] normalizeDate: Unknown date format:', dateStr);
+    logger.warn('[DailyBriefingCard] normalizeDate: Unknown date format:', dateStr);
     return dateStr;
   };
 
@@ -617,7 +600,7 @@ export default function DailyBriefingCard() {
       const newMinutes = totalMinutes % 60;
       return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
     } catch (error) {
-      console.error('[DailyBriefingCard] 시간 계산 오류:', error);
+      logger.error('[DailyBriefingCard] 시간 계산 오류:', error);
       return null;
     }
   };
@@ -646,20 +629,17 @@ export default function DailyBriefingCard() {
     // 날짜가 변경되었으면 ref 업데이트
     briefingDateRef.current = currentDate;
 
-    // 스마트폰 현재 시간 기준으로 오늘/내일 날짜 계산
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0]; // YYYY-MM-DD 형식
-    const tomorrowDate = new Date(now);
-    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-    const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
+    // KST 기준으로 오늘/내일 날짜 계산
+    const todayStr = getKSTDateString(0);
+    const tomorrowStr = getKSTDateString(1);
 
     logger.log('[DailyBriefingCard] 스마트폰 시간 기준 일정 불러오기:', { todayStr, tomorrowStr });
 
     // 스마트폰 현재 시간 기준으로 일정 불러오기
-    loadSchedules(todayStr).then(() => {
+    loadSchedules(todayStr, 'today').then(() => {
       logger.log('[DailyBriefingCard] 오늘 일정 불러오기 완료');
     });
-    loadSchedules(tomorrowStr).then(() => {
+    loadSchedules(tomorrowStr, 'tomorrow').then(() => {
       logger.log('[DailyBriefingCard] 내일 일정 불러오기 완료');
     });
 
@@ -700,7 +680,7 @@ export default function DailyBriefingCard() {
               });
             }
           } catch (error) {
-            console.error('[DailyBriefingCard] 입항 30분 전 알람 설정 실패:', error);
+            logger.error('[DailyBriefingCard] 입항 30분 전 알람 설정 실패:', error);
           }
         }
       }
@@ -725,13 +705,15 @@ export default function DailyBriefingCard() {
             });
           }
         } catch (error) {
-          console.error('[DailyBriefingCard] 1일 전 알람 설정 실패:', error);
+          logger.error('[DailyBriefingCard] 1일 전 알람 설정 실패:', error);
         }
       }
     };
 
-    // 내일 예정 알람 설정
-    setupTomorrowAlarms();
+    // 내일 예정 알람 설정 (unhandled rejection 방지)
+    setupTomorrowAlarms().catch(error => {
+      logger.error('[DailyBriefingCard] 내일 예정 알람 설정 실패:', error);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [briefing?.date, briefing?.tomorrow]); // briefing.date와 briefing.tomorrow를 의존성으로 사용
 
@@ -768,7 +750,7 @@ export default function DailyBriefingCard() {
                     }),
                   });
                 } catch (error) {
-                  console.error('Error migrating schedule:', error);
+                  logger.error('Error migrating schedule:', error);
                 }
               }
             }
@@ -776,7 +758,7 @@ export default function DailyBriefingCard() {
           // 마이그레이션 후 localStorage 키 삭제
           localStorage.removeItem(key);
         } catch (error) {
-          console.error(`Error migrating key ${key}:`, error);
+          logger.error(`Error migrating key ${key}:`, error);
         }
       }
       
@@ -795,83 +777,73 @@ export default function DailyBriefingCard() {
 
     // 페이지가 다시 보일 때 일정 다시 불러오기 및 필터링 (탭 전환, 창 이동 등)
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && briefing?.date) {
+      if (document.visibilityState === 'visible' && briefingDateRef.current) {
         logger.log('[DailyBriefingCard] 페이지가 다시 보임, 일정 다시 불러오기 및 필터링');
-        // 스마트폰 현재 시간 기준으로 일정 불러오기
-        const now = new Date();
-        const todayStr = now.toISOString().split('T')[0];
-        const tomorrowDate = new Date(now);
-        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-        const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
-        loadSchedules(todayStr);
-        loadSchedules(tomorrowStr);
+        // KST 기준으로 일정 불러오기
+        const todayStr = getKSTDateString(0);
+        const tomorrowStr = getKSTDateString(1);
+        loadSchedules(todayStr, 'today');
+        loadSchedules(tomorrowStr, 'tomorrow');
       }
     };
 
     // 포커스 이벤트 (페이지 전환 후 돌아올 때)
     const handleFocus = () => {
-      if (briefing?.date) {
+      if (briefingDateRef.current) {
         logger.log('[DailyBriefingCard] 페이지 포커스, 일정 다시 불러오기 및 필터링');
-        // 스마트폰 현재 시간 기준으로 일정 불러오기
-        const now = new Date();
-        const todayStr = now.toISOString().split('T')[0];
-        const tomorrowDate = new Date(now);
-        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-        const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
-        loadSchedules(todayStr);
-        loadSchedules(tomorrowStr);
+        // KST 기준으로 일정 불러오기
+        const todayStr = getKSTDateString(0);
+        const tomorrowStr = getKSTDateString(1);
+        loadSchedules(todayStr, 'today');
+        loadSchedules(tomorrowStr, 'tomorrow');
       }
     };
-    
+
     // 주기적으로 일정 필터링 및 자정 경과 체크 (1분마다)
-    // briefing?.date를 사용하여 무한 리렌더링 방지
+    // briefingDateRef.current 사용: stale closure 방지 (useEffect []에서 briefing state 참조 금지)
     const filterInterval = setInterval(() => {
-      const currentBriefingDate = briefing?.date; // 클로저로 캡처
+      const currentBriefingDate = briefingDateRef.current; // ref로 최신 값 참조
       if (currentBriefingDate) {
         const now = new Date();
         const currentTime = now.getHours() * 60 + now.getMinutes();
-        const todayStr = now.toISOString().split('T')[0];
-        const tomorrowDate = new Date(now);
-        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-        const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
-        
-        // 오늘 일정 필터링 (스마트폰 현재 시간 기준)
-        const filtered = schedules.filter((schedule) => {
+        const todayStr = getKSTDateString(0);
+        const tomorrowStr = getKSTDateString(1);
+
+        // 오늘 일정 필터링 (schedulesRef: stale closure 방지)
+        const currentSchedules = schedulesRef.current;
+        const filtered = currentSchedules.filter((schedule) => {
           const [hours, minutes] = schedule.time.split(':').map(Number);
           const scheduleTime = hours * 60 + minutes;
           return scheduleTime >= currentTime;
         });
-        
+
         // 필터링된 일정과 현재 일정이 다르면 업데이트
-        if (filtered.length !== schedules.length) {
-          logger.log('[DailyBriefingCard] 오늘 일정 자동 필터링:', filtered.length, '개 (전체:', schedules.length, '개)');
+        if (filtered.length !== currentSchedules.length) {
+          logger.log('[DailyBriefingCard] 오늘 일정 자동 필터링:', filtered.length, '개 (전체:', currentSchedules.length, '개)');
           setSchedules(filtered);
-          
-          // 과거 일정 삭제 및 알람 제거
-          schedules.forEach(async (schedule) => {
-            const [hours, minutes] = schedule.time.split(':').map(Number);
-            const scheduleTime = hours * 60 + minutes;
-            if (scheduleTime < currentTime && schedule.id) {
+
+          // 과거 일정 삭제 및 알람 제거 (Promise.allSettled: 병렬 + 일부 실패 허용)
+          Promise.allSettled(
+            currentSchedules.map(async (schedule) => {
+              const [hours, minutes] = schedule.time.split(':').map(Number);
+              const scheduleTime = hours * 60 + minutes;
+              if (scheduleTime >= currentTime || !schedule.id) return;
               try {
-                // 알람이 설정되어 있으면 알람도 제거
                 if (schedule.alarm) {
-                  // alarmTime이 있으면 그 시간으로 제거, 없으면 일정 시간으로 제거
                   const alarmDateTime = schedule.alarmTime || schedule.time;
                   removeAlarm(todayStr, alarmDateTime);
                   logger.log(`[DailyBriefingCard] 과거 일정 알람 자동 제거:`, alarmDateTime, schedule.title);
                 }
-                
-                // 서버에서 일정 삭제
                 await fetch(`/api/schedules?id=${schedule.id}`, {
                   method: 'DELETE',
                   credentials: 'include',
                 });
                 logger.log(`[DailyBriefingCard] 과거 일정 자동 삭제:`, schedule.id, schedule.time);
               } catch (error) {
-                console.error(`[DailyBriefingCard] 과거 일정 삭제 실패:`, error);
+                logger.error(`[DailyBriefingCard] 과거 일정 삭제 실패:`, error);
               }
-            }
-          });
+            })
+          );
         }
         
         // 자정 경과 체크: 날짜가 변경되었는지 확인
@@ -881,11 +853,11 @@ export default function DailyBriefingCard() {
           logger.log('[DailyBriefingCard] 자정 경과 감지! 일정 다시 불러오기:', { lastCheckedDate, todayStr });
           // 자정이 지나면 일정 다시 불러오기 (내일 일정이 오늘 일정이 됨)
           // 오늘 날짜로 일정 불러오기 (이전 내일 일정이 오늘 일정으로 표시됨)
-          loadSchedules(todayStr).then(() => {
+          loadSchedules(todayStr, 'today').then(() => {
             logger.log('[DailyBriefingCard] 자정 경과 후 오늘 일정 불러오기 완료');
           });
           // 새로운 내일 날짜로 일정 불러오기
-          loadSchedules(tomorrowStr).then(() => {
+          loadSchedules(tomorrowStr, 'tomorrow').then(() => {
             logger.log('[DailyBriefingCard] 자정 경과 후 내일 일정 불러오기 완료');
           });
           // 보기 모드를 오늘로 자동 전환 (내일 일정이 오늘로 이동했으므로)
@@ -909,7 +881,7 @@ export default function DailyBriefingCard() {
   const handleAddSchedule = async (): Promise<boolean> => {
     // 중복 클릭 방지
     if (isAddingSchedule) {
-      console.warn('[DailyBriefingCard] 일정 추가 중복 클릭 방지');
+      logger.warn('[DailyBriefingCard] 일정 추가 중복 클릭 방지');
       return false;
     }
 
@@ -923,54 +895,51 @@ export default function DailyBriefingCard() {
           throw new Error('세션이 만료되었습니다. 다시 로그인해주세요.');
         }
       } catch (sessionError) {
-        console.error('[DailyBriefingCard] 세션 확인 실패:', sessionError);
-        alert('로그인 상태를 확인할 수 없습니다. 다시 로그인해주세요.');
+        logger.error('[DailyBriefingCard] 세션 확인 실패:', sessionError);
+        showError('로그인 상태를 확인할 수 없습니다. 다시 로그인해주세요.');
         setIsAddingSchedule(false);
         return false;
       }
 
       if (!newScheduleTime || !newScheduleTitle) {
-        alert('시간과 일정을 모두 입력해주세요.');
+        showError('시간과 일정을 모두 입력해주세요.');
         setIsAddingSchedule(false);
         return false;
       }
 
       // 알람이 켜져 있으면 알람 시간도 필수
       if (newScheduleAlarm && !newScheduleAlarmTime) {
-        alert('알람 시간을 입력해주세요.');
+        showError('알람 시간을 입력해주세요.');
         setIsAddingSchedule(false);
         return false;
       }
 
       // 브리핑이 없으면 에러
       if (!briefing || !briefing.date) {
-        alert('브리핑 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+        showWarning('브리핑 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
         setIsAddingSchedule(false);
         return false;
       }
 
-      // 스마트폰 현재 시간 기준으로 날짜 결정
+      // KST 기준으로 날짜 결정
       let targetDate: string;
       try {
-        const now = new Date();
-        const todayStr = now.toISOString().split('T')[0]; // YYYY-MM-DD 형식
-        
+        const todayStr = getKSTDateString(0);
+
         // 날짜 형식 검증 (YYYY-MM-DD)
         if (!/^\d{4}-\d{2}-\d{2}$/.test(todayStr)) {
           throw new Error(`날짜 형식이 올바르지 않습니다: ${todayStr}`);
         }
-        
+
         if (selectedScheduleDate === 'today') {
           targetDate = todayStr;
         } else {
-          const tomorrowDate = new Date(now);
-          tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-          targetDate = tomorrowDate.toISOString().split('T')[0];
+          targetDate = getKSTDateString(1);
         }
       } catch (error) {
-        console.error('[DailyBriefingCard] 날짜 계산 오류:', error);
+        logger.error('[DailyBriefingCard] 날짜 계산 오류:', error);
         const errorMessage = error instanceof Error ? error.message : '날짜 계산 중 오류가 발생했습니다';
-        alert(`일정 추가 실패: ${errorMessage}`);
+        showError(`일정 추가에 실패했습니다: ${errorMessage}`);
         setIsAddingSchedule(false);
         return false;
       }
@@ -1021,14 +990,14 @@ export default function DailyBriefingCard() {
         logger.log('[DailyBriefingCard] API 응답 본문 (raw):', text);
         data = JSON.parse(text);
       } catch (parseError) {
-        console.error('[DailyBriefingCard] 응답 파싱 실패:', parseError);
+        logger.error('[DailyBriefingCard] 응답 파싱 실패:', parseError);
         throw new Error(`서버 응답을 읽을 수 없습니다 (HTTP ${response.status})`);
       }
 
       logger.log('[DailyBriefingCard] API 응답 데이터:', data);
 
       if (!response.ok) {
-        console.error('[DailyBriefingCard] API 에러:', {
+        logger.error('[DailyBriefingCard] API 에러:', {
           status: response.status,
           statusText: response.statusText,
           data,
@@ -1040,50 +1009,47 @@ export default function DailyBriefingCard() {
       if (data.ok && data.schedule) {
         logger.log('[DailyBriefingCard] 일정 추가 성공, 서버에서 다시 불러오기');
         
-        // 스마트폰 현재 시간 기준으로 일정 다시 불러오기
+        // KST 기준으로 일정 다시 불러오기
         if (!briefing || !briefing.date) {
-          console.error('[DailyBriefingCard] 브리핑 정보 없음, 일정 불러오기 건너뜀');
+          logger.error('[DailyBriefingCard] 브리핑 정보 없음, 일정 불러오기 건너뜀');
         } else {
-          const now = new Date();
-          const todayStr = now.toISOString().split('T')[0];
-          
+          const todayStr = getKSTDateString(0);
+
           try {
             // 선택된 날짜에 따라 해당 날짜의 일정만 다시 불러오기
             if (selectedScheduleDate === 'today') {
-              logger.log('[DailyBriefingCard] 오늘 일정 다시 불러오기 (스마트폰 시간 기준):', todayStr);
-              await loadSchedules(todayStr);
+              logger.log('[DailyBriefingCard] 오늘 일정 다시 불러오기 (KST 기준):', todayStr);
+              await loadSchedules(todayStr, 'today');
               // 알람 설정 (웹 알림) - 오늘 일정
               if (newScheduleAlarm && newScheduleAlarmTime) {
                 try {
                   await scheduleAlarm(todayStr, newScheduleAlarmTime, newScheduleTitle);
                 } catch (alarmError) {
-                  console.error('[DailyBriefingCard] 알람 설정 실패:', alarmError);
+                  logger.error('[DailyBriefingCard] 알람 설정 실패:', alarmError);
                   // 알람 설정 실패해도 일정은 저장되었으므로 계속 진행
                 }
               }
             } else {
               try {
-                const tomorrowDate = new Date(now);
-                tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-                const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
-                logger.log('[DailyBriefingCard] 내일 일정 다시 불러오기 (스마트폰 시간 기준):', tomorrowStr);
-                await loadSchedules(tomorrowStr);
+                const tomorrowStr = getKSTDateString(1);
+                logger.log('[DailyBriefingCard] 내일 일정 다시 불러오기 (KST 기준):', tomorrowStr);
+                await loadSchedules(tomorrowStr, 'tomorrow');
                 // 알람 설정 (웹 알림) - 내일 일정
                 if (newScheduleAlarm && newScheduleAlarmTime) {
                   try {
                     await scheduleAlarm(tomorrowStr, newScheduleAlarmTime, newScheduleTitle);
                   } catch (alarmError) {
-                    console.error('[DailyBriefingCard] 알람 설정 실패:', alarmError);
+                    logger.error('[DailyBriefingCard] 알람 설정 실패:', alarmError);
                     // 알람 설정 실패해도 일정은 저장되었으므로 계속 진행
                   }
                 }
               } catch (tomorrowError) {
-                console.error('[DailyBriefingCard] 내일 날짜 계산 실패:', tomorrowError);
+                logger.error('[DailyBriefingCard] 내일 날짜 계산 실패:', tomorrowError);
                 // 내일 날짜 계산 실패해도 계속 진행
               }
             }
           } catch (loadError) {
-            console.error('[DailyBriefingCard] 일정 불러오기 실패 (일정은 저장됨):', loadError);
+            logger.error('[DailyBriefingCard] 일정 불러오기 실패 (일정은 저장됨):', loadError);
             // 일정은 저장되었으므로 에러를 무시하고 계속 진행
           }
         }
@@ -1103,20 +1069,19 @@ export default function DailyBriefingCard() {
         setIsAddingSchedule(false);
         return true; // 성공
       } else {
-        console.error('[DailyBriefingCard] 응답 데이터 형식 오류:', data);
-        alert('일정이 추가되었지만 응답 형식이 올바르지 않습니다.');
+        logger.error('[DailyBriefingCard] 응답 데이터 형식 오류:', data);
+        showWarning('일정이 추가되었지만 응답 형식이 올바르지 않습니다.');
         setIsAddingSchedule(false);
         return false;
       }
     } catch (error) {
-      console.error('[DailyBriefingCard] Error adding schedule:', error);
-      console.error('[DailyBriefingCard] Error details:', {
+      logger.error('[DailyBriefingCard] Error adding schedule:', error);
+      logger.error('[DailyBriefingCard] Error details:', {
         name: error instanceof Error ? error.name : 'Unknown',
         message: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
-      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
-      alert(`일정 추가에 실패했습니다: ${errorMessage}\n\n콘솔을 확인해주세요.`);
+      showError(`일정 추가에 실패했습니다. 다시 시도해주세요.`);
       setIsAddingSchedule(false);
       return false;
     } finally {
@@ -1126,7 +1091,7 @@ export default function DailyBriefingCard() {
 
   const handleDeleteSchedule = async (schedule: ScheduleItem, isToday: boolean) => {
     if (!schedule.id) {
-      console.error('Schedule ID not found');
+      logger.error('Schedule ID not found');
       return;
     }
 
@@ -1148,12 +1113,9 @@ export default function DailyBriefingCard() {
         logger.log('[DailyBriefingCard] 일정 삭제 성공:', schedule.id);
       }
 
-      // 서버에서 최신 일정 다시 불러오기 (스마트폰 현재 시간 기준)
-      const now = new Date();
-      const todayStr = now.toISOString().split('T')[0];
-      const tomorrowDate = new Date(now);
-      tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-      const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
+      // 서버에서 최신 일정 다시 불러오기 (KST 기준)
+      const todayStr = getKSTDateString(0);
+      const tomorrowStr = getKSTDateString(1);
 
       // 알림도 제거
       if (schedule.alarm) {
@@ -1164,13 +1126,50 @@ export default function DailyBriefingCard() {
       }
       
       if (isToday) {
-        await loadSchedules(todayStr);
+        await loadSchedules(todayStr, 'today');
       } else {
-        await loadSchedules(tomorrowStr);
+        await loadSchedules(tomorrowStr, 'tomorrow');
       }
     } catch (error) {
-      console.error('Error deleting schedule:', error);
-      alert('일정 삭제에 실패했습니다. 다시 시도해주세요.');
+      logger.error('Error deleting schedule:', error);
+      showError('일정 삭제에 실패했습니다. 다시 시도해주세요.');
+    }
+  };
+
+  const handleEditSchedule = async () => {
+    if (!editingSchedule?.id) return;
+    if (!editTime || !editTitle.trim()) {
+      showWarning('시간과 제목을 모두 입력해주세요.');
+      return;
+    }
+
+    setIsEditingSchedule(true);
+    try {
+      const response = await fetch('/api/schedules', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingSchedule.id,
+          time: editTime,
+          title: editTitle.trim(),
+          alarm: editAlarm,
+          alarmTime: editAlarm && editAlarmTime ? editAlarmTime : null,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || '일정 수정 실패');
+
+      const isToday = editingSchedule.date === getKSTDateString(0);
+      const targetDate = isToday ? getKSTDateString(0) : getKSTDateString(1);
+      await loadSchedules(targetDate, isToday ? 'today' : 'tomorrow');
+      setEditingSchedule(null);
+    } catch (error) {
+      logger.error('Error editing schedule:', error);
+      showError('일정 수정에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsEditingSchedule(false);
     }
   };
 
@@ -1190,11 +1189,11 @@ export default function DailyBriefingCard() {
       if (result.ok && result.data) {
         setSelectedWeatherData(result.data);
       } else {
-        console.error('[DailyBriefingCard] 날씨 데이터 가져오기 실패:', result.error);
+        logger.error('[DailyBriefingCard] 날씨 데이터 가져오기 실패:', result.error);
         setSelectedWeatherData(null);
       }
     } catch (error) {
-      console.error('[DailyBriefingCard] 날씨 데이터 가져오기 실패:', error);
+      logger.error('[DailyBriefingCard] 날씨 데이터 가져오기 실패:', error);
       setSelectedWeatherData(null);
     } finally {
       setWeatherLoading(false);
@@ -1232,7 +1231,7 @@ export default function DailyBriefingCard() {
       {/* 헤더 - 컴팩트하게 */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-3 py-1.5 flex items-center justify-between hover:bg-blue-100/50 transition-colors"
+        className="w-full px-3 py-2.5 flex items-center justify-between hover:bg-blue-100/50 transition-colors"
       >
         <div className="flex items-center gap-2">
           <div className="text-2xl">📰</div>
@@ -1362,12 +1361,11 @@ export default function DailyBriefingCard() {
                 {/* 오늘 일정 정보는 표시하지 않음 (사용자가 추가한 일정만 표시) */}
 
                 {/* 추가된 일정 목록 - 메모지 스타일, 5열 그리드 */}
-                {logger.log('[DailyBriefingCard] 오늘 일정 렌더링:', schedules.length, '개', schedules)}
                 {(() => {
-                  // 렌더링 시에도 현재 시간 기준으로 필터링 (스마트폰 시간 기준)
+                  // 렌더링 시에도 현재 시간 기준으로 필터링 (KST 기준)
                   const now = new Date();
                   const currentTime = now.getHours() * 60 + now.getMinutes();
-                  const todayStr = now.toISOString().split('T')[0];
+                  const todayStr = getKSTDateString(0);
                   
                   // 오늘 일정만 시간 기준으로 필터링
                   const filteredSchedules = schedules.filter((schedule) => {
@@ -1383,22 +1381,30 @@ export default function DailyBriefingCard() {
                   });
                   
                   return filteredSchedules.length > 0 ? (
-                    <div className="mt-2 grid grid-cols-5 gap-1.5">
+                    <div className="mt-2 grid grid-cols-3 sm:grid-cols-5 gap-1.5">
                       {filteredSchedules.map((schedule, index) => (
-                      <div 
-                        key={schedule.id || index} 
-                        className="aspect-square bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200 shadow-sm hover:shadow-md transition-shadow relative p-2 flex flex-col items-center justify-center gap-1"
+                      <div
+                        key={schedule.id || index}
+                        className="aspect-square bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200 shadow-sm hover:shadow-md transition-shadow relative p-2 flex flex-col items-center justify-center gap-1 cursor-pointer"
                         style={{
                           transform: `rotate(${(index % 3 - 1) * 1.5}deg)`,
                         }}
+                        onClick={() => {
+                          setEditingSchedule(schedule);
+                          setEditTime(schedule.time);
+                          setEditTitle(schedule.title);
+                          setEditAlarm(schedule.alarm);
+                          setEditAlarmTime(schedule.alarmTime || '');
+                        }}
                       >
                         <button
-                          onClick={() => handleDeleteSchedule(schedule, true)}
+                          onClick={(e) => { e.stopPropagation(); handleDeleteSchedule(schedule, true); }}
                           className="absolute top-0.5 right-0.5 text-red-500 hover:text-red-700 p-0.5 z-10"
                           title="삭제"
                         >
                           <FiX size={12} />
                         </button>
+                        <FiEdit2 size={10} className="absolute top-0.5 left-0.5 text-gray-400" />
                         <FiClock size={20} className="text-blue-600 mb-1" />
                         <span className="text-lg md:text-xl font-bold text-gray-900 text-center leading-tight">{schedule.time}</span>
                         <span className="text-base md:text-lg text-gray-700 text-center line-clamp-2 px-1 leading-relaxed font-semibold break-words">{schedule.title}</span>
@@ -1435,28 +1441,35 @@ export default function DailyBriefingCard() {
                 )}
                 
                 {/* 내일 추가된 일정 목록 */}
-                {logger.log('[DailyBriefingCard] 내일 일정 렌더링:', tomorrowSchedules.length, '개', tomorrowSchedules)}
                 {(() => {
                   // 내일 일정은 모든 일정 표시 (시간이 지나도 표시)
                   const filteredSchedules = tomorrowSchedules;
                   
                   return filteredSchedules.length > 0 ? (
-                    <div className="mt-2 grid grid-cols-5 gap-1.5">
+                    <div className="mt-2 grid grid-cols-3 sm:grid-cols-5 gap-1.5">
                       {filteredSchedules.map((schedule, index) => (
-                      <div 
-                        key={schedule.id || index} 
-                        className="aspect-square bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200 shadow-sm hover:shadow-md transition-shadow relative p-2 flex flex-col items-center justify-center gap-1"
+                      <div
+                        key={schedule.id || index}
+                        className="aspect-square bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200 shadow-sm hover:shadow-md transition-shadow relative p-2 flex flex-col items-center justify-center gap-1 cursor-pointer"
                         style={{
                           transform: `rotate(${(index % 3 - 1) * 1.5}deg)`,
                         }}
+                        onClick={() => {
+                          setEditingSchedule(schedule);
+                          setEditTime(schedule.time);
+                          setEditTitle(schedule.title);
+                          setEditAlarm(schedule.alarm);
+                          setEditAlarmTime(schedule.alarmTime || '');
+                        }}
                       >
                         <button
-                          onClick={() => handleDeleteSchedule(schedule, false)}
+                          onClick={(e) => { e.stopPropagation(); handleDeleteSchedule(schedule, false); }}
                           className="absolute top-0.5 right-0.5 text-red-500 hover:text-red-700 p-0.5 z-10"
                           title="삭제"
                         >
                           <FiX size={12} />
                         </button>
+                        <FiEdit2 size={10} className="absolute top-0.5 left-0.5 text-gray-400" />
                         <FiClock size={20} className="text-purple-600 mb-1" />
                         <span className="text-lg md:text-xl font-bold text-gray-900 text-center leading-tight">{schedule.time}</span>
                         <span className="text-base md:text-lg text-gray-700 text-center line-clamp-2 px-1 leading-relaxed font-semibold break-words">{schedule.title}</span>
@@ -1511,30 +1524,43 @@ export default function DailyBriefingCard() {
                       className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-2 border border-blue-100 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
                     >
                       <div className="flex flex-col gap-2 items-center">
-                        {/* 아이콘 */}
-                        <span className="text-5xl md:text-6xl">{w.icon}</span>
+                        {w.temp === null ? (
+                          /* 실유저 날씨 로드 실패 */
+                          <>
+                            <span className="text-5xl md:text-6xl">🌡️</span>
+                            <p className="text-sm text-gray-500 text-center">날씨 불러오는 중</p>
+                            <p className="text-lg md:text-xl font-bold text-blue-700 bg-blue-200 px-4 py-2 rounded-full border-2 border-blue-300 leading-tight break-words">
+                              {w.country}
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            {/* 아이콘 */}
+                            <span className="text-5xl md:text-6xl">{w.icon}</span>
 
-                        {/* 온도와 나라 (가로로 배치) */}
-                        <div className="flex items-center gap-2 flex-wrap justify-center">
-                          <p className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">{w.temp}°C</p>
-                          <p className="text-lg md:text-xl font-bold text-blue-700 bg-blue-200 px-4 py-2 rounded-full border-2 border-blue-300 leading-tight break-words">
-                            {w.country}
-                          </p>
-                        </div>
+                            {/* 온도와 나라 */}
+                            <div className="flex items-center gap-2 flex-wrap justify-center">
+                              <p className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">{w.temp}°C</p>
+                              <p className="text-lg md:text-xl font-bold text-blue-700 bg-blue-200 px-4 py-2 rounded-full border-2 border-blue-300 leading-tight break-words">
+                                {w.country}
+                              </p>
+                            </div>
 
-                        {/* 시간 (더 크게) */}
-                        {w.time && (
-                          <p className="text-xl md:text-2xl font-bold text-gray-700 bg-white px-4 py-2 rounded-full border-2 border-gray-300 leading-tight">
-                            🕐 {w.time}
-                          </p>
-                        )}
+                            {/* 시간 */}
+                            {w.time && (
+                              <p className="text-xl md:text-2xl font-bold text-gray-700 bg-white px-4 py-2 rounded-full border-2 border-gray-300 leading-tight">
+                                🕐 {w.time}
+                              </p>
+                            )}
 
-                        {/* 날씨 상태 */}
-                        <p className="text-gray-700 text-lg md:text-xl font-bold text-center leading-relaxed break-words">{w.condition}</p>
+                            {/* 날씨 상태 */}
+                            <p className="text-gray-700 text-lg md:text-xl font-bold text-center leading-relaxed break-words">{w.condition}</p>
 
-                        {/* 지역명 */}
-                        {w.location && (
-                          <p className="text-gray-500 text-base text-center">📍 {w.location}</p>
+                            {/* 지역명 */}
+                            {w.location && (
+                              <p className="text-gray-500 text-base text-center">📍 {w.location}</p>
+                            )}
+                          </>
                         )}
                       </div>
                     </button>
@@ -1822,6 +1848,98 @@ export default function DailyBriefingCard() {
                   }`}
                 >
                   {isAddingSchedule ? '추가 중...' : '추가'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 일정 수정 모달 */}
+      {editingSchedule && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">일정 수정</h3>
+              <button
+                onClick={() => setEditingSchedule(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* 시간 입력 */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">시간</label>
+                <input
+                  type="time"
+                  value={editTime}
+                  onChange={(e) => setEditTime(e.target.value)}
+                  className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* 일정 제목 */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">일정</label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="예: 조식 뷔페, 요가 클래스"
+                  className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* 알람 설정 */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="edit-alarm-check"
+                    checked={editAlarm}
+                    onChange={(e) => {
+                      setEditAlarm(e.target.checked);
+                      if (!e.target.checked) setEditAlarmTime('');
+                    }}
+                    className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <label htmlFor="edit-alarm-check" className="text-base text-gray-700 flex items-center gap-2">
+                    <FiBell className="text-orange-500" />
+                    알람 설정
+                  </label>
+                </div>
+                {editAlarm && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">알람 시간</label>
+                    <input
+                      type="time"
+                      value={editAlarmTime}
+                      onChange={(e) => setEditAlarmTime(e.target.value)}
+                      className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* 버튼 */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setEditingSchedule(null)}
+                  className="flex-1 px-4 py-3 text-base font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleEditSchedule}
+                  disabled={isEditingSchedule}
+                  className={`flex-1 px-4 py-3 text-base font-semibold text-white rounded-lg transition-colors ${
+                    isEditingSchedule ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  {isEditingSchedule ? '수정 중...' : '수정'}
                 </button>
               </div>
             </div>

@@ -11,6 +11,7 @@ import { trackFeature } from '@/lib/analytics';
 import TutorialCountdown from '@/app/chat/components/TutorialCountdown';
 import { checkTestModeClient, TestModeInfo, getCorrectPath } from '@/lib/test-mode-client';
 import { clearAllLocalStorage } from '@/lib/csrf-client';
+import { showError } from '@/components/ui/Toast';
 
 type Tab = 'calculator' | 'expenses' | 'statistics';
 
@@ -74,12 +75,10 @@ export default function WalletPage() {
         clearAllLocalStorage();
         window.location.href = '/login';
       } else {
-        console.error('로그아웃 실패');
-        alert('로그아웃에 실패했습니다. 다시 시도해주세요.');
+        showError('로그아웃에 실패했습니다. 다시 시도해주세요.');
       }
-    } catch (error) {
-      console.error('로그아웃 요청 중 오류 발생:', error);
-      alert('로그아웃 중 오류가 발생했습니다.');
+    } catch {
+      showError('로그아웃 중 오류가 발생했습니다.');
     }
   };
 
@@ -138,8 +137,8 @@ export default function WalletPage() {
                 : 'bg-gradient-to-r from-gray-50 to-gray-100 text-gray-600 hover:bg-gradient-to-r hover:from-[#FDB931]/10 hover:to-[#FDB931]/5 border-gray-200'
                 }`}
             >
-              <FiDollarSign className="w-5 h-5 md:w-6 md:h-6 mb-1" />
-              <span className="text-xs md:text-sm font-semibold">환율</span>
+              <FiDollarSign className="w-6 h-6 md:w-7 md:h-7 mb-1" />
+              <span className="text-base md:text-lg font-semibold">환율</span>
             </button>
 
             <button
@@ -149,8 +148,8 @@ export default function WalletPage() {
                 : 'bg-gradient-to-r from-gray-50 to-gray-100 text-gray-600 hover:bg-gradient-to-r hover:from-[#FDB931]/10 hover:to-[#FDB931]/5 border-gray-200'
                 }`}
             >
-              <FiList className="w-5 h-5 md:w-6 md:h-6 mb-1" />
-              <span className="text-xs md:text-sm font-semibold">지출</span>
+              <FiList className="w-6 h-6 md:w-7 md:h-7 mb-1" />
+              <span className="text-base md:text-lg font-semibold">지출</span>
             </button>
 
             <button
@@ -160,8 +159,8 @@ export default function WalletPage() {
                 : 'bg-gradient-to-r from-gray-50 to-gray-100 text-gray-600 hover:bg-gradient-to-r hover:from-[#FDB931]/10 hover:to-[#FDB931]/5 border-gray-200'
                 }`}
             >
-              <FiPieChart className="w-5 h-5 md:w-6 md:h-6 mb-1" />
-              <span className="text-xs md:text-sm font-semibold">통계</span>
+              <FiPieChart className="w-6 h-6 md:w-7 md:h-7 mb-1" />
+              <span className="text-base md:text-lg font-semibold">통계</span>
             </button>
           </div>
         </div>

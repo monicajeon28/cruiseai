@@ -13,7 +13,9 @@ export default function ModeBar({
 }) {
   const Tab = ({ id, label }: { id: ChatInputMode; label: string }) => (
     <button
-      className={`px-3 py-2 rounded-md text-sm ${mode === id ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+      className={`flex-1 min-h-[44px] py-2.5 rounded-md text-sm font-semibold text-center transition-colors ${
+        mode === id ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+      }`}
       onClick={() => onChangeTab(id)}
     >
       {label}
@@ -22,18 +24,18 @@ export default function ModeBar({
 
   return (
     <div className="w-full border-b bg-white">
-      <div className="mx-auto max-w-6xl px-3 flex gap-2 p-3 border-b bg-white">
-        <Tab id="go" label="크루즈닷 가자" />
-        <Tab id="show" label="크루즈닷 보여줘" />
+      <div className="mx-auto max-w-6xl px-3 flex items-center gap-1.5 py-2">
+        <Tab id="go" label="가자" />
+        <Tab id="show" label="보여줘" />
         <Tab id="general" label="일반" />
-        <div className="ml-auto text-sm text-gray-500">
-          <button
-            className={`px-3 py-2 rounded-md text-sm bg-gray-100 text-gray-700`}
-            onClick={() => onChangeTab('info')}
-          >
-            크루즈닷사용설명서
-          </button>
-        </div>
+        <button
+          className="w-10 min-h-[44px] flex items-center justify-center rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 text-base font-bold flex-shrink-0"
+          onClick={() => onChangeTab('info')}
+          title="크루즈닷 사용설명서"
+          aria-label="사용설명서"
+        >
+          ?
+        </button>
       </div>
     </div>
   );

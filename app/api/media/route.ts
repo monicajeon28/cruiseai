@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listFilesInFolder } from '@/lib/google-drive';
 import * as path from 'path';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ slug, ...want });
   } catch (e: any) {
-    console.error('[Media API] Error:', e);
+    logger.error('[Media API] Error:', e);
     return NextResponse.json(
       { error: e?.message || 'server error' },
       { status: 500 }

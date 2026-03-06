@@ -1,6 +1,8 @@
 // lib/weather.ts
 // WeatherAPI.com을 사용한 날씨 정보 가져오기
 
+import { logger } from '@/lib/logger';
+
 export interface WeatherForecast {
   date: string;
   day: {
@@ -50,7 +52,7 @@ export async function getWeatherForecast(
     const apiKey = process.env.WEATHER_API_KEY;
 
     if (!apiKey) {
-      console.warn('[Weather] WEATHER_API_KEY가 설정되지 않았습니다.');
+      logger.warn('[Weather] WEATHER_API_KEY가 설정되지 않았습니다.');
       return null;
     }
 
@@ -64,14 +66,14 @@ export async function getWeatherForecast(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[Weather] API 오류:', response.status, errorText);
+      logger.error('[Weather] API 오류:', response.status, errorText);
       throw new Error(`날씨 API 요청 실패: ${response.status}`);
     }
 
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('[Weather] 날씨 정보 가져오기 실패:', error);
+    logger.error('[Weather] 날씨 정보 가져오기 실패:', error);
     return null;
   }
 }
@@ -104,7 +106,7 @@ export async function getCurrentWeather(city: string) {
       current: data.current,
     };
   } catch (error) {
-    console.error('[Weather] 현재 날씨 가져오기 실패:', error);
+    logger.error('[Weather] 현재 날씨 가져오기 실패:', error);
     return null;
   }
 }

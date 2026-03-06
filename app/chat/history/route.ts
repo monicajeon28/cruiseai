@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: Request) {
   try {
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const tripIdParam = searchParams.get('tripId');
     if (!tripIdParam) {
-      return NextResponse.json({ error: 'Missing tripId' }, { status: 401 });
+      return NextResponse.json({ error: 'Missing tripId' }, { status: 400 });
     }
     const tripId = Number(tripIdParam);
 
@@ -68,7 +69,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(allMessages);
   } catch (err) {
-    console.error('[GET /chat/history] error:', err);
+    logger.error('[GET /chat/history] error:', err);
     return NextResponse.json(
       { error: 'Failed to load chat history' },
       { status: 500 },

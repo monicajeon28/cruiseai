@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { SESSION_COOKIE } from '@/lib/session';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function POST() {
   const cookieStore = await cookies();
@@ -20,7 +21,7 @@ export async function POST() {
           // 세션이 이미 삭제되었거나 없는 경우 무시
         });
       } catch (error) {
-        console.error('[Logout] Error deleting session from DB:', error);
+        logger.error('[Logout] Error deleting session from DB:', error);
       }
     }
 
@@ -35,7 +36,7 @@ export async function POST() {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('[Logout] Error:', error);
+    logger.error('[Logout] Error:', error);
     // 쿠키는 삭제 시도
     const domain = process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined;
     cookieStore.set(SESSION_COOKIE, '', { path: '/', maxAge: 0, ...(domain ? { domain } : {}) });

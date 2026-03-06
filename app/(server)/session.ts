@@ -2,6 +2,7 @@
 import 'server-only';
 import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export const SESSION_COOKIE = 'cg.sid.v2';
 
@@ -24,7 +25,7 @@ export async function getServerSession(): Promise<{ userId: number } | null> {
 
     return { userId: session.userId };
   } catch (error) {
-    console.error('[getServerSession] Error:', error);
+    logger.error('[getServerSession] Error:', error);
     return null;
   }
 }

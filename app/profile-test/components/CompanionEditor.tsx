@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { FiX } from 'react-icons/fi';
+import { logger } from '@/lib/logger';
 
 type CompanionType = '친구' | '커플' | '가족' | '혼자';
 
@@ -61,7 +62,7 @@ export default function CompanionEditor({
       onSuccess();
       onClose();
     } catch (error) {
-      console.error('Error updating companion:', error);
+      logger.error('Error updating companion:', error);
       alert('수정 중 오류가 발생했습니다.');
     } finally {
       setIsSubmitting(false);

@@ -83,12 +83,12 @@ export default function ChatInteractiveUI() {
         if (data && typeof data === 'object' && !Array.isArray(data)) {
           setDdayMessagesData(data);
         } else {
-          console.warn('[ChatInteractiveUI] Invalid ddayMessages data format');
+          logger.warn('[ChatInteractiveUI] Invalid ddayMessages data format');
           setDdayMessagesData({ messages: {} }); // 기본값
         }
       })
       .catch((error) => {
-        console.error('[ChatInteractiveUI] Failed to load ddayMessages:', error);
+        logger.error('[ChatInteractiveUI] Failed to load ddayMessages:', error);
         setDdayMessagesData({ messages: {} }); // 기본값
       });
   }, []);
@@ -119,15 +119,20 @@ export default function ChatInteractiveUI() {
 
   // 사용자 정보 및 활성 여행 로드
   useEffect(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
+
     const loadUserData = async () => {
       try {
         // 4개 API 병렬 호출 (일부 실패해도 나머지 처리)
         const [userResult, tripResult, accessResult, affiliateResult] = await Promise.allSettled([
-          fetch('/api/user/profile', { credentials: 'include' }),
-          fetch('/api/trips/active', { credentials: 'include' }),
-          fetch('/api/user/access-check', { credentials: 'include' }),
-          fetch('/api/user/affiliate-mall-url', { credentials: 'include' }),
+          fetch('/api/user/profile', { credentials: 'include', signal }),
+          fetch('/api/trips/active', { credentials: 'include', signal }),
+          fetch('/api/user/access-check', { credentials: 'include', signal }),
+          fetch('/api/user/affiliate-mall-url', { credentials: 'include', signal }),
         ]);
+
+        if (signal.aborted) return;
 
         if (userResult.status === 'rejected' || !userResult.value.ok) {
           throw new Error('Failed to load user profile');
@@ -176,22 +181,25 @@ export default function ChatInteractiveUI() {
           setAffiliateMallUrl(affiliateData.mallUrl);
         }
       } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return;
         logger.error('[ChatInteractiveUI] Error loading user data:', error);
       } finally {
-        setIsLoading(false);
+        if (!signal.aborted) setIsLoading(false);
       }
     };
 
     loadUserData();
+
+    return () => controller.abort();
   }, []);
   
   // 튜토리얼 표시 여부 확인 (사용자 정보 로드 후)
   useEffect(() => {
-    if (!userId || isLoading) return;
-    
+    if (userId === undefined || isLoading) return;
+
     // 튜토리얼 표시 여부 확인
-    const storageKey = userId 
-      ? `genie_ai_tutorial_seen_${userId}` 
+    const storageKey = userId !== undefined
+      ? `genie_ai_tutorial_seen_${userId}`
       : 'genie_ai_tutorial_seen';
     const hasSeen = localStorage.getItem(storageKey);
     
@@ -263,10 +271,10 @@ export default function ChatInteractiveUI() {
   };
 
   return (
-    <>
+    <div className="flex flex-col h-full">
       {/* 여행 종료 배너 */}
       {tripExpired && (
-        <div className="mx-auto max-w-6xl w-full px-3 pt-4 pb-2">
+        <div className="shrink-0 mx-auto max-w-6xl w-full px-3 pt-4 pb-2">
           <div className="bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl shadow-lg p-6 border-2 border-red-300">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -304,26 +312,26 @@ export default function ChatInteractiveUI() {
       
       {/* 오늘의 브리핑 - 컴팩트하게 */}
       {!tripExpired && (
-        <div className="mx-auto max-w-6xl w-full px-3 pt-2 pb-1">
+        <div className="shrink-0 mx-auto max-w-6xl w-full px-3 pt-2 pb-1">
           <DailyBriefingCard />
         </div>
       )}
-      
+
       {/* 채팅 탭 - 여행 종료 여부와 무관하게 항상 표시 */}
-      <div className="mx-auto max-w-6xl w-full px-3 pb-2">
+      <div className="shrink-0 mx-auto max-w-6xl w-full px-3 pb-2">
         <ChatTabs value={mode} onChange={onChangeTab} disabled={tripExpired} />
       </div>
-      
-      {/* 채팅창 - 화면의 80%+ 차지 (여행 종료 시 숨김) */}
+
+      {/* 채팅창 - 남은 공간 전체 차지 (여행 종료 시 숨김) */}
       {!tripExpired && (
-        <div className="mx-auto max-w-6xl w-full flex-1">
+        <div className="flex-1 min-h-0 flex flex-col mx-auto max-w-6xl w-full">
           <ChatClientShell mode={mode} />
         </div>
       )}
       
-      {showDdayModal && ddayMessageData && (
+      {showDdayModal && ddayMessageData && userId !== undefined && (
         <DdayPushModal
-          userId={"monica_user"} // 하드코딩된 사용자 ID 유지
+          userId={String(userId)}
           userName={userName}
           trip={trip || { cruiseName: '크루즈 여행', destination: '목적지 미정', startDate: '시작일 미정', startDateIso: '', endDate: '종료일 미정' }}
           message={{ d: getDdayMessage(trip?.startDateIso || trip?.startDate || '', trip?.endDate || '', userPhone), title: ddayMessageData.title, html: ddayMessageData.message }}
@@ -345,7 +353,7 @@ export default function ChatInteractiveUI() {
           isTestMode={isTestMode}
         />
       )}
-    </>
+    </div>
   );
 }
 

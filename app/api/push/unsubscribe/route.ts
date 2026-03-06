@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { deletePushSubscription } from '@/lib/push/server';
+import { logger } from '@/lib/logger';
 
 export async function POST(req: Request) {
   try {
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
       );
     }
   } catch (error) {
-    console.error('[Push Unsubscribe API] Error:', error);
+    logger.error('[Push Unsubscribe API] Error:', error);
     return NextResponse.json(
       { ok: false, error: 'Internal server error' },
       { status: 500 }

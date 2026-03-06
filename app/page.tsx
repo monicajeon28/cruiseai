@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { setCsrfToken, clearAllLocalStorage } from '@/lib/csrf-client';
 
 /* ─────── 상수 ─────── */
@@ -144,11 +145,7 @@ function LandingContent() {
     const n = name.trim(), p = phone.trim(), pw = password.trim();
     if (!n) { setError('이름을 입력해주세요.'); return; }
     if (!p) { setError('전화번호를 입력해주세요.'); return; }
-    if (!pw) { setError('비밀번호를 입력해주세요.'); return; }
-    if (pw !== '3800' && pw !== '1101') {
-      setError('비밀번호가 올바르지 않습니다. 담당 가이드에게 문의해주세요.');
-      return;
-    }
+    if (!pw) { setError('코드를 입력해주세요.'); return; }
     setLoading(true);
     try {
       const r = await fetch('/api/auth/login', {
@@ -166,7 +163,6 @@ function LandingContent() {
       if (data.csrfToken) setCsrfToken(data.csrfToken);
       const nextParam = sp.get('next');
       let next = data.next || (nextParam ? decodeURIComponent(nextParam) : null) || '/chat';
-      if (pw === '1101') next = '/chat-test';
       if (next.startsWith('/onboarding')) next = '/chat';
       router.push(next);
     } catch {
@@ -256,6 +252,23 @@ function LandingContent() {
         </div>
       </section>
 
+      {/* ── 3일 무료 체험 CTA ── */}
+      <section
+        className="relative z-10 px-4 sm:px-6 pb-3 max-w-5xl mx-auto cg-slide-up"
+        style={{ animationDelay: '0.22s' }}
+      >
+        <Link
+          href="/login-test"
+          className="flex items-center justify-center gap-3 w-full bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 hover:from-purple-600 hover:to-rose-600 text-white font-bold text-lg sm:text-xl py-4 rounded-2xl shadow-xl shadow-purple-500/30 hover:shadow-purple-500/50 active:scale-[0.98] transition-all duration-200 border border-white/10"
+          style={{ minHeight: '56px' }}
+        >
+          <span className="text-2xl">🎁</span>
+          <span>3일 무료 체험하기</span>
+          <span className="text-sm font-normal opacity-85 hidden sm:inline">— 72시간 모든 기능 무제한</span>
+          <span className="text-2xl">✨</span>
+        </Link>
+      </section>
+
       {/* ── MAIN GRID: 영상 + 로그인 ── */}
       <section className="relative z-10 px-4 sm:px-6 pb-10 max-w-5xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-8 cg-slide-up" style={{ animationDelay: '0.28s' }}>
@@ -269,6 +282,7 @@ function LandingContent() {
                 title="크루즈닷AI 소개 영상"
                 allow="autoplay; accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
+                loading="lazy"
                 className="w-full h-full"
               />
             </div>
@@ -284,7 +298,7 @@ function LandingContent() {
                   <span className="text-blue-600 text-xs font-bold">✨ 크루즈닷AI 전용</span>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black text-gray-900">지금 바로 시작하세요</h2>
-                <p className="text-gray-400 text-xs mt-1">비밀번호는 담당 가이드에게 받으세요</p>
+                <p className="text-gray-400 text-xs mt-1">가이드 코드 또는 무료체험 초대코드 입력</p>
               </div>
 
               {error && (
@@ -319,7 +333,7 @@ function LandingContent() {
                     type="password" value={password} onChange={e => setPassword(e.target.value)} required
                     autoComplete="off"
                     className="w-full bg-white/90 border border-gray-200 rounded-xl px-4 py-[14px] text-[16px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all duration-200"
-                    placeholder="담당 가이드에게 받으세요"
+                    placeholder="가이드 코드 또는 체험코드 입력"
                   />
                 </div>
 

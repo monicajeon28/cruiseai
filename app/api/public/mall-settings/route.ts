@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 /**
  * GET: 메인몰 설정 조회 (공개)
@@ -38,9 +39,9 @@ export async function GET(req: NextRequest) {
       settings,
     });
   } catch (error: any) {
-    console.error('[Public Mall Settings API] GET Error:', error);
+    logger.error('[Public Mall Settings API] GET Error:', error?.code);
     return NextResponse.json(
-      { ok: false, error: error.message || '설정을 불러올 수 없습니다.' },
+      { ok: false, error: '설정을 불러올 수 없습니다' },
       { status: 500 }
     );
   }

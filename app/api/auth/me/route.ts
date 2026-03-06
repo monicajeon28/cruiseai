@@ -6,25 +6,20 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
     const session = await getSession();
 
     if (!session || !session.userId) {
-      return NextResponse.json({
-        ok: false,
-        user: null
-      });
+      return NextResponse.json({ ok: false, user: null }, { status: 401 });
     }
 
     // session.userId는 문자열이므로 정수로 변환
     const userId = parseInt(session.userId);
     if (isNaN(userId)) {
-      return NextResponse.json({
-        ok: false,
-        user: null
-      });
+      return NextResponse.json({ ok: false, user: null }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -47,10 +42,7 @@ export async function GET() {
     });
 
     if (!user) {
-      return NextResponse.json({
-        ok: false,
-        user: null
-      });
+      return NextResponse.json({ ok: false, user: null }, { status: 401 });
     }
 
     return NextResponse.json({
@@ -70,19 +62,14 @@ export async function GET() {
         } : null,
       }
     });
-  } catch (error: any) {
-    console.error('[AUTH ME] Error:', error);
-    console.error('[AUTH ME] Error details:', {
-      message: error?.message,
-      stack: error?.stack,
-      name: error?.name,
-    });
-    
-    // 개발 환경에서는 더 자세한 에러 정보 제공
+  } catch (error) {
+    const err = error as Error & { code?: string };
+    logger.error('[AUTH ME] Error', { code: err?.code ?? err?.name });
+
     return NextResponse.json({
       ok: false,
       user: null,
-      error: process.env.NODE_ENV === 'development' ? error?.message : '사용자 정보를 가져올 수 없습니다.',
+      error: '인증 확인 중 오류가 발생했습니다',
     }, { status: 500 });
   }
 }

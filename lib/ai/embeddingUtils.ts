@@ -1,15 +1,17 @@
 /**
  * 임베딩 생성 유틸리티
  * Google Generative AI Embedding API를 사용하여 텍스트를 벡터로 변환
- * 
+ *
  * 참고: Google AI Embedding API는 별도 엔드포인트를 사용합니다.
  * https://ai.google.dev/api/rest/v1beta/models/embedContent
  */
 
+import { logger } from '@/lib/logger';
+
 const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
 if (!apiKey && process.env.NODE_ENV === 'development') {
-  console.warn('[Embedding] GEMINI_API_KEY가 설정되지 않았습니다. RAG 기능이 제한될 수 있습니다.');
+  logger.warn('[Embedding] GEMINI_API_KEY가 설정되지 않았습니다. RAG 기능이 제한될 수 있습니다.');
 }
 
 /**
@@ -21,7 +23,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   if (!apiKey) {
     // API 키가 없으면 간단한 해시 기반 벡터 생성 (개발용)
     if (process.env.NODE_ENV === 'development') {
-      console.warn('[Embedding] API 키가 없어 간단한 해시 기반 임베딩을 사용합니다.');
+      logger.warn('[Embedding] API 키가 없어 간단한 해시 기반 임베딩을 사용합니다.');
     }
     return generateSimpleEmbedding(text);
   }
@@ -64,7 +66,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   } catch (error: any) {
     // API 호출 실패 시 간단한 해시 기반 벡터 생성 (폴백)
     if (process.env.NODE_ENV === 'development') {
-      console.warn('[Embedding] API 호출 실패, 해시 기반 임베딩 사용:', error.message);
+      logger.warn('[Embedding] API 호출 실패, 해시 기반 임베딩 사용:', error.message);
     }
     return generateSimpleEmbedding(text);
   }

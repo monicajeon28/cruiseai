@@ -6,6 +6,7 @@ export const revalidate = 3600; // 1시간
 
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 /**
  * GET: 페이지 설정 조회 (공개)
@@ -222,9 +223,9 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('[Public Page Config API] GET Error:', error);
+    logger.error('[Public Page Config API] GET Error:', error?.code);
     return NextResponse.json(
-      { ok: false, error: error.message || '설정을 불러올 수 없습니다.' },
+      { ok: false, error: '설정을 불러올 수 없습니다' },
       { status: 500 }
     );
   }

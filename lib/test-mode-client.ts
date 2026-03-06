@@ -27,7 +27,14 @@ export async function checkTestModeClient(): Promise<TestModeInfo> {
     const cached = sessionStorage.getItem(TEST_MODE_CACHE_KEY);
     if (cached) {
       const { data, ts } = JSON.parse(cached);
-      if (Date.now() - ts < TEST_MODE_CACHE_TTL) return data;
+      if (Date.now() - ts < TEST_MODE_CACHE_TTL) {
+        // 체험 기간이 만료된 경우 캐시 무시하고 재확인
+        if (data.isTestMode && data.testModeEndAt && new Date(data.testModeEndAt) < new Date()) {
+          // fall through — trial expired, need fresh check
+        } else {
+          return data;
+        }
+      }
     }
   } catch { }
 

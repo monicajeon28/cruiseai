@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'; // 동적 데이터는 캐시 X
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
+import { logger } from '@/lib/logger';
 
 const SESSION_COOKIE = 'cg.sid.v2';
 
@@ -41,7 +42,11 @@ export async function GET(req: Request) {
     }
 
     if (tripId) {
-      where.tripId = parseInt(tripId);
+      const parsedTripId = parseInt(tripId);
+      if (isNaN(parsedTripId)) {
+        return NextResponse.json({ ok: false, message: 'Invalid tripId' }, { status: 400 });
+      }
+      where.tripId = parsedTripId;
     }
 
     // 다이어리 기록 조회
@@ -63,7 +68,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ ok: true, entries });
   } catch (error) {
-    console.error('Diary GET error:', error);
+    logger.error('Diary GET error:', error);
     return NextResponse.json(
       { ok: false, message: 'Internal server error' },
       { status: 500 }
@@ -100,11 +105,28 @@ export async function POST(req: Request) {
       );
     }
 
+    // tripId 소유권 검증
+    let resolvedTripId: number | null = null;
+    if (tripId) {
+      const parsedTripId = parseInt(tripId);
+      if (isNaN(parsedTripId)) {
+        return NextResponse.json({ ok: false, message: 'Invalid tripId' }, { status: 400 });
+      }
+      const trip = await prisma.userTrip.findFirst({
+        where: { id: parsedTripId, userId: sess.userId },
+        select: { id: true },
+      });
+      if (!trip) {
+        return NextResponse.json({ ok: false, message: 'Trip not found' }, { status: 404 });
+      }
+      resolvedTripId = parsedTripId;
+    }
+
     // 다이어리 기록 생성
     const entry = await prisma.travelDiaryEntry.create({
       data: {
         userId: sess.userId,
-        tripId: tripId ? parseInt(tripId) : null,
+        tripId: resolvedTripId,
         countryCode,
         countryName,
         title,
@@ -115,7 +137,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, entry });
   } catch (error) {
-    console.error('Diary POST error:', error);
+    logger.error('Diary POST error:', error);
     return NextResponse.json(
       { ok: false, message: 'Internal server error' },
       { status: 500 }

@@ -105,17 +105,20 @@ img {
 }
 
 /* 중요 버튼/칩 최소 높이 56px (50대 이상 사용자 친화) */
-button,
-.button,
-.chip,
-input[type="submit"],
-input[type="button"],
-a.button {
-  min-height: 56px;
-  padding-top: 1rem;
-  padding-bottom: 1rem;
-  font-weight: 600;
-  font-size: 1.125rem;
+/* @layer base: Tailwind 유틸리티(min-h-0, h-auto, py-*)가 이 규칙을 override 가능 */
+@layer base {
+  button,
+  .button,
+  .chip,
+  input[type="submit"],
+  input[type="button"],
+  a.button {
+    min-height: 56px;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    font-weight: 600;
+    font-size: 1.125rem;
+  }
 }
 
 /* 입력 필드 가독성 개선 */
@@ -160,6 +163,14 @@ select {
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* iOS safe-area 하단 여백 유틸리티 */
+  .safe-bottom {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+  .safe-bottom-sm {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
   }
 }
 

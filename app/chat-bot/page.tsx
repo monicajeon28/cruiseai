@@ -352,7 +352,7 @@ export function ChatBotPageContent({ shareToken }: ChatBotPageContentProps = {})
               e.stopPropagation();
             }
           } catch (error) {
-            console.error('[Image Modal] Failed to parse gallery data:', error);
+            logger.error('[Image Modal] Failed to parse gallery data:', error);
           }
           return;
         }
@@ -483,7 +483,7 @@ export function ChatBotPageContent({ shareToken }: ChatBotPageContentProps = {})
         try {
           const response = await fetchWithTimeout(`/api/chat-bot/reviews?${query}`, {}, 10000);
           if (!response.ok) {
-            console.warn('[fetchReviewsForProduct] Response not ok:', response.status);
+            logger.warn('[fetchReviewsForProduct] Response not ok:', response.status);
             return [];
           }
           const data = await response.json().catch(() => ({ ok: false }));
@@ -492,7 +492,7 @@ export function ChatBotPageContent({ shareToken }: ChatBotPageContentProps = {})
           }
           return [];
         } catch (error) {
-          console.error('[fetchReviewsForProduct] Error:', error);
+          logger.error('[fetchReviewsForProduct] Error:', error);
           return [];
         }
       };
@@ -706,7 +706,7 @@ export function ChatBotPageContent({ shareToken }: ChatBotPageContentProps = {})
             setProductInfo(productData);
           }
         } catch (error) {
-          console.error('[createSessionAndLoadQuestion] Failed to load product:', error);
+          logger.error('[createSessionAndLoadQuestion] Failed to load product:', error);
           // 상품 정보 로드 실패해도 계속 진행
         }
       }
@@ -812,14 +812,14 @@ export function ChatBotPageContent({ shareToken }: ChatBotPageContentProps = {})
             }
           }
         } catch (error) {
-          console.error('[createSessionAndLoadQuestion] Failed to create session:', error);
+          logger.error('[createSessionAndLoadQuestion] Failed to create session:', error);
           const localSessionId = `local-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
           setSessionId(localSessionId);
           logger.log('[createSessionAndLoadQuestion] Using local session ID:', localSessionId);
         }
       })();
     } catch (error) {
-      console.error('[createSessionAndLoadQuestion] Failed to initialize chat bot:', error);
+      logger.error('[createSessionAndLoadQuestion] Failed to initialize chat bot:', error);
       const errorMessage = error instanceof Error
         ? error.message
         : '채팅봇을 불러오는 중 오류가 발생했습니다.';
@@ -936,7 +936,7 @@ export function ChatBotPageContent({ shareToken }: ChatBotPageContentProps = {})
               5000
             ).catch(() => { }); // 실패해도 무시
           } catch (error) {
-            console.error('[loadQuestion] Failed to update session:', error);
+            logger.error('[loadQuestion] Failed to update session:', error);
           }
         }
 
@@ -978,7 +978,7 @@ export function ChatBotPageContent({ shareToken }: ChatBotPageContentProps = {})
         throw new Error(data.error || '질문을 불러올 수 없습니다.');
       }
     } catch (error) {
-      console.error('[loadQuestion] Failed to load question:', error);
+      logger.error('[loadQuestion] Failed to load question:', error);
       const errorMessage = error instanceof Error
         ? error.message
         : '질문을 불러오는 중 오류가 발생했습니다.';
@@ -1105,7 +1105,7 @@ export function ChatBotPageContent({ shareToken }: ChatBotPageContentProps = {})
     logger.log('[handleOptionClick] sessionId:', sessionId);
 
     if (!currentQuestion) {
-      console.error('[handleOptionClick] No currentQuestion');
+      logger.error('[handleOptionClick] No currentQuestion');
       return;
     }
 
@@ -1215,7 +1215,7 @@ export function ChatBotPageContent({ shareToken }: ChatBotPageContentProps = {})
             keepalive: true,
           });
         } catch (error) {
-          console.error('Failed to save review popup response:', error);
+          logger.error('Failed to save review popup response:', error);
         }
       }
 
@@ -1268,7 +1268,7 @@ export function ChatBotPageContent({ shareToken }: ChatBotPageContentProps = {})
           keepalive: true,
         });
       } catch (error) {
-        console.error('Failed to save response:', error);
+        logger.error('Failed to save response:', error);
       }
     }
 

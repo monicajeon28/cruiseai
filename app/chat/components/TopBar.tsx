@@ -59,7 +59,7 @@ export default function TopBar() {
   const fontSizeLabel = { sm: '작게', md: '보통', lg: '크게' }[fontSize];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[#1e3a52] bg-gradient-to-r from-[#051C2C] to-[#0A2E46] backdrop-blur shadow-lg">
+    <header className="sticky top-0 z-50 w-full border-b border-[#1e3a52] bg-gradient-to-r from-[#051C2C] to-[#0A2E46] backdrop-blur shadow-lg" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="mx-auto flex h-12 max-w-5xl items-center justify-between px-4 gap-2">
         {/* 좌측: 로고 */}
         <Link href={getChatHref()} className="flex items-center gap-2 flex-shrink-0">

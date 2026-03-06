@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { FiPlus, FiTrash2, FiCalendar, FiAlertCircle, FiEdit2, FiCheck, FiX } from 'react-icons/fi';
+import { logger } from '@/lib/logger';
 
 type Currency = {
   code: string;
@@ -113,7 +114,7 @@ export default function ExpenseTracker() {
           }
         }
       } catch (error) {
-        console.error('[ExpenseTracker] Error calculating KRW:', error);
+        logger.error('[ExpenseTracker] Error calculating KRW:', error);
       }
     };
 
@@ -129,7 +130,7 @@ export default function ExpenseTracker() {
         return JSON.parse(saved);
       }
     } catch (e) {
-      console.error('[ExpenseTracker] Failed to load from localStorage:', e);
+      logger.error('[ExpenseTracker] Failed to load from localStorage:', e);
     }
     return [];
   };
@@ -141,7 +142,7 @@ export default function ExpenseTracker() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
       return true;
     } catch (e) {
-      console.error('[ExpenseTracker] Failed to save to localStorage:', e);
+      logger.error('[ExpenseTracker] Failed to save to localStorage:', e);
       return false;
     }
   };
@@ -154,7 +155,7 @@ export default function ExpenseTracker() {
       const countriesRes = await fetch('/api/wallet/countries');
       const countriesData = await countriesRes.json();
 
-      console.log('[ExpenseTracker] Countries data:', countriesData);
+      logger.log('[ExpenseTracker] Countries data:', countriesData);
 
       if (countriesData.success) {
         if (countriesData.currencies?.length > 0) {
@@ -171,7 +172,7 @@ export default function ExpenseTracker() {
         
         if (expensesRes.ok) {
           const expensesData = await expensesRes.json();
-          console.log('[ExpenseTracker] Expenses data:', expensesData);
+          logger.log('[ExpenseTracker] Expenses data:', expensesData);
 
           if (expensesData.success) {
             // API 응답 형식에 맞게 변환
@@ -200,19 +201,19 @@ export default function ExpenseTracker() {
           }
         }
       } catch (apiError: any) {
-        console.warn('[ExpenseTracker] API failed, using localStorage:', apiError);
+        logger.warn('[ExpenseTracker] API failed, using localStorage:', apiError);
       }
 
       // API 실패 시 localStorage에서 로드
       const localItems = loadFromLocalStorage();
       if (localItems.length > 0) {
         setExpenses(localItems);
-        console.log('[ExpenseTracker] Loaded from localStorage:', localItems.length, 'items');
+        logger.log('[ExpenseTracker] Loaded from localStorage:', localItems.length, 'items');
       } else {
         setExpenses([]);
       }
     } catch (error: any) {
-      console.error('[ExpenseTracker] Error loading data:', error);
+      logger.error('[ExpenseTracker] Error loading data:', error);
       // localStorage에서라도 로드 시도
       const localItems = loadFromLocalStorage();
       if (localItems.length > 0) {
@@ -259,7 +260,7 @@ export default function ExpenseTracker() {
           }
         }
       } catch (rateError) {
-        console.warn('[ExpenseTracker] Exchange rate API failed, using default:', rateError);
+        logger.warn('[ExpenseTracker] Exchange rate API failed, using default:', rateError);
         // 기본 환율 사용 (USD = 1300원)
         if (selectedCurrency !== 'KRW') {
           amountInKRW = Math.round(amountNum * 1300);
@@ -322,7 +323,7 @@ export default function ExpenseTracker() {
           }
         }
       } catch (apiError: any) {
-        console.warn('[ExpenseTracker] API save failed, keeping local:', apiError);
+        logger.warn('[ExpenseTracker] API save failed, keeping local:', apiError);
         // API 실패해도 localStorage에는 저장됨
       }
 
@@ -333,7 +334,7 @@ export default function ExpenseTracker() {
 
       // 성공 메시지는 표시하지 않음 (자동 저장이므로)
     } catch (error: any) {
-      console.error('[ExpenseTracker] Add expense error:', error);
+      logger.error('[ExpenseTracker] Add expense error:', error);
       alert(`지출 추가 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`);
     } finally {
       setLoading(false);
@@ -370,20 +371,20 @@ export default function ExpenseTracker() {
 
         if (res.ok) {
           const result = await res.json();
-          console.log('[ExpenseTracker] All expenses deleted:', result.deletedCount);
+          logger.log('[ExpenseTracker] All expenses deleted:', result.deletedCount);
           alert(`모든 지출 기록이 삭제되었습니다. (${result.deletedCount || expenses.length}개)`);
         } else {
-          console.warn('[ExpenseTracker] API delete all failed, but local delete succeeded');
+          logger.warn('[ExpenseTracker] API delete all failed, but local delete succeeded');
           // localStorage는 성공했으므로 성공 메시지 표시
           alert(`모든 지출 기록이 삭제되었습니다. (${expenses.length}개)\n서버 동기화는 나중에 자동으로 시도됩니다.`);
         }
       } catch (apiError) {
-        console.warn('[ExpenseTracker] API delete all error, but local delete succeeded:', apiError);
+        logger.warn('[ExpenseTracker] API delete all error, but local delete succeeded:', apiError);
         // localStorage는 성공했으므로 성공 메시지 표시
         alert(`모든 지출 기록이 삭제되었습니다. (${expenses.length}개)\n서버 동기화는 나중에 자동으로 시도됩니다.`);
       }
     } catch (error: any) {
-      console.error('[ExpenseTracker] Reset all error:', error);
+      logger.error('[ExpenseTracker] Reset all error:', error);
       alert(error.message || '삭제 중 오류가 발생했습니다.');
       // 에러 발생 시 다시 로드
       await loadData();
@@ -412,14 +413,14 @@ export default function ExpenseTracker() {
           });
 
           if (!res.ok) {
-            console.warn('[ExpenseTracker] API delete failed, but local delete succeeded');
+            logger.warn('[ExpenseTracker] API delete failed, but local delete succeeded');
           }
         } catch (apiError) {
-          console.warn('[ExpenseTracker] API delete error, but local delete succeeded:', apiError);
+          logger.warn('[ExpenseTracker] API delete error, but local delete succeeded:', apiError);
         }
       }
     } catch (error: any) {
-      console.error('[ExpenseTracker] Delete error:', error);
+      logger.error('[ExpenseTracker] Delete error:', error);
       alert(error.message || '삭제 중 오류가 발생했습니다.');
       // 에러 발생 시 다시 로드
       await loadData();
@@ -494,11 +495,11 @@ export default function ExpenseTracker() {
             });
 
             if (!res.ok) {
-              console.warn('[ExpenseTracker] API update failed, but local update succeeded');
+              logger.warn('[ExpenseTracker] API update failed, but local update succeeded');
             }
           }
         } catch (apiError) {
-          console.warn('[ExpenseTracker] API update error, but local update succeeded:', apiError);
+          logger.warn('[ExpenseTracker] API update error, but local update succeeded:', apiError);
         }
       }
 
@@ -506,7 +507,7 @@ export default function ExpenseTracker() {
       setEditingAmount('');
       setEditingDescription('');
     } catch (error: any) {
-      console.error('[ExpenseTracker] Update error:', error);
+      logger.error('[ExpenseTracker] Update error:', error);
       alert(error.message || '수정 중 오류가 발생했습니다.');
       await loadData();
     } finally {

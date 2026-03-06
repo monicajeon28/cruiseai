@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { FiX, FiPlusCircle, FiEdit3, FiCalendar, FiUsers, FiGlobe } from 'react-icons/fi';
 import cruiseShipsData from '@/data/cruise_ships.json';
+import { showError } from '@/components/ui/Toast';
 
 // CONTINENTS_DATA 전체 목록 (map/page.tsx와 동일하게)
 const CONTINENTS_DATA = {
@@ -487,14 +488,14 @@ export default function TripFormModal({ isOpen, onClose, onSubmit, initialData, 
     
     // 날짜만 필수로 검증 (다이어리처럼 자유롭게 기록 가능하도록)
     if (!startDate || !endDate) {
-      alert('여행 시작일과 종료일은 필수 입력 항목입니다.');
+      showError('여행 시작일과 종료일은 필수 입력 항목입니다.');
       return;
     }
     
     // 날짜 형식 검증 (YYYY-MM-DD)
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
-      alert('날짜 형식이 올바르지 않습니다. YYYY-MM-DD 형식으로 입력해주세요.');
+      showError('YYYY-MM-DD 형식으로 입력해주세요.', '날짜 형식이 올바르지 않습니다.');
       return;
     }
     
@@ -536,9 +537,10 @@ export default function TripFormModal({ isOpen, onClose, onSubmit, initialData, 
       <div className="bg-white rounded-lg p-8 w-full max-w-2xl shadow-xl relative my-8">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-600 hover:text-gray-900 text-3xl transition-colors duration-200"
+          className="absolute top-3 right-3 p-2 w-11 h-11 flex items-center justify-center rounded-full text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+          aria-label="닫기"
         >
-          <FiX />
+          <FiX size={20} />
         </button>
         <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
           {initialData ? <FiEdit3 className="mr-2" /> : <FiPlusCircle className="mr-2" />}

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getSessionUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 export async function POST(req: Request) {
   const user = await getSessionUser();
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (err: any) {
-    console.error('[AUTH ONBOARD] DB 업데이트 실패:', err?.message);
+    logger.error('[AUTH ONBOARD] DB 업데이트 실패:', err?.message);
     return NextResponse.json({ ok: false, error: 'ONBOARD_FAILED' }, { status: 500 });
   }
 

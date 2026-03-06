@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/session';
+import { logger } from '@/lib/logger';
 
 /**
  * PUT: 체크리스트 항목 업데이트 (text, completed)
@@ -63,7 +64,7 @@ export async function PUT(
       { status: 200 }
     );
   } catch (error) {
-    console.error('[API] 체크리스트 항목 업데이트 오류:', error);
+    logger.error('[API] 체크리스트 항목 업데이트 오류:', error);
     return NextResponse.json(
       { error: '항목 업데이트 중 오류가 발생했습니다' },
       { status: 500 }
@@ -116,7 +117,7 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
-    console.error('[API] 체크리스트 항목 삭제 오류:', error);
+    logger.error('[API] 체크리스트 항목 삭제 오류:', error);
     return NextResponse.json(
       { error: '항목 삭제 중 오류가 발생했습니다' },
       { status: 500 }

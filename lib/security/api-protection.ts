@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { isBot, isSuspiciousRequest, isScraperTool } from './bot-detection';
-import { securityLogger } from '@/lib/logger';
+import { logger, securityLogger } from '@/lib/logger';
 
 /**
  * API 요청 보호 미들웨어
@@ -26,7 +26,7 @@ export function protectApiRequest(req: NextRequest): NextResponse | null {
     const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
     const path = req.nextUrl.pathname;
 
-    console.log('[API Protection] [403 BLOCKED] Bot blocked:', {
+    logger.log('[API Protection] [403 BLOCKED] Bot blocked:', {
       origin: origin || 'null',
       host: host || 'null',
       userAgent: userAgent || 'null',
@@ -55,7 +55,7 @@ export function protectApiRequest(req: NextRequest): NextResponse | null {
     const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
     const path = req.nextUrl.pathname;
 
-    console.log('[API Protection] [403 BLOCKED] Scraper blocked:', {
+    logger.log('[API Protection] [403 BLOCKED] Scraper blocked:', {
       origin: origin || 'null',
       host: host || 'null',
       userAgent: userAgent || 'null',
@@ -84,7 +84,7 @@ export function protectApiRequest(req: NextRequest): NextResponse | null {
     const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
     const path = req.nextUrl.pathname;
 
-    console.log('[API Protection] [403 BLOCKED] Suspicious request blocked:', {
+    logger.log('[API Protection] [403 BLOCKED] Suspicious request blocked:', {
       origin: origin || 'null',
       host: host || 'null',
       userAgent: userAgent || 'null',

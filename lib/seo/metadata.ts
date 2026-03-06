@@ -3,6 +3,7 @@
 
 import prisma from '@/lib/prisma';
 import type { Metadata } from 'next';
+import { logger } from '@/lib/logger';
 
 interface SeoConfigData {
   title?: string | null;
@@ -53,7 +54,7 @@ export async function getSeoConfig(pagePath: string): Promise<SeoConfigData | nu
       structuredData: config.structuredData,
     };
   } catch (error) {
-    console.error('[getSeoConfig] Error:', error);
+    logger.error('[getSeoConfig] Error:', error);
     return null;
   }
 }

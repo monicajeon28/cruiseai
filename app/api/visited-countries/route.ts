@@ -5,21 +5,25 @@
 export const runtime = 'nodejs';        // Edge Runtime 금지 (Prisma 사용)
 export const dynamic = 'force-dynamic'; // 동적 데이터는 캐시 X
 
+const COUNTRY_CODE_REGEX = /^[A-Z]{2,3}$/; // ISO 3166-1 alpha-2 또는 alpha-3
+const MAX_COUNTRY_NAME_LENGTH = 100;
+
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getSession } from '@/lib/session';
+import { getSessionUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 /**
  * GET: 사용자의 방문 국가 정보 조회
  */
 export async function GET() {
   try {
-    const session = await getSession();
-    if (!session?.userId) {
-      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ ok: false, error: '인증이 필요합니다' }, { status: 401 });
     }
 
-    const userId = parseInt(session.userId);
+    const userId = user.id; // 이미 number, NaN 불가
 
     // 방문 국가 조회
     const visitedCountries = await prisma.visitedCountry.findMany({
@@ -47,9 +51,9 @@ export async function GET() {
       colorMap,
     });
   } catch (error) {
-    console.error('[Visited Countries] Error:', error);
+    logger.error('[Visited Countries] Error');
     return NextResponse.json(
-      { ok: false, error: 'Internal server error' },
+      { ok: false, error: '방문 국가 조회 중 오류가 발생했습니다' },
       { status: 500 }
     );
   }
@@ -60,18 +64,36 @@ export async function GET() {
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession();
-    if (!session?.userId) {
-      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ ok: false, error: '인증이 필요합니다' }, { status: 401 });
     }
 
-    const userId = parseInt(session.userId);
+    const userId = user.id; // 이미 number, NaN 불가
     const body = await req.json();
     const { countryCode, countryName } = body;
 
     if (!countryCode || !countryName) {
       return NextResponse.json(
         { ok: false, error: 'countryCode와 countryName이 필요합니다' },
+        { status: 400 }
+      );
+    }
+
+    if (typeof countryCode !== 'string' || !COUNTRY_CODE_REGEX.test(countryCode)) {
+      return NextResponse.json(
+        { ok: false, error: 'countryCode는 2-3자리 영대문자여야 합니다 (예: KR, KOR)' },
+        { status: 400 }
+      );
+    }
+
+    if (
+      typeof countryName !== 'string' ||
+      countryName.trim().length === 0 ||
+      countryName.length > MAX_COUNTRY_NAME_LENGTH
+    ) {
+      return NextResponse.json(
+        { ok: false, error: `countryName은 1-${MAX_COUNTRY_NAME_LENGTH}자여야 합니다` },
         { status: 400 }
       );
     }
@@ -102,9 +124,9 @@ export async function POST(req: NextRequest) {
       visitedCountry,
     });
   } catch (error: any) {
-    console.error('[Visited Countries POST] Error:', error);
+    logger.error('[Visited Countries POST] Error:', error?.code);
     return NextResponse.json(
-      { ok: false, error: '방문 국가 저장 중 오류가 발생했습니다', details: error?.message },
+      { ok: false, error: '방문 국가 저장 중 오류가 발생했습니다' },
       { status: 500 }
     );
   }

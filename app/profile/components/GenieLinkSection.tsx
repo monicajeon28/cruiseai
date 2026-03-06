@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 
 interface GenieLinkSectionProps {
   userRole: string;
@@ -43,7 +44,7 @@ export default function GenieLinkSection({ userRole, userName, userPhone }: Geni
         }
       }
     } catch (error) {
-      console.error('Failed to check link status:', error);
+      logger.error('Failed to check link status:', error);
     }
   };
 
@@ -80,7 +81,7 @@ export default function GenieLinkSection({ userRole, userName, userPhone }: Geni
         setLinkMessage(data.error || '연동에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Failed to link genie:', error);
+      logger.error('Failed to link genie:', error);
       setLinkStatus('error');
       setLinkMessage('연동 중 오류가 발생했습니다.');
     } finally {

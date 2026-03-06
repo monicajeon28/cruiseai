@@ -3,9 +3,10 @@
 export const dynamic = 'force-dynamic';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { setCsrfToken, clearAllLocalStorage } from '@/lib/csrf-client';
+import { logger } from '@/lib/logger';
 import KakaoShareButton from '@/components/KakaoShareButton';
 
 function TestLoginPageContent() {
@@ -13,7 +14,7 @@ function TestLoginPageContent() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const sp = useSearchParams();
 
   const [trialCode, setTrialCode] = useState<string | null>(null);
@@ -21,10 +22,10 @@ function TestLoginPageContent() {
   const [managerCode, setManagerCode] = useState<string | null>(null);
 
   useEffect(() => {
-    // URL 파라미터에서 메시지 확인
+    // URL 파라미터에서 메시지 확인 (alert 대신 setError 사용 — 피싱 벡터 차단)
     const message = sp.get('message');
     if (message) {
-      alert(message);
+      setError(decodeURIComponent(message));
     }
     
     // 3일 체험 초대 링크 파라미터 확인
@@ -59,8 +60,8 @@ function TestLoginPageContent() {
   // 연락처 유효성 검사 (10자리 또는 11자리)
   const isValidPhone = phone.length >= 10 && phone.length <= 11 && /^[0-9]{10,11}$/.test(phone);
   
-  // 버튼 활성화 조건: 이름과 연락처가 모두 유효해야 함
-  const isFormValid = name.trim().length > 0 && isValidPhone;
+  // 버튼 활성화 조건: 이름, 연락처, 초대코드 모두 입력 시 활성화
+  const isFormValid = name.trim().length > 0 && isValidPhone && password.trim().length > 0;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -88,12 +89,11 @@ function TestLoginPageContent() {
     }
     
     if (!trimmedPassword) {
-      setError('비밀번호를 입력해주세요.');
+      setError('초대코드를 입력해주세요.');
       return;
     }
 
-    console.log('[TEST LOGIN] Submitting...', { phone: trimmedPhone, password: '***', name: trimmedName });
-
+    setLoading(true);
     try {
       const r = await fetch('/api/auth/login', {
         method: 'POST',
@@ -111,45 +111,21 @@ function TestLoginPageContent() {
         }),
       });
       
-      console.log('[TEST LOGIN] Response status:', r.status);
-      
-      const data = await r.json().catch((err) => {
-        console.error('[TEST LOGIN] JSON parse error:', err);
+      const data = await r.json().catch(() => {
         return { ok: false, error: '서버 응답을 처리할 수 없습니다.' };
       });
-      
-      console.log('[TEST LOGIN] Response data:', data);
-      
+
       if (!r.ok || !data?.ok) {
         const errorMessage = data?.error ?? '로그인 실패';
-        const errorDetails = data?.details ?? '';
-        const errorStack = data?.stack ?? '';
-        
-        console.error('[TEST LOGIN] Login failed:', errorMessage, { 
-          status: r.status, 
-          statusText: r.statusText,
-          data,
-          details: errorDetails,
-          stack: errorStack,
-        });
-        
-        // 개발 환경에서는 상세 오류 정보도 콘솔에 출력
-        if (errorDetails) {
-          console.error('[TEST LOGIN] Error details:', errorDetails);
-        }
-        if (errorStack) {
-          console.error('[TEST LOGIN] Error stack:', errorStack);
+        if (process.env.NODE_ENV === 'development') {
+          logger.error('[TEST LOGIN] Login failed:', { status: r.status, error: errorMessage });
         }
         
-        // 비밀번호 오류인 경우 명확한 메시지 표시
-        if (r.status === 401 || errorMessage.includes('비밀번호') || errorMessage.includes('올바르지 않습니다')) {
-          setError('비밀번호가 올바르지 않습니다. 테스트 모드 비밀번호를 확인해주세요.');
+        // HTTP 상태 코드 기반 에러 분류 (errorMessage 내용에 의존하지 않음)
+        if (r.status === 401 || r.status === 403) {
+          setError('초대코드가 올바르지 않습니다. 상담 매니저님이 알려드린 코드를 확인해주세요.');
         } else {
-          // 테스트 모드 오류인 경우 상세 정보 포함
-          const fullErrorMessage = errorDetails 
-            ? `${errorMessage}\n\n상세 정보: ${errorDetails}` 
-            : errorMessage;
-          setError(fullErrorMessage);
+          setError(errorMessage || '로그인에 실패했습니다. 다시 시도해주세요.');
         }
         return; // 절대 리다이렉트하지 않음
       }
@@ -160,7 +136,6 @@ function TestLoginPageContent() {
       // CSRF 토큰 저장
       if (data.csrfToken) {
         setCsrfToken(data.csrfToken);
-        console.log('[TEST LOGIN] CSRF token saved');
       }
 
       // 서버가 알려준 next로 이동 (테스트 모드는 /chat-test로만 이동)
@@ -171,21 +146,18 @@ function TestLoginPageContent() {
       // 안전장치: test 모드 사용자는 항상 /chat-test로만 이동
       // /chat으로 가려는 시도 차단 - /chat-test로 강제 변경
       if (next === '/chat' || next.startsWith('/chat/')) {
-        console.warn('[TEST LOGIN] /chat 리다이렉트 차단, /chat-test로 변경:', next);
         next = next.replace('/chat', '/chat-test');
       }
       
       // 최종 안전장치: /chat-test로 시작하지 않으면 강제로 /chat-test로 변경
       if (!next.startsWith('/chat-test')) {
-        console.warn('[TEST LOGIN] 안전장치: /chat-test가 아닌 경로 감지, 강제 변경:', next);
         next = '/chat-test';
       }
-      
-      console.log('[TEST LOGIN] Redirecting to:', next);
-      window.location.href = next; // router.push 대신 window.location.href 사용하여 확실하게 리다이렉트
-    } catch (error) {
-      console.error('[TEST LOGIN] Network error:', error);
+      window.location.href = next;
+    } catch {
       setError('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -349,7 +321,7 @@ function TestLoginPageContent() {
                 
                 <div>
                   <label className="block text-sm md:text-base lg:text-lg font-semibold text-gray-700 mb-2 md:mb-3">
-                    비밀번호 <span className="text-red-500">*</span>
+                    초대코드 <span className="text-red-500">*</span>
                   </label>
                   <input
                     name="password"
@@ -359,11 +331,11 @@ function TestLoginPageContent() {
                     required
                     autoComplete="off"
                     className="w-full bg-gray-50 border-2 border-gray-300 rounded-lg md:rounded-xl px-4 py-3 md:px-5 md:py-4 text-base md:text-lg lg:text-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                    placeholder="비밀번호를 입력하세요"
+                    placeholder="초대코드를 입력하세요"
                     style={{ fontSize: '16px', minHeight: '48px' }}
                   />
                   <p className="text-xs md:text-sm lg:text-base text-blue-600 mt-1 md:mt-2 ml-1 leading-relaxed font-medium">
-                    비밀번호는 크루즈닷 상담 매니저님이 알려드려요
+                    초대코드는 크루즈닷 상담 매니저님이 알려드려요
                   </p>
                 </div>
               </div>
@@ -371,14 +343,20 @@ function TestLoginPageContent() {
               {/* 3일 무료체험 시작 버튼 (로그인 제출) */}
               <button
                 type="submit"
-                disabled={!isFormValid}
+                disabled={!isFormValid || loading}
                 className="w-full bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 hover:from-blue-700 hover:via-blue-800 hover:to-indigo-800 text-white font-bold text-lg md:text-xl lg:text-2xl py-4 md:py-5 lg:py-6 rounded-lg md:rounded-xl shadow-xl md:shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none relative overflow-hidden group flex items-center justify-center"
                 style={{ minHeight: '52px' }}
               >
                 <span className="relative z-10 flex items-center justify-center gap-2 md:gap-3">
-                  <span className="text-xl md:text-2xl lg:text-3xl">🚀</span>
-                  <span>3일 무료체험 시작</span>
-                  <span className="text-xl md:text-2xl lg:text-3xl">✨</span>
+                  {loading ? (
+                    <span>로그인 중...</span>
+                  ) : (
+                    <>
+                      <span className="text-xl md:text-2xl lg:text-3xl">🚀</span>
+                      <span>3일 무료체험 시작</span>
+                      <span className="text-xl md:text-2xl lg:text-3xl">✨</span>
+                    </>
+                  )}
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
               </button>
@@ -410,13 +388,13 @@ function TestLoginPageContent() {
                   buttonText="카카오톡 친구 공유하기"
                 />
                 
-                <a
+                <Link
                   href="/"
                   className="inline-flex items-center justify-center px-5 py-3 md:px-6 md:py-4 bg-gray-100 hover:bg-gray-200 border-2 border-gray-300 rounded-lg md:rounded-xl text-gray-700 font-semibold text-sm md:text-base lg:text-lg transition-all duration-200"
                   style={{ minHeight: '48px' }}
                 >
                   크루즈몰 구경하기
-                </a>
+                </Link>
               </div>
               
               <p className="text-center text-xs md:text-sm lg:text-base text-gray-500 mt-3 md:mt-4 leading-relaxed">

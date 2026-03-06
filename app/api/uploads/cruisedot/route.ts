@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 import { uploadFileToDrive, findOrCreateFolder } from '@/lib/google-drive';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -80,13 +81,13 @@ const readMediaLibrary = async (): Promise<{ directories: MediaDirectory[]; file
             });
           } catch (error) {
             // 개별 파일 접근 실패는 무시
-            console.warn(`[Cruisedot Media] Failed to stat file ${entryPath}:`, error);
+            logger.warn(`[Cruisedot Media] Failed to stat file ${entryPath}:`, error);
           }
         }
       }
     } catch (error) {
       // 디렉토리 접근 실패 시 무시하고 계속 진행
-      console.warn(`[Cruisedot Media] Failed to access directory ${currentPath}:`, error);
+      logger.warn(`[Cruisedot Media] Failed to access directory ${currentPath}:`, error);
     }
   };
 
@@ -101,7 +102,7 @@ export async function GET() {
     const data = await readMediaLibrary();
     return NextResponse.json({ ok: true, ...data });
   } catch (error: any) {
-    console.error("[CRUISEDOT MEDIA] GET error:", error);
+    logger.error("[CRUISEDOT MEDIA] GET error:", error);
     return NextResponse.json(
       { ok: false, error: "미디어 라이브러리를 불러오지 못했습니다." },
       { status: 500 }
@@ -188,7 +189,7 @@ export async function POST(req: Request) {
       }
     });
   } catch (error: any) {
-    console.error("[CRUISEDOT MEDIA] POST error:", error);
+    logger.error("[CRUISEDOT MEDIA] POST error:", error);
     return NextResponse.json(
       { ok: false, error: error?.message || "이미지 업로드에 실패했습니다." },
       { status: 500 }

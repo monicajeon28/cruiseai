@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export const SESSION_COOKIE = 'cg.sid.v2';   // ✅ 새 버전명
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30일
@@ -78,7 +79,7 @@ export async function getSession(): Promise<SessionPayload | null> {
       isAdmin: session.User.role === 'admin' || session.User.role === 'ADMIN',
     };
   } catch (error) {
-    console.error('getSession error:', error);
+    logger.error('getSession error:', error);
     return null;
   }
 }

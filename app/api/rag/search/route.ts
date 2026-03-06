@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { 
         ok: false,
-        error: error.message || '검색 중 오류가 발생했습니다' 
+        error: '검색 중 오류가 발생했습니다'
       },
       { status: 500 }
     );

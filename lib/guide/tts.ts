@@ -1,6 +1,8 @@
 // lib/tts.ts
 // Text-to-Speech 유틸리티 (Web Speech API)
 
+import { logger } from '@/lib/logger';
+
 export interface TTSOptions {
   rate?: number;
   pitch?: number;
@@ -28,7 +30,7 @@ class TextToSpeech {
       const saved = localStorage.getItem('tts-enabled');
       this.isEnabled = saved !== 'false'; // 기본값은 true
     } catch (error) {
-      console.warn('[TTS] Failed to load settings:', error);
+      logger.warn('[TTS] Failed to load settings:', error);
     }
   }
 
@@ -47,7 +49,7 @@ class TextToSpeech {
     try {
       localStorage.setItem('tts-enabled', String(enabled));
     } catch (error) {
-      console.warn('[TTS] Failed to save settings:', error);
+      logger.warn('[TTS] Failed to save settings:', error);
     }
 
     // 비활성화 시 현재 재생 중인 음성 중지
@@ -89,7 +91,7 @@ class TextToSpeech {
    */
   async speak(text: string, options: TTSOptions = {}): Promise<void> {
     if (!this.synthesis || !this.isEnabled) {
-      console.log('[TTS] Speech synthesis not available or disabled');
+      logger.log('[TTS] Speech synthesis not available or disabled');
       return;
     }
 
@@ -118,12 +120,12 @@ class TextToSpeech {
 
     // 이벤트 핸들러
     utterance.onend = () => {
-      console.log('[TTS] Speech ended');
+      logger.log('[TTS] Speech ended');
       this.currentUtterance = null;
     };
 
     utterance.onerror = (event) => {
-      console.error('[TTS] Speech error:', event.error);
+      logger.error('[TTS] Speech error:', event.error);
       this.currentUtterance = null;
     };
 

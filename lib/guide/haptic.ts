@@ -3,6 +3,8 @@
  * 작업자 C (UX/기능 전문가) - 모바일 UX 개선
  */
 
+import { logger } from '@/lib/logger';
+
 /**
  * 햅틱 피드백 타입
  */
@@ -38,7 +40,7 @@ export function triggerHaptic(type: HapticType = 'medium') {
     }
   } catch (error) {
     // 진동 실패 시 무시
-    console.debug('Haptic feedback not supported or failed');
+    logger.debug('Haptic feedback not supported or failed');
   }
 }
 

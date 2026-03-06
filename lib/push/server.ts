@@ -3,6 +3,7 @@
 
 import webpush from 'web-push';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 // VAPID 설정
 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
@@ -37,7 +38,7 @@ export async function sendNotificationToUser(
     });
 
     if (subscriptions.length === 0) {
-      console.log(`[Push] 사용자 ${userId}에 대한 구독 정보가 없습니다.`);
+      logger.log(`[Push] 사용자 ${userId}에 대한 구독 정보가 없습니다.`);
       return { success: true, sentCount: 0, errors: [] };
     }
 
@@ -56,7 +57,7 @@ export async function sendNotificationToUser(
         sentCount++;
       } catch (error: any) {
         const errorMsg = error?.message || String(error);
-        console.error(`[Push] 알림 전송 실패 (${subscription.endpoint}):`, errorMsg);
+        logger.error(`[Push] 알림 전송 실패 (${subscription.endpoint}):`, errorMsg);
 
         // 410 Gone 오류면 구독 삭제
         if (error?.statusCode === 410) {
@@ -71,7 +72,7 @@ export async function sendNotificationToUser(
 
     return { success: sentCount > 0, sentCount, errors };
   } catch (error) {
-    console.error('[Push] 알림 전송 중 오류:', error);
+    logger.error('[Push] 알림 전송 중 오류:', error);
     return {
       success: false,
       sentCount: 0,
@@ -122,7 +123,7 @@ export async function sendBroadcastNotification(
 
     return await sendNotificationToUsers(userIds, payload);
   } catch (error) {
-    console.error('[Push] 브로드캐스트 알림 전송 중 오류:', error);
+    logger.error('[Push] 브로드캐스트 알림 전송 중 오류:', error);
     return { totalSent: 0, totalErrors: 1 };
   }
 }
@@ -151,10 +152,10 @@ export async function savePushSubscription(
       },
     });
 
-    console.log(`[Push] Subscription saved for user ${userId}`);
+    logger.log(`[Push] Subscription saved for user ${userId}`);
     return true;
   } catch (error) {
-    console.error(`[Push] Failed to save subscription for user ${userId}`, error);
+    logger.error(`[Push] Failed to save subscription for user ${userId}`, error);
     return false;
   }
 }
@@ -168,10 +169,10 @@ export async function deletePushSubscription(endpoint: string): Promise<boolean>
       where: { endpoint },
     });
 
-    console.log('[Push] Subscription deleted', { endpoint: endpoint.substring(0, 50) + '...' });
+    logger.log('[Push] Subscription deleted', { endpoint: endpoint.substring(0, 50) + '...' });
     return true;
   } catch (error) {
-    console.error('[Push] Failed to delete subscription', error);
+    logger.error('[Push] Failed to delete subscription', error);
     return false;
   }
 }

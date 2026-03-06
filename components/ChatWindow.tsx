@@ -107,7 +107,7 @@ export default function ChatWindow({ messages, mode, onSend }: Props) {
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-3 py-2 flex-1 overflow-y-auto" ref={scrollRef} style={{ minHeight: '60vh' }}>
+    <div className="mx-auto max-w-6xl px-3 py-2 flex-1 min-h-0 overflow-y-auto" ref={scrollRef} style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
       {(messages.length === 0 || !messages.some(m => m.role === 'user')) && mode === 'go' && (
         <div className="mx-auto max-w-6xl w-full">
           <GoAnywhere onSend={onSend} />

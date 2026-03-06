@@ -1,8 +1,12 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { FiArrowLeft, FiChevronRight } from 'react-icons/fi';
+import TutorialCountdown from '@/app/chat/components/TutorialCountdown';
+import { checkTestModeClient, TestModeInfo, getCorrectPath } from '@/lib/test-mode-client';
+import { clearAllLocalStorage } from '@/lib/csrf-client';
 
 const TOOLS = [
   {
@@ -100,13 +104,48 @@ const TOOLS_TEST = [
 
 export default function ToolsTestPage() {
   const pathname = usePathname();
+  const router = useRouter();
   const isTestMode = pathname?.includes('/tools-test');
+  const [testModeInfo, setTestModeInfo] = useState<TestModeInfo | null>(null);
+
+  useEffect(() => {
+    const loadTestModeInfo = async () => {
+      const info = await checkTestModeClient();
+      setTestModeInfo(info);
+      const correctPath = getCorrectPath(pathname || '/tools-test', info);
+      if (correctPath !== pathname) {
+        router.replace(correctPath);
+      }
+    };
+    loadTestModeInfo();
+  }, [pathname, router]);
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (response.ok) {
+        clearAllLocalStorage();
+        window.location.href = '/login-test';
+      } else {
+        alert('로그아웃에 실패했습니다. 다시 시도해주세요.');
+      }
+    } catch {
+      alert('로그아웃 중 오류가 발생했습니다.');
+    }
+  };
 
   const tools = isTestMode ? TOOLS_TEST : TOOLS;
   const backHref = isTestMode ? '/chat-test' : '/chat';
 
   return (
     <div className="min-h-screen bg-[#F5F7FA]">
+      {/* 72시간 카운트다운 배너 */}
+      {testModeInfo && testModeInfo.isTestMode && (
+        <TutorialCountdown testModeInfo={testModeInfo} onLogout={handleLogout} />
+      )}
       <header className="sticky top-0 z-20 border-b bg-white/95 backdrop-blur px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
           <Link

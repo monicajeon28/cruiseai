@@ -2,6 +2,7 @@
 // itineraryPattern 파싱 및 국가 코드 추출 유틸리티
 
 import { getKoreanCountryName } from './countryMapping';
+import { logger } from '@/lib/logger';
 
 /**
  * itineraryPattern을 배열 형태로 정규화
@@ -17,7 +18,7 @@ export function normalizeItineraryPattern(pattern: any): any[] {
     try {
       parsed = JSON.parse(pattern);
     } catch (e) {
-      console.error('[normalizeItineraryPattern] JSON parse error:', e);
+      logger.error('[normalizeItineraryPattern] JSON parse error:', e);
       return [];
     }
   }

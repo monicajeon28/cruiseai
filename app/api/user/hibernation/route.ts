@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { reactivateUser } from '@/lib/scheduler/lifecycleManager';
+import { logger } from '@/lib/logger';
 
 const SESSION_COOKIE = 'cg.sid.v2';
 
@@ -61,7 +62,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error('[Hibernation API] GET error:', error);
+    logger.error('[Hibernation API] GET error:', error);
     return NextResponse.json(
       { ok: false, error: 'Internal server error' },
       { status: 500 }
@@ -97,7 +98,7 @@ export async function POST(req: Request) {
       message: reactivated ? 'User reactivated successfully' : 'User was not hibernated',
     });
   } catch (error) {
-    console.error('[Hibernation API] POST error:', error);
+    logger.error('[Hibernation API] POST error:', error);
     return NextResponse.json(
       { ok: false, error: 'Internal server error' },
       { status: 500 }

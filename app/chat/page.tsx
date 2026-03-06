@@ -16,9 +16,9 @@ export default async function ChatPage() {
 
   // 기존 크루즈 가이드 지니 AI (3800 로그인 사용자용)
   return (
-    <div className="min-h-screen bg-[#F5F7FA]">
+    <div className="h-[100dvh] flex flex-col bg-[#F5F7FA] overflow-hidden">
       <TopBar />
-      <main className="mx-auto max-w-5xl px-4 pb-20">
+      <main className="flex-1 min-h-0 overflow-hidden w-full flex flex-col">
         {/* 여행 정보 배너 (오늘의 브리핑 아래에 표시되도록 ChatInteractiveUI에서 처리) */}
         {/* 채팅 UI */}
         <ChatInteractiveUI />

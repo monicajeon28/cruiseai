@@ -5,6 +5,7 @@
  */
 
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 interface PassportData {
   korName: string;
@@ -35,7 +36,7 @@ export async function backupPassportDataToUser(
     });
 
     if (!user) {
-      console.warn(`[Passport Utils] User not found: ${userId}`);
+      logger.warn(`[Passport Utils] User not found: ${userId}`);
       return;
     }
 
@@ -58,9 +59,9 @@ export async function backupPassportDataToUser(
       },
     });
 
-    console.log(`[Passport Utils] Passport data backed up for user ${userId}`);
+    logger.log(`[Passport Utils] Passport data backed up for user ${userId}`);
   } catch (error: any) {
-    console.error('[Passport Utils] Error backing up passport data:', error);
+    logger.error('[Passport Utils] Error backing up passport data:', error);
     // 에러가 발생해도 메인 로직은 계속 진행
   }
 }
@@ -95,7 +96,7 @@ export async function findUserByNameAndPhone(
 
     return user?.id || null;
   } catch (error: any) {
-    console.error('[Passport Utils] Error finding user:', error);
+    logger.error('[Passport Utils] Error finding user:', error);
     return null;
   }
 }

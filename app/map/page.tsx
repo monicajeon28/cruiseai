@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { FiArrowLeft, FiMap, FiGlobe, FiTag, FiCalendar, FiMapPin } from 'react-icons/fi';
 import { trackFeature } from '@/lib/analytics';
 import { checkTestModeClient, getCorrectPath } from '@/lib/test-mode-client';
+import { showError, showSuccess } from '@/components/ui/Toast';
 // 성능 최적화: 무거운 지도 라이브러리는 그대로 사용 (복잡도가 높아서 나중에 최적화)
 // 동적 임포트는 컴포넌트 분리 후 적용 예정
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps';
@@ -422,6 +423,18 @@ const saveTripsToLocal = (trips: Trip[]) => {
   localStorage.setItem('myTrips', JSON.stringify(trips));
 };
 
+// 국가 색상 프리셋
+const PRESET_COLORS = [
+  { label: '빨강', color: '#EF4444' },
+  { label: '주황', color: '#F97316' },
+  { label: '노랑', color: '#EAB308' },
+  { label: '초록', color: '#22C55E' },
+  { label: '파랑', color: '#3B82F6' },
+  { label: '보라', color: '#8B5CF6' },
+  { label: '분홍', color: '#EC4899' },
+  { label: '하늘', color: '#06B6D4' },
+];
+
 export default function MapPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -446,19 +459,22 @@ export default function MapPage() {
   const [currentColor, setCurrentColor] = useState<string>("#EF4444"); // 기본 빨간색
   const [manualColors, setManualColors] = useState<{ [key: string]: string }>(() => {
     if (typeof window !== 'undefined') {
-      const savedColors = localStorage.getItem('countryColors');
-      // 저장된 색상 맵의 키를 영어 국가명으로 변환
-      const parsedColors = savedColors ? JSON.parse(savedColors) : {};
-      const newMap: { [key: string]: string } = {};
-      for (const koreanName in parsedColors) {
-        const englishName = countryKoreanToEnglishMap[koreanName];
-        if (englishName) {
-          newMap[englishName] = parsedColors[koreanName];
-        } else { // 직접 영문 이름으로 저장된 경우 (이전 버전 호환)
-          newMap[koreanName] = parsedColors[koreanName];
+      try {
+        const savedColors = localStorage.getItem('countryColors');
+        const parsedColors = savedColors ? JSON.parse(savedColors) : {};
+        const newMap: { [key: string]: string } = {};
+        for (const koreanName in parsedColors) {
+          const englishName = countryKoreanToEnglishMap[koreanName];
+          if (englishName) {
+            newMap[englishName] = parsedColors[koreanName];
+          } else { // 직접 영문 이름으로 저장된 경우 (이전 버전 호환)
+            newMap[koreanName] = parsedColors[koreanName];
+          }
         }
+        return newMap;
+      } catch {
+        return {};
       }
-      return newMap;
     }
     return {};
   });
@@ -557,21 +573,17 @@ export default function MapPage() {
         });
 
         // 서버에 방문 국가 저장 (백그라운드)
-        try {
-          await fetch('/api/visited-countries', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-              countryCode,
-              countryName: englishCountryName,
-            }),
-          });
-          console.log('[MapPage] 방문 국가 서버 저장 완료:', englishCountryName);
-        } catch (error) {
-          console.error('[MapPage] 방문 국가 서버 저장 실패:', error);
+        fetch('/api/visited-countries', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            countryCode,
+            countryName: englishCountryName,
+          }),
+        }).catch(() => {
           // 서버 저장 실패해도 로컬에는 저장됨
-        }
+        });
       }
     }
   }, [selectedCountryFromList, currentColor, countryKoreanToEnglishMap]);
@@ -611,11 +623,9 @@ export default function MapPage() {
     inited.current = true;     // Mark as initialized
 
     const init = async () => {
-      console.log('Map Page: Starting init process.');
       try {
         // 1) 여행 기록: localStorage에서 먼저 로드 (사용자가 추가한 여행 보존)
         let localTrips: Trip[] = loadTripsFromLocal();
-        console.log('Map Page: Trips loaded from localStorage:', localTrips);
 
         // 2) 지도 페이지 여행 기록 API에서 로드 (서버와 동기화)
         let apiTrips: Trip[] = [];
@@ -623,9 +633,8 @@ export default function MapPage() {
           const apiResponse = await fetch('/api/map-travel-records', { credentials: 'include' });
           const apiData = await apiResponse.json().catch(() => ({}));
           apiTrips = Array.isArray(apiData?.trips) ? apiData.trips : [];
-          console.log('Map Page: Map travel records loaded from API:', apiTrips);
-        } catch (apiError) {
-          console.warn('Map Page: API map travel records fetch failed, using localStorage only.', apiError);
+        } catch {
+          // API 실패 시 localStorage 데이터만 사용
         }
 
         // 3) 두 데이터 소스 병합 (localStorage 우선, 중복 제거)
@@ -655,7 +664,6 @@ export default function MapPage() {
           return dateA - dateB; // 오름차순 (등록 순서대로)
         });
 
-        console.log('Map Page: Merged trips:', mergedTrips);
         setUserTrips(mergedTrips);
 
         // 병합된 데이터를 localStorage에 저장 (동기화)
@@ -692,8 +700,8 @@ export default function MapPage() {
                   localColorMap[key] = parsedColors[key];
                 }
               }
-            } catch (e) {
-              console.warn('Map Page: Failed to parse localStorage countryColors:', e);
+            } catch {
+              // 파싱 실패 시 기존 데이터 유지
             }
           }
         }
@@ -716,8 +724,8 @@ export default function MapPage() {
             // API 데이터와 localStorage 데이터 병합
             localColorMap = { ...apiColorMapConverted, ...localColorMap };
           }
-        } catch (visitedError) {
-          console.warn('Map Page: Failed to load visited countries from API, using localStorage only:', visitedError);
+        } catch {
+          // API 실패 시 localStorage 데이터만 사용
         }
 
         // CLEANUP: Remove any color from localColorMap that exists in currentTripColors AND is default red
@@ -734,29 +742,16 @@ export default function MapPage() {
         setIsTripsLoaded(true);
 
         // 2) 지도 데이터: 그대로 fetch (정적 파일)
-        console.log('Map Page: Fetching map data from', geoUrl);
         const mapResponse = await fetch(geoUrl);
         if (!mapResponse.ok) {
           throw new Error(`HTTP error! status: ${mapResponse.status}`);
         }
         const world = await mapResponse.json();
-        console.log('Map Page: Map data fetched.', world);
-        console.log('Map Page: world.objects.countries', world.objects.countries); // 추가된 로그
         const features = (topojson.feature(world, world.objects.countries as any) as any).features;
-
-        // 모든 국가 이름 로그 출력 (싱가포르 확인용)
-        const allCountryNames = features.map((f: any) => f.properties?.name).filter(Boolean);
-        console.log('Map Page: All country names in map data:', allCountryNames.sort());
-        const singaporeInMap = allCountryNames.find((name: string) =>
-          name.toLowerCase().includes('singapore')
-        );
-        console.log('Map Page: Singapore in map data?', singaporeInMap || 'NOT FOUND');
 
         setGeographyData(features);
         setIsMapDataLoaded(true);
-        console.log('Map Page: Geography data set.', features);
-      } catch (e) {
-        console.error('Map Page: Map init failed', e);
+      } catch {
         setIsTripsLoaded(true);
         setIsMapDataLoaded(true);
       }
@@ -767,34 +762,26 @@ export default function MapPage() {
     // 여행 기록을 다시 불러오는 함수
     const loadTripsFromServer = async () => {
       try {
-        console.log('[MapPage] 서버에서 여행 기록 다시 불러오기');
         const apiResponse = await fetch('/api/map-travel-records', { credentials: 'include' });
         const apiData = await apiResponse.json().catch(() => ({}));
 
         if (apiData.ok && Array.isArray(apiData.trips)) {
           const apiTrips: Trip[] = apiData.trips;
-          console.log('[MapPage] 서버에서 불러온 여행 기록:', apiTrips);
-
-          // 서버 데이터가 우선 (서버가 진실의 원천)
           setUserTrips(apiTrips);
           saveTripsToLocal(apiTrips);
         }
-      } catch (error) {
-        console.error('[MapPage] 여행 기록 불러오기 실패:', error);
+      } catch {
+        // 실패 시 현재 상태 유지
       }
     };
 
-    // 페이지가 다시 보일 때 여행 기록 다시 불러오기
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('[MapPage] 페이지가 다시 보임, 여행 기록 다시 불러오기');
         loadTripsFromServer();
       }
     };
 
-    // 포커스 이벤트 (페이지 전환 후 돌아올 때)
     const handleFocus = () => {
-      console.log('[MapPage] 페이지 포커스, 여행 기록 다시 불러오기');
       loadTripsFromServer();
     };
 
@@ -808,10 +795,8 @@ export default function MapPage() {
   }, []);
 
   useEffect(() => {
-    console.log('Map Page: isTripsLoaded', isTripsLoaded, 'isMapDataLoaded', isMapDataLoaded);
     if (isTripsLoaded && isMapDataLoaded) {
       setIsLoading(false);
-      console.log('Map Page: isLoading set to false.');
     }
   }, [isTripsLoaded, isMapDataLoaded]);
 
@@ -824,10 +809,7 @@ export default function MapPage() {
   const handleCountryClick = useCallback((geo: any) => {
     const englishCountryName = geo.properties.name; // name 속성 사용
     // console.log('Map Page: Country clicked:', englishCountryName); // Debug log commented out
-    if (!englishCountryName) { // name이 없는 경우 처리
-      console.warn('Map Page: Clicked geography has no name property:', geo.properties);
-      return;
-    }
+    if (!englishCountryName) return;
 
     const koreanCountryName = englishToKoreanCountryNameMap[englishCountryName]; // 영어 국가명으로 한국어 이름 조회
     setSelectedCountry(englishCountryName); // selectedCountry는 영어 국가명으로 저장
@@ -883,7 +865,6 @@ export default function MapPage() {
 
       // 날짜 필수 검증 (먼저 확인)
       if (!tripData.startDate || !tripData.endDate) {
-        console.error('[MapPage] 날짜 누락:', { startDate: tripData.startDate, endDate: tripData.endDate });
         throw new Error('여행 시작일과 종료일은 필수 입력 항목입니다.');
       }
 
@@ -899,15 +880,11 @@ export default function MapPage() {
 
       // 날짜 형식 검증
       if (!/^\d{4}-\d{2}-\d{2}$/.test(requestBody.startDate)) {
-        console.error('[MapPage] 시작일 형식 오류:', requestBody.startDate);
         throw new Error(`시작일 형식이 올바르지 않습니다: ${requestBody.startDate}. YYYY-MM-DD 형식이어야 합니다.`);
       }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(requestBody.endDate)) {
-        console.error('[MapPage] 종료일 형식 오류:', requestBody.endDate);
         throw new Error(`종료일 형식이 올바르지 않습니다: ${requestBody.endDate}. YYYY-MM-DD 형식이어야 합니다.`);
       }
-
-      console.log('[MapPage] 서버 전송 데이터:', requestBody);
 
       // undefined 값 제거 (하지만 startDate와 endDate는 필수이므로 제거하지 않음)
       Object.keys(requestBody).forEach(key => {
@@ -936,7 +913,6 @@ export default function MapPage() {
             if (typeof window !== 'undefined') {
               localStorage.setItem('countryColors', JSON.stringify(updated));
             }
-            console.log('[MapPage] 국가별 색상 저장:', newColors);
             return updated;
           });
         }
@@ -970,7 +946,6 @@ export default function MapPage() {
       }
       saveTripsToLocal(currentTrips);
       setUserTrips([...currentTrips]);
-      console.log('[MapPage] 로컬 저장 완료 (서버 응답 전) - 크루즈가이드 지니/3일체험 공유용');
 
       const response = await fetch(url, {
         method,
@@ -980,17 +955,10 @@ export default function MapPage() {
       });
 
       const data = await response.json();
-      console.log('[MapPage] 서버 응답 전체:', JSON.stringify(data, null, 2));
-      console.log('[MapPage] 서버 응답 ok:', data.ok);
-      console.log('[MapPage] 서버 응답 message:', data.message);
-      console.log('[MapPage] 서버 응답 details:', data.details);
-      console.log('[MapPage] 서버 응답 code:', data.code);
 
       if (!response.ok || !data.ok) {
-        // 서버 저장 실패해도 로컬에는 이미 저장됨
-        console.warn('[MapPage] 서버 저장 실패, 로컬 저장은 완료됨:', data.message);
         // 에러를 throw하지 않고 성공으로 처리 (로컬 저장 완료)
-        alert(`여행 기록이 저장되었습니다.\n\n(로컬 저장 완료, 서버 동기화는 나중에 자동으로 시도됩니다)`);
+        showSuccess('로컬 저장 완료 — 서버 동기화는 나중에 자동으로 시도됩니다.', '여행 기록이 저장되었습니다.');
         return;
       }
 
@@ -1018,7 +986,6 @@ export default function MapPage() {
           };
           saveTripsToLocal(currentTrips);
           setUserTrips([...currentTrips]);
-          console.log('[MapPage] 로컬 데이터를 서버 ID로 업데이트 완료:', serverTripId);
         }
       }
 
@@ -1045,7 +1012,6 @@ export default function MapPage() {
 
         // 로컬 데이터 중 서버에 없는 것만 추가 (내용 기반 중복 체크)
         currentTrips.forEach((trip: Trip) => {
-          const tripIdStr = String(trip.id);
           const contentKey = `${trip.startDate}-${trip.endDate}-${trip.destination}-${trip.cruiseName}`;
 
           // 서버에 없는 ID이고, 내용도 다른 경우만 추가
@@ -1058,20 +1024,11 @@ export default function MapPage() {
 
         setUserTrips(mergedTrips);
         saveTripsToLocal(mergedTrips);
-        console.log('[MapPage] 서버와 로컬 데이터 병합 완료, 중복 제거됨');
       }
-    } catch (error: any) {
-      // 네트워크 에러 등으로 서버 요청 자체가 실패한 경우에도 로컬에는 이미 저장됨
-      console.error('[MapPage] 여행 기록 저장 중 예외 발생:', error);
-      console.error('[MapPage] 에러 상세:', {
-        message: error?.message,
-        details: error?.details,
-        code: error?.code,
-        hint: error?.hint,
-      });
+    } catch {
 
       // 로컬 저장은 이미 완료되었으므로 사용자에게 성공 메시지 표시
-      alert(`여행 기록이 저장되었습니다.\n\n(로컬 저장 완료, 서버 동기화는 나중에 자동으로 시도됩니다)`);
+      showSuccess('로컬 저장 완료 — 서버 동기화는 나중에 자동으로 시도됩니다.', '여행 기록이 저장되었습니다.');
     }
   }, [countryKoreanToEnglishMap]);
 
@@ -1153,7 +1110,6 @@ export default function MapPage() {
             if (!remainingCountries.has(country) && newMap[country]) {
               delete newMap[country];
               hasChanges = true;
-              console.log('[MapPage] 국가 색상 삭제:', country);
             }
           });
 
@@ -1163,9 +1119,8 @@ export default function MapPage() {
           return newMap;
         });
       }
-    } catch (error) {
-      console.error('[MapPage] 여행 기록 삭제 실패:', error);
-      alert(`여행 기록 삭제에 실패했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+    } catch {
+      showError(`여행 기록 삭제에 실패했습니다. 다시 시도해주세요.`);
     }
   }, [userTrips, countryKoreanToEnglishMap]);
 
@@ -1181,7 +1136,7 @@ export default function MapPage() {
   }
 
   return (
-    <main className="flex flex-col h-screen bg-gray-100 text-gray-900 overflow-hidden">
+    <main className="flex flex-col h-[100dvh] bg-gray-100 text-gray-900 overflow-hidden">
       {/* Header */}
       <header className="bg-white p-4 shadow-md flex justify-between items-center border-b border-gray-200">
         <div className="flex items-center space-x-4">
@@ -1213,29 +1168,9 @@ export default function MapPage() {
                 {geographyData && (
                   <Geographies geography={geographyData || []}>
                     {({ geographies }: { geographies: any[] }) => {
-                      console.log('Map Page: Rendering geographies.', geographies.length, 'geographies found.');
-                      console.log('Map Page: countryColorMap keys:', Object.keys(countryColorMap));
-                      console.log('Map Page: countryColorMap full:', countryColorMap);
-
-                      // 싱가포르 관련 국가 찾기 (디버깅)
-                      const singaporeCountries = geographies.filter((g: any) => {
-                        const name = g.properties?.name?.toLowerCase() || '';
-                        return name.includes('singapore') || name.includes('싱가포르');
-                      });
-                      if (singaporeCountries.length > 0) {
-                        console.log('Map Page: Singapore-related countries found:', singaporeCountries.map((g: any) => ({
-                          name: g.properties.name,
-                          allProperties: Object.keys(g.properties)
-                        })));
-                      }
-
                       return geographies.map((geo: any) => {
                         const englishCountryName = geo.properties.name; // name 속성 사용
-                        // name이 없으면 렌더링하지 않거나 기본 처리
-                        if (!englishCountryName) {
-                          console.warn('Map Page: Skipping geo without name:', geo.properties);
-                          return null;
-                        }
+                        if (!englishCountryName) return null;
 
                         // 국가명 매칭 시도 (다양한 방법으로 시도)
                         let isVisited = false;
@@ -1255,7 +1190,6 @@ export default function MapPage() {
                           if (matchedKey) {
                             isVisited = true;
                             countryColor = countryColorMap[matchedKey];
-                            console.log(`Map Page: Case-insensitive match: ${englishCountryName} -> ${matchedKey}`);
                           }
                         }
 
@@ -1265,13 +1199,11 @@ export default function MapPage() {
                           if (alias && countryColorMap[alias]) {
                             isVisited = true;
                             countryColor = countryColorMap[alias];
-                            console.log(`Map Page: Alias match: ${englishCountryName} -> ${alias}`);
                           }
                         }
 
                         // 4. 국가 코드를 통해 매칭 (countryColorMap에 국가 코드가 키로 있는 경우)
                         if (!isVisited) {
-                          // 영어 국가명에서 국가 코드 찾기
                           const countryCode = isoToEnglishCountryNameMap ?
                             Object.keys(isoToEnglishCountryNameMap).find(code =>
                               isoToEnglishCountryNameMap[code] === englishCountryName
@@ -1279,7 +1211,6 @@ export default function MapPage() {
                           if (countryCode && countryColorMap[countryCode]) {
                             isVisited = true;
                             countryColor = countryColorMap[countryCode];
-                            console.log(`Map Page: Country code match: ${englishCountryName} (${countryCode})`);
                           }
                         }
 
@@ -1293,7 +1224,6 @@ export default function MapPage() {
                           if (partialMatch) {
                             isVisited = true;
                             countryColor = countryColorMap[partialMatch];
-                            console.log(`Map Page: Partial match: ${englishCountryName} -> ${partialMatch}`);
                           }
                         }
 
@@ -1390,17 +1320,17 @@ export default function MapPage() {
                         <div className="flex gap-1 ml-2">
                           <button
                             onClick={() => handleEditTripClick(trip)}
-                            className="text-blue-600 hover:text-blue-800 text-xs font-medium px-1"
-                            title="수정"
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-blue-50"
+                            aria-label="여행 수정"
                           >
-                            ✏️
+                            <span className="text-lg">✏️</span>
                           </button>
                           <button
                             onClick={() => handleDeleteTrip(trip.id)}
-                            className="text-red-600 hover:text-red-800 text-xs font-medium px-1"
-                            title="삭제"
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-red-50"
+                            aria-label="여행 삭제"
                           >
-                            🗑️
+                            <span className="text-lg">🗑️</span>
                           </button>
                         </div>
                       </div>
@@ -1436,6 +1366,82 @@ export default function MapPage() {
           </div>
         </div>
       </div>
+      {/* 국가 색상 설정 패널 */}
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-5 md:p-6 max-w-7xl mx-auto mt-4 mb-4">
+        <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-1 flex items-center gap-2">
+          🎨 방문 국가 색상 설정
+        </h2>
+        <p className="text-sm text-gray-500 mb-4">
+          지도에서 국가를 클릭하면 자동으로 선택됩니다. 색상을 골라 적용해보세요.
+        </p>
+
+        {/* 선택된 국가 표시 */}
+        {selectedCountryFromList ? (
+          <div className="mb-3 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
+            <span className="text-blue-800 font-semibold text-sm">📍 선택: {selectedCountryFromList}</span>
+          </div>
+        ) : (
+          <div className="mb-3 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
+            <span className="text-gray-500 text-sm">💡 지도에서 국가를 클릭하면 여기에 표시됩니다</span>
+          </div>
+        )}
+
+        {/* 색상 스와치 + 커스텀 색상 */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          {PRESET_COLORS.map(({ label, color }) => (
+            <button
+              key={color}
+              onClick={() => setCurrentColor(color)}
+              title={label}
+              aria-label={label}
+              className={`w-10 h-10 rounded-full border-4 transition-all ${
+                currentColor === color
+                  ? 'border-gray-800 scale-110 shadow-md'
+                  : 'border-gray-200 hover:border-gray-400'
+              }`}
+              style={{ backgroundColor: color }}
+            />
+          ))}
+          {/* 커스텀 색상 피커 */}
+          <label
+            className="relative w-10 h-10 rounded-full border-4 border-dashed border-gray-400 flex items-center justify-center cursor-pointer hover:border-gray-600 transition-colors overflow-hidden"
+            title="직접 색상 선택"
+          >
+            <input
+              type="color"
+              value={currentColor}
+              onChange={(e) => setCurrentColor(e.target.value)}
+              className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+            />
+            <span className="text-sm pointer-events-none">🎨</span>
+          </label>
+          {/* 현재 선택 색상 미리보기 */}
+          <div
+            className="w-10 h-10 rounded-full border-2 border-gray-300 shadow-inner flex-shrink-0"
+            style={{ backgroundColor: currentColor }}
+            title="현재 선택 색상"
+          />
+        </div>
+
+        {/* 적용/제거 버튼 */}
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={handleApplyColorToListSelectedCountry}
+            disabled={!selectedCountryFromList}
+            className="flex-1 sm:flex-none px-5 py-3 bg-brand-red text-white font-semibold rounded-xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-red-600 active:bg-red-700 transition-colors text-sm"
+          >
+            ✅ 색상 적용
+          </button>
+          <button
+            onClick={handleRemoveColorFromSelectedCountry}
+            disabled={!selectedCountryFromList}
+            className="flex-1 sm:flex-none px-5 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-300 active:bg-gray-400 transition-colors text-sm"
+          >
+            🗑️ 색상 제거
+          </button>
+        </div>
+      </div>
+
       <TripFormModal
         isOpen={isTripModalOpen}
         onClose={() => {

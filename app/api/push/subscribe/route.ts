@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/session';
+import { logger } from '@/lib/logger';
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
 
     // 유효성 검사
     if (!subscriptionData.endpoint || !subscriptionData.keys) {
-      console.error('[API] Invalid subscription data:', subscriptionData);
+      logger.error('[API] Invalid subscription data:', subscriptionData);
       return NextResponse.json(
         { error: '잘못된 푸시 구독 정보입니다', received: Object.keys(subscriptionData) },
         { status: 400 }
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
           updatedAt: new Date(),
         },
       });
-      console.log('[API] 구독 정보 업데이트 완료:', subscriptionData.endpoint);
+      logger.log('[API] 구독 정보 업데이트 완료:', subscriptionData.endpoint);
     } else {
       // 새 구독 생성
       await prisma.pushSubscription.create({
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
           userAgent: req.headers.get('user-agent') || undefined,
         },
       });
-      console.log('[API] 새 구독 정보 생성 완료:', subscriptionData.endpoint);
+      logger.log('[API] 새 구독 정보 생성 완료:', subscriptionData.endpoint);
     }
 
     return NextResponse.json(
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('[API] 푸시 구독 오류:', error);
+    logger.error('[API] 푸시 구독 오류:', error);
     return NextResponse.json(
       { error: '구독 처리 중 오류가 발생했습니다' },
       { status: 500 }

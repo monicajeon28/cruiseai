@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 /**
  * GET /api/auth/onboard-data
@@ -146,7 +147,7 @@ export async function GET() {
         : null,
     });
   } catch (error) {
-    console.error('[onboard-data] Error:', error);
+    logger.error('[onboard-data] Error:', error);
     return NextResponse.json(
       { ok: false, error: '데이터를 불러오는 중 오류가 발생했습니다.' },
       { status: 500 }

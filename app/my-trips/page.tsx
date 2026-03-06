@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FiArrowLeft, FiCalendar, FiMapPin, FiAnchor, FiClock } from 'react-icons/fi';
+import { logger } from '@/lib/logger';
 
 /**
  * 내 여행 목록 페이지 (읽기 전용)
@@ -49,7 +50,7 @@ export default function MyTripsPage() {
         }
       }
     } catch (error) {
-      console.error('Error loading trips:', error);
+      logger.error('Error loading trips:', error);
       setError('여행 정보를 불러오지 못했습니다.');
     } finally {
       setIsLoading(false);
@@ -140,9 +141,10 @@ export default function MyTripsPage() {
         ) : (
           <div className="grid gap-3 md:gap-4">
             {trips.map((trip) => (
-              <div
+              <Link
                 key={trip.id}
-                className="bg-white rounded-xl shadow-md p-4 md:p-6 hover:shadow-lg transition-shadow"
+                href={`/memories/${trip.id}`}
+                className="block bg-white rounded-xl shadow-md p-4 md:p-6 hover:shadow-lg transition-shadow cursor-pointer"
               >
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-3 md:mb-4 gap-2 md:gap-0">
                   <div className="flex-1">
@@ -237,7 +239,7 @@ export default function MyTripsPage() {
                     </div>
                   </div>
                 )}
-              </div>
+              </Link>
             ))}
           </div>
         )}

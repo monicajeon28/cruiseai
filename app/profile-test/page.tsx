@@ -25,8 +25,6 @@ export default async function ProfilePage() {
   // 1) 세션 (❗️중요: await 필수)
   const session = await getServerSession();
 
-  // 디버깅: 세션 정보 로그
-  console.log('[Profile Page] Session:', session);
 
   // 2) 유저/여행 조회 (세션 없으면 조회 생략)
   let user: { id: number; name?: string | null; phone?: string | null } | null = null;
@@ -46,14 +44,12 @@ export default async function ProfilePage() {
 
   if (session?.userId) {
     const userId = session.userId;
-    console.log('[Profile Page] Looking up user with userId:', userId);
 
     user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, name: true, phone: true },
     });
 
-    console.log('[Profile Page] Found user:', user ? { id: user.id, name: user.name, phone: user.phone } : 'null');
 
     // 유저 정보가 성공적으로 조회되면 여행 정보 조회 (브리핑 API와 동일한 방식)
     if (user) {
@@ -73,14 +69,6 @@ export default async function ProfilePage() {
         },
       });
 
-      console.log('[Profile Page] Found trip:', trip ? { 
-        id: trip.id, 
-        cruiseName: trip.cruiseName, 
-        userId: trip.userId,
-        nights: trip.nights,
-        days: trip.days,
-        destination: trip.destination
-      } : 'null');
     }
   }
 
@@ -106,20 +94,11 @@ export default async function ProfilePage() {
       startDate.setHours(0, 0, 0, 0);
       endDate.setHours(0, 0, 0, 0);
       
-      // 테스트 사용자(전혜선)인 경우 D-day 고정
-      const TEST_USER_PHONE = '01024958013';
-      const FIXED_DDAY = 100;
-      
       // 항상 출발일 기준으로 D-day 계산 (briefing API와 동일)
       if (now < startDate) {
-        // 전혜선 계정이고 여행 시작 전인 경우 D-day 고정
-        if (user.phone === TEST_USER_PHONE) {
-          currentDday = FIXED_DDAY;
-        } else {
-          // 여행 시작 전: 출발일까지 D-day
-          const diffTime = startDate.getTime() - now.getTime();
-          currentDday = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        }
+        // 여행 시작 전: 출발일까지 D-day
+        const diffTime = startDate.getTime() - now.getTime();
+        currentDday = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         ddayType = 'departure';
       } else if (now >= startDate && now <= endDate) {
         // 여행 중: 출발일 기준으로 음수 D-day (이미 출발했으므로)
@@ -134,15 +113,6 @@ export default async function ProfilePage() {
       }
     }
     
-    console.log('[Profile Test] D-day 계산 결과:', {
-      userId: user.id,
-      startDate: trip.startDate,
-      endDate: trip.endDate,
-      now: now.toISOString().split('T')[0],
-      currentDday,
-      ddayType,
-      isTripExpired,
-    });
   }
 
   // 4) 여행 기간 계산
@@ -173,6 +143,9 @@ export default async function ProfilePage() {
     companionType = typeMap[trip.companionType] || '정보 없음';
   }
 
+  // HTML 이스케이프 (dangerouslySetInnerHTML XSS 방지)
+  const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
   // 6) 목적지 문자열 변환
   let destinationString = '정보 없음';
   if (trip?.destination) {
@@ -197,7 +170,7 @@ export default async function ProfilePage() {
 
   return (
     <ProfileTestWrapper>
-      <main className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 pb-20">
+      <main className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
         <div className="container mx-auto px-4 py-8 max-w-5xl">
           {/* 헤더 */}
           <div className="mb-8">
@@ -335,14 +308,6 @@ export default async function ProfilePage() {
                           let currentKey: string | null = null;
                           let futureKey: string | null = null;
                           
-                          console.log('[Profile Test] 메시지 키 선택 시작:', {
-                            currentDday,
-                            ddayType,
-                            hasTrip: !!trip,
-                            startDate: trip?.startDate,
-                            endDate: trip?.endDate,
-                          });
-                          
                           if (currentDday !== null) {
                             if (ddayType === 'departure') {
                               const validDdays = [0, 1, 2, 3, 7, 10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100];
@@ -361,12 +326,6 @@ export default async function ProfilePage() {
                                     currentDdayKey = String(nextDday);
                                   }
                                 }
-                                
-                                console.log('[Profile Test] 메시지 키 선택 (출발일 기준):', {
-                                  currentDday,
-                                  currentDdayKey,
-                                  isValidDday: validDdays.includes(currentDday),
-                                });
                                 
                                 if (currentDdayKey) {
                                   currentKey = currentDdayKey;
@@ -427,13 +386,6 @@ export default async function ProfilePage() {
                           if (!currentKey && ddayMessages.messages['7']) {
                             currentKey = '7';
                           }
-                          
-                          console.log('[Profile Test] 메시지 키 선택 결과:', {
-                            currentKey,
-                            futureKey,
-                            pastKey,
-                            currentDday,
-                          });
                           
                           const renderOrder = [futureKey, currentKey, pastKey].filter((k): k is string => k !== null);
                           
@@ -520,9 +472,9 @@ export default async function ProfilePage() {
                                       style={{ lineHeight: '1.8', fontSize: '18px' }}
                                       dangerouslySetInnerHTML={{ 
                                         __html: message.message
-                                          .replace(/\[고객명\]/g, `<span class="bg-yellow-200 text-gray-900 px-2 py-0.5 rounded font-semibold">${user.name || '고객'}</span>`)
-                                          .replace(/\[크루즈명\]/g, trip.cruiseName || '크루즈')
-                                          .replace(/\[목적지\]/g, destinationString)
+                                          .replace(/\[고객명\]/g, `<span class="bg-yellow-200 text-gray-900 px-2 py-0.5 rounded font-semibold">${escHtml(user.name || '고객')}</span>`)
+                                          .replace(/\[크루즈명\]/g, escHtml(trip.cruiseName || '크루즈'))
+                                          .replace(/\[목적지\]/g, escHtml(destinationString))
                                           .replace(/(승선권)/g, '<span class="bg-yellow-200 text-gray-900 px-2 py-0.5 rounded font-semibold">$1</span>')
                                           .replace(/(여권\(유효기간 6개월 이상\))/g, '<span class="bg-yellow-200 text-gray-900 px-2 py-0.5 rounded font-semibold">$1</span>')
                                           .replace(/(여권)/g, '<span class="bg-yellow-200 text-gray-900 px-2 py-0.5 rounded font-semibold">$1</span>')
@@ -596,9 +548,9 @@ export default async function ProfilePage() {
                                   style={{ lineHeight: '1.8' }}
                                   dangerouslySetInnerHTML={{ 
                                     __html: detailMessage.message
-                                      .replace(/\[고객명\]/g, `<span class="bg-yellow-200 text-gray-900 px-2 py-0.5 rounded font-semibold">${user.name || '고객'}</span>`)
-                                      .replace(/\[크루즈명\]/g, trip.cruiseName || '크루즈')
-                                      .replace(/\[목적지\]/g, destinationString)
+                                      .replace(/\[고객명\]/g, `<span class="bg-yellow-200 text-gray-900 px-2 py-0.5 rounded font-semibold">${escHtml(user.name || '고객')}</span>`)
+                                      .replace(/\[크루즈명\]/g, escHtml(trip.cruiseName || '크루즈'))
+                                      .replace(/\[목적지\]/g, escHtml(destinationString))
                                       .replace(/(여권\(유효기간 6개월 이상\))/g, '<span class="bg-yellow-200 text-gray-900 px-2 py-0.5 rounded font-semibold">$1</span>')
                                       .replace(/(해외 결제 가능 신용카드)/g, '<span class="bg-yellow-200 text-gray-900 px-2 py-0.5 rounded font-semibold">$1</span>')
                                       .replace(/(텀블러\(선내에서 유용\))/g, '<span class="bg-yellow-200 text-gray-900 px-2 py-0.5 rounded font-semibold">$1</span>')

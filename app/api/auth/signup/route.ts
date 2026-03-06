@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { logger } from '@/lib/logger';
 
 // 사용 가능한 아이디/닉네임 추천 함수
 async function suggestAlternatives(
@@ -183,14 +184,7 @@ export async function POST(req: Request) {
     });
 
     if (existingUserByEmail) {
-      console.error('[SIGNUP] Email already exists:', {
-        email,
-        existingUserId: existingUserByEmail.id,
-        existingUserName: existingUserByEmail.name,
-        existingUserPhone: existingUserByEmail.phone,
-        existingUserRole: existingUserByEmail.role,
-        existingUserEmail: existingUserByEmail.email
-      });
+      logger.error('[SIGNUP] Email already exists (userId:', existingUserByEmail.id, ')');
       
       return NextResponse.json(
         { 
@@ -247,7 +241,7 @@ export async function POST(req: Request) {
       }
     });
   } catch (error: any) {
-    console.error('[SIGNUP] Error:', error);
+    logger.error('[SIGNUP] Error:', error);
     
     // Prisma 오류 처리
     if (error.code === 'P2002') {
@@ -268,14 +262,8 @@ export async function POST(req: Request) {
     }
     
     // 기타 오류
-    const errorMessage = error.message || '알 수 없는 오류가 발생했습니다.';
     return NextResponse.json(
-      { 
-        ok: false, 
-        error: process.env.NODE_ENV === 'development' 
-          ? `회원가입 중 오류가 발생했습니다: ${errorMessage}`
-          : '회원가입 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
-      },
+      { ok: false, error: '회원가입 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' },
       { status: 500 }
     );
   }

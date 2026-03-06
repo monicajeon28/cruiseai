@@ -10,11 +10,16 @@ const dDiff = (iso:string) => {
   const b = new Date();    b.setHours(0,0,0,0);
   return Math.round((a.getTime()-b.getTime())/86400000);
 };
-const fill = (s:string, u?:User|null, t?:Trip|null) =>
-  (s||'')
-   .replaceAll('[고객명]', u?.name ?? '')
-   .replaceAll('[크루즈명]', t?.cruiseName ?? '')
-   .replaceAll('[목적지]', (t?.destination ?? []).join(', '));
+const esc = (s: string) =>
+  s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
+const fill = (s:string, u?:User|null, t?:Trip|null) => {
+  const dest = Array.isArray(t?.destination) ? (t!.destination as string[]).join(', ') : String(t?.destination ?? '');
+  return (s||'')
+    .replaceAll('[고객명]', esc(u?.name ?? ''))
+    .replaceAll('[크루즈명]', esc(t?.cruiseName ?? ''))
+    .replaceAll('[목적지]', esc(dest));
+};
 
 export default function ChatDdayModal({
   user, trip,

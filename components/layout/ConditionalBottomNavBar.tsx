@@ -4,10 +4,22 @@ import { usePathname } from 'next/navigation';
 import BottomNavBar from './BottomNavBar';
 
 // 하단 네비게이션 바를 표시할 경로 (화이트리스트 방식)
-// 오직 지니가이드와 지니가이드 3일체험에서만 표시
+// 메인 기능 페이지 전체에서 표시 (일반 + 3일체험 포함)
 const SHOW_NAV_PATHS = [
-  '/chat',      // 지니가이드 (크루즈 가이드 지니 AI)
-  '/chat-test', // 지니가이드 3일체험
+  '/chat',          // 지니가이드
+  '/chat-test',     // 지니가이드 3일체험
+  '/tools',         // 도구함
+  '/tools-test',    // 도구함 3일체험
+  '/translator',    // 번역기
+  '/translator-test', // 번역기 3일체험
+  '/profile',       // 내 정보
+  '/profile-test',  // 내 정보 3일체험
+  '/checklist',     // 체크리스트
+  '/checklist-test', // 체크리스트 3일체험
+  '/wallet',        // 가계부
+  '/wallet-test',   // 가계부 3일체험
+  '/map',           // 세계 지도
+  '/map-test',      // 세계 지도 3일체험
 ];
 
 /**

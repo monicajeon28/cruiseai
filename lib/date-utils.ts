@@ -1,16 +1,8 @@
-// 테스트용 사용자 전화번호 (D-day 고정)
-const TEST_USER_PHONE = '01024958013';
-const FIXED_DDAY = 100;
-
 export function getDdayMessage(
-  startDateStr: string | Date | null | undefined, 
+  startDateStr: string | Date | null | undefined,
   endDateStr: string | Date | null | undefined,
-  userPhone?: string | null
+  _userPhone?: string | null
 ): string {
-  // 테스트 사용자인 경우 D-day 고정
-  if (userPhone === TEST_USER_PHONE) {
-    return `D-${FIXED_DDAY}일 남았습니다. ❤️`;
-  }
 
   // 날짜가 없으면 기본 메시지 반환
   if (!startDateStr || (typeof startDateStr === 'string' && startDateStr.trim() === '')) {
@@ -94,8 +86,7 @@ export function getDdayMessage(
 
     // 오늘이 종료일 이후인 경우
     return `여행이 종료되었습니다.`;
-  } catch (error) {
-    console.error('[getDdayMessage] Date parsing error:', error, { startDateStr, endDateStr });
+  } catch {
     return '여행 날짜 정보를 확인할 수 없습니다.';
   }
 }

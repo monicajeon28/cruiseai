@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 /**
  * GET: 여권 업로드 페이지로 리다이렉트
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
     
     return NextResponse.redirect(new URL(redirectUrl, req.url));
   } catch (error) {
-    console.error('[Public Passport Upload] GET error:', error);
+    logger.error('[Public Passport Upload] GET error:', error);
     return NextResponse.json(
       { ok: false, error: '여권 업로드 페이지로 이동할 수 없습니다.' },
       { status: 500 }

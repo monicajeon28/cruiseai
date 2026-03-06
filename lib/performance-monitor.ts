@@ -3,6 +3,8 @@
  * API 호출 시간 및 페이지 로딩 시간 측정
  */
 
+import { logger } from '@/lib/logger';
+
 interface PerformanceMetric {
   name: string;
   duration: number;
@@ -34,7 +36,7 @@ class PerformanceMonitor {
       
       // 느린 API 호출 경고 (1초 이상)
       if (duration > 1000) {
-        console.warn(`[Performance] Slow API call: ${name} took ${duration.toFixed(2)}ms`);
+        logger.warn(`[Performance] Slow API call: ${name} took ${duration.toFixed(2)}ms`);
       }
       
       return result;
@@ -80,7 +82,7 @@ class PerformanceMonitor {
 
     // 개발 환경에서만 콘솔 출력
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[Performance] ${metric.type}: ${metric.name} - ${metric.duration.toFixed(2)}ms`);
+      logger.log(`[Performance] ${metric.type}: ${metric.name} - ${metric.duration.toFixed(2)}ms`);
     }
   }
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { logger } from '@/lib/logger';
 import { FiTrendingUp, FiPieChart, FiDollarSign, FiTarget, FiAlertCircle, FiCheckCircle, FiX } from 'react-icons/fi';
+import { showError } from '@/components/ui/Toast';
 
 type Expense = {
   id: number | string; // localStorage용 문자열 ID 지원
@@ -150,7 +151,7 @@ export default function Statistics({ sharedExpenses }: StatisticsProps = {}) {
   const saveBudget = () => {
     const budgetNum = parseFloat(budgetInput);
     if (isNaN(budgetNum) || budgetNum <= 0) {
-      alert('올바른 예산 금액을 입력해주세요.');
+      showError('올바른 예산 금액을 입력해주세요.');
       return;
     }
     setBudget(budgetNum);
@@ -324,7 +325,9 @@ export default function Statistics({ sharedExpenses }: StatisticsProps = {}) {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={budgetInput}
                 onChange={(e) => setBudgetInput(e.target.value)}
                 placeholder="예산 금액 입력 (원)"
@@ -504,42 +507,6 @@ export default function Statistics({ sharedExpenses }: StatisticsProps = {}) {
               </div>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* Day별 지출 통계 */}
-      <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border-2 border-blue-200">
-        <h3 className="text-base md:text-xl font-bold text-gray-900 mb-4 md:mb-6">날짜별 지출</h3>
-
-        <div className="space-y-4">
-          {dayStats.map((stat) => {
-            const barWidth = (stat.total / maxDayTotal) * 100;
-
-            return (
-              <div key={stat.day} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-semibold text-gray-900">Day {stat.day}</span>
-                  <span className="text-lg font-bold text-blue-600">
-                    {stat.total.toLocaleString()}원
-                  </span>
-                </div>
-
-                {/* 바 차트 */}
-                <div className="w-full bg-gray-200 rounded-full h-6">
-                  <div
-                    className="bg-gradient-to-r from-blue-500 to-purple-500 h-6 rounded-full transition-all duration-500 flex items-center justify-end pr-3"
-                    style={{ width: `${barWidth}%` }}
-                  >
-                    {barWidth > 15 && (
-                      <span className="text-xs font-bold text-white">
-                        {stat.total.toLocaleString()}원
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
         </div>
       </div>
 

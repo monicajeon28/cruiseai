@@ -62,7 +62,7 @@ export default function ChatShell({
       </div>
 
       {/* 대화 */}
-      <div className="min-h-[320px] max-h-[calc(100vh-340px)] overflow-y-auto rounded-xl border bg-white p-3 space-y-3">
+      <div className="min-h-[320px] max-h-[calc(100dvh-340px)] overflow-y-auto rounded-xl border bg-white p-3 space-y-3">
         {messages.map((m, i) => (
           <div key={i} className={m.role === 'user' ? "text-right" : "text-left"}>
             <div className={[

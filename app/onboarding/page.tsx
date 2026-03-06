@@ -440,7 +440,7 @@ export default function OnboardingPage() {
       </div>
 
       {/* 하단 고정 시작 버튼 */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 bg-white/80 backdrop-blur-md border-t border-gray-200 px-4 py-4 safe-area-bottom">
+      <div className="fixed bottom-0 left-0 right-0 z-20 bg-white/80 backdrop-blur-md border-t border-gray-200 px-4 py-4" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
         <div className="max-w-2xl mx-auto">
           <button
             onClick={handleStart}

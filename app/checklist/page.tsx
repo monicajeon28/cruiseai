@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { showError } from '@/components/ui/Toast';
+import { logger } from '@/lib/logger';
 import { useRouter, usePathname } from 'next/navigation';
 import { FiChevronLeft, FiTrash2, FiPlus, FiCheck, FiChevronDown, FiChevronUp, FiX, FiVolume2, FiPause, FiPlay } from 'react-icons/fi';
 import { hapticClick, hapticSuccess, hapticImpact } from '@/lib/haptic';
@@ -33,6 +35,10 @@ export default function ChecklistPage() {
   const [isPaused, setIsPaused] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const hasCreatedDefaultsRef = useRef(false); // 기본 항목 생성 플래그
+  const [hasAddedRecommended, setHasAddedRecommended] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try { return localStorage.getItem('checklist-recommended-added-v1') === 'true'; } catch { return false; }
+  });
 
   // 경로 보호: 테스트 모드 사용자는 /checklist-test로 리다이렉트
   useEffect(() => {
@@ -57,7 +63,7 @@ export default function ChecklistPage() {
 
   const startSpeaking = (text: string, category: string) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      alert('이 브라우저는 음성 읽기 기능을 지원하지 않습니다.');
+      showError('이 브라우저는 음성 읽기 기능을 지원하지 않습니다.');
       return;
     }
 
@@ -83,13 +89,13 @@ export default function ChecklistPage() {
     };
 
     utterance.onerror = (event) => {
-      console.error('Speech synthesis error:', event);
+      logger.error('Speech synthesis error:', event);
       utteranceRef.current = null;
       setSpeakingCategory(null);
       setIsPaused(false);
       // pause/resume 관련 오류는 사용자에게 알리지 않음
       if (event.error !== 'interrupted' && event.error !== 'canceled') {
-        alert('음성 읽기 중 오류가 발생했습니다.');
+        showError('음성 읽기 중 오류가 발생했습니다.');
       }
     };
 
@@ -97,17 +103,17 @@ export default function ChecklistPage() {
       utteranceRef.current = utterance;
       window.speechSynthesis.speak(utterance);
     } catch (error) {
-      console.error('Speak error:', error);
+      logger.error('Speak error:', error);
       utteranceRef.current = null;
       setSpeakingCategory(null);
       setIsPaused(false);
-      alert('음성 읽기를 시작할 수 없습니다.');
+      showError('음성 읽기를 시작할 수 없습니다.');
     }
   };
 
   const handleSpeechToggle = (category: string, text: string) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      alert('이 브라우저는 음성 읽기 기능을 지원하지 않습니다.');
+      showError('이 브라우저는 음성 읽기 기능을 지원하지 않습니다.');
       return;
     }
 
@@ -127,7 +133,7 @@ export default function ChecklistPage() {
           startSpeaking(text, category);
         }
       } catch (error) {
-        console.error('Pause/Resume error:', error);
+        logger.error('Pause/Resume error:', error);
         try {
           synth.cancel();
         } catch (e) {
@@ -151,24 +157,35 @@ export default function ChecklistPage() {
     trackFeature('checklist');
   }, []);
 
-  // 기본 체크리스트 항목들 (핵심 15개 - 추가/삭제 기능으로 커스텀 가능)
-  const getDefaultItems = (): ChecklistItem[] => [
-    { id: Date.now() + 1, text: '여권 (유효기간 6개월 이상)', completed: false },
-    { id: Date.now() + 2, text: 'E-티켓 또는 승선권', completed: false },
-    { id: Date.now() + 3, text: '신용카드 (해외 사용 가능)', completed: false },
-    { id: Date.now() + 4, text: '현금 (달러 또는 현지 화폐)', completed: false },
-    { id: Date.now() + 5, text: '여행자 보험 증서', completed: false },
-    { id: Date.now() + 6, text: '선상 정장 (캡틴 디너용)', completed: false },
-    { id: Date.now() + 7, text: '편한 신발 (관광용)', completed: false },
-    { id: Date.now() + 8, text: '수영복', completed: false },
-    { id: Date.now() + 9, text: '휴대폰 충전기', completed: false },
-    { id: Date.now() + 10, text: '보조배터리', completed: false },
-    { id: Date.now() + 11, text: '멀티 어댑터', completed: false },
-    { id: Date.now() + 12, text: '상비약 (소화제, 진통제)', completed: false },
-    { id: Date.now() + 13, text: '멀미약', completed: false },
-    { id: Date.now() + 14, text: '세면도구 (칫솔, 치약)', completed: false },
-    { id: Date.now() + 15, text: '선글라스', completed: false },
+  // 필수 항목 (3개) — 첫 방문 시 즉시 생성
+  const ESSENTIAL_ITEMS_TEXT = [
+    '여권 (유효기간 6개월 이상)',
+    '신용카드 (해외 사용 가능)',
+    '여행자 보험 증서',
   ];
+
+  // 권장 항목 (12개) — "권장 항목 추가" 버튼 클릭 시 생성
+  const RECOMMENDED_ITEMS_TEXT = [
+    'E-티켓 또는 승선권',
+    '현금 (달러 또는 현지 화폐)',
+    '선상 정장 (캡틴 디너용)',
+    '편한 신발 (관광용)',
+    '수영복',
+    '휴대폰 충전기',
+    '보조배터리',
+    '멀티 어댑터',
+    '상비약 (소화제, 진통제)',
+    '멀미약',
+    '세면도구 (칫솔, 치약)',
+    '선글라스',
+  ];
+
+  const getDefaultItems = (): ChecklistItem[] =>
+    ESSENTIAL_ITEMS_TEXT.map((text, i) => ({
+      id: Date.now() + i + 1,
+      text,
+      completed: false,
+    }));
 
   // 기본 항목을 서버에 저장하는 함수 (한 번만 실행되도록 보호)
   const createDefaultItemsOnServer = async (defaultItems: ChecklistItem[]) => {
@@ -209,7 +226,7 @@ export default function ChecklistPage() {
 
     const failedCount = results.filter(r => r.status === 'rejected').length;
     if (failedCount > 0) {
-      console.error(`[Checklist] ${failedCount}개 기본 항목 서버 저장 실패`);
+      logger.error(`[Checklist] ${failedCount}개 기본 항목 서버 저장 실패`);
     }
   };
 
@@ -274,7 +291,7 @@ export default function ChecklistPage() {
           setItems(defaultItems);
           saveToCache(defaultItems);
           // 백그라운드에서 서버에 저장 (한 번만 실행되도록 플래그 사용)
-          createDefaultItemsOnServer(defaultItems).catch(console.error);
+          createDefaultItemsOnServer(defaultItems).catch(e => logger.error('[Checklist] 기본 항목 생성 실패:', e));
         } else {
           setItems(formattedItems);
           saveToCache(formattedItems); // localStorage 캐시 갱신
@@ -284,7 +301,7 @@ export default function ChecklistPage() {
       }
     } catch (err: any) {
       // 에러는 항상 로깅
-      console.error('[Checklist] Error loading from API:', err);
+      logger.error('[Checklist] Error loading from API:', err);
 
       const errorMessage = err?.message || '';
 
@@ -299,7 +316,7 @@ export default function ChecklistPage() {
         const defaultItems = getDefaultItems();
         setItems(defaultItems);
         // 백그라운드에서 서버에 저장 시도 (실패해도 UI에는 표시됨)
-        createDefaultItemsOnServer(defaultItems).catch(console.error);
+        createDefaultItemsOnServer(defaultItems).catch(e => logger.error('[Checklist] 기본 항목 생성 실패:', e));
       }
     } finally {
       setIsLoading(false);
@@ -363,7 +380,7 @@ export default function ChecklistPage() {
       setItems(prev => [...prev, finalItem]);
     } catch (err: any) {
       // 에러는 항상 로깅
-      console.error('[Checklist] Error adding item:', err);
+      logger.error('[Checklist] Error adding item:', err);
       setError(`항목 추가 중 오류가 발생했습니다: ${err.message || '알 수 없는 오류'}`);
     } finally {
       setIsLoading(false);
@@ -427,7 +444,7 @@ export default function ChecklistPage() {
       ));
     } catch (err: any) {
       // 에러는 항상 로깅
-      console.error('[Checklist] Error toggling item:', err);
+      logger.error('[Checklist] Error toggling item:', err);
       setError('작업에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
@@ -489,7 +506,7 @@ export default function ChecklistPage() {
       ));
     } catch (err: any) {
       // 에러는 항상 로깅
-      console.error('[Checklist] Error updating item:', err);
+      logger.error('[Checklist] Error updating item:', err);
       setError('작업에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
@@ -535,35 +552,72 @@ export default function ChecklistPage() {
             // 개별 삭제 실패는 경고만 (전체 실패는 아님)
             // 개발 환경에서만 로깅
             if (process.env.NODE_ENV === 'development') {
-              console.warn(`[Checklist] Failed to delete item ${item.id}`);
+              logger.warn(`[Checklist] Failed to delete item ${item.id}`);
             }
           }
         } catch (e) {
           // 개별 삭제 실패는 무시 (개발 환경에서만 로깅)
           if (process.env.NODE_ENV === 'development') {
-            console.warn(`[Checklist] Error deleting item ${item.id}:`, e);
+            logger.warn(`[Checklist] Error deleting item ${item.id}:`, e);
           }
         }
       }
 
-      // 기본 항목 생성
+      // 기본 항목 생성 (필수 3개만)
       const defaultItems = getDefaultItems();
-
-      // 상태 업데이트
       setItems(defaultItems);
+
+      // 권장 항목 상태 리셋
+      try { localStorage.removeItem('checklist-recommended-added-v1'); } catch { /* 무시 */ }
+      setHasAddedRecommended(false);
 
       // 서버에 기본 항목 저장
       await createDefaultItemsOnServer(defaultItems);
 
     } catch (err: any) {
       // 에러는 항상 로깅
-      console.error('[Checklist] Reset error:', err);
+      logger.error('[Checklist] Reset error:', err);
       setError(`리셋 중 오류가 발생했습니다: ${err.message || '알 수 없는 오류'}`);
       // 에러 발생 시 다시 로드
       await loadItems();
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // 권장 항목 추가 핸들러 (사용자 선택 시)
+  const handleAddRecommendedItems = async () => {
+    if (hasAddedRecommended || isLoading) return;
+    setIsLoading(true);
+    const ts = Date.now();
+    const recommendedItems: ChecklistItem[] = RECOMMENDED_ITEMS_TEXT.map((text, i) => ({
+      id: ts + i + 100,
+      text,
+      completed: false,
+    }));
+    setItems(prev => [...prev, ...recommendedItems]);
+    try {
+      localStorage.setItem('checklist-recommended-added-v1', 'true');
+    } catch { /* 무시 */ }
+    setHasAddedRecommended(true);
+    // createDefaultItemsOnServer는 "기본값 없을 때만" 가드가 걸려 있어 권장 항목에 재사용 불가.
+    // 직접 API에 저장 (실패해도 낙관적 UI 유지)
+    Promise.allSettled(
+      recommendedItems.map((item, index) =>
+        fetch('/api/checklist', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ text: item.text, completed: false, order: (items.length + index) }),
+        })
+      )
+    ).then(results => {
+      const failedCount = results.filter(r => r.status === 'rejected').length;
+      if (failedCount > 0) {
+        logger.error(`[Checklist] ${failedCount}개 권장 항목 서버 저장 실패`);
+      }
+    }).catch(() => {});
+    setIsLoading(false);
   };
 
   // 삭제 (API 전용)
@@ -605,7 +659,7 @@ export default function ChecklistPage() {
       // 서버에서 삭제 성공 (이미 UI에서 제거됨)
     } catch (err: any) {
       // 에러는 항상 로깅
-      console.error('[Checklist] Error deleting item:', err);
+      logger.error('[Checklist] Error deleting item:', err);
       setError('작업에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
@@ -705,17 +759,17 @@ export default function ChecklistPage() {
       {/* 상단 고정 헤더 */}
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b">
         <div className="mx-auto max-w-3xl px-4 py-4 md:py-5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <Link
               href="/tools"
-              className="inline-flex items-center gap-1 rounded-xl border px-4 md:px-5 py-2 md:py-2.5 hover:bg-gray-50 text-base md:text-lg font-semibold"
+              className="shrink-0 inline-flex items-center gap-1 rounded-xl border px-3 md:px-5 py-2 md:py-2.5 hover:bg-gray-50 text-base md:text-lg font-semibold"
               aria-label="뒤로가기"
             >
               <FiChevronLeft className="text-xl md:text-2xl" />
-              <span className="font-semibold">뒤로가기</span>
+              <span className="font-semibold">뒤로</span>
             </Link>
-            <h1 className="ml-2 text-xl md:text-2xl lg:text-3xl font-extrabold leading-tight">
-              꼼꼼한 크루즈닷의 여행 준비물 체크리스트
+            <h1 className="ml-1 text-lg md:text-2xl lg:text-3xl font-extrabold leading-tight truncate min-w-0">
+              여행 준비물 체크리스트
             </h1>
           </div>
           <Link
@@ -1100,6 +1154,17 @@ export default function ChecklistPage() {
               </li>
             ))}
           </ul>
+
+          {/* 권장 항목 추가 버튼 — 필수 3개만 생성된 첫 방문 시 표시 */}
+          {!hasAddedRecommended && (
+            <button
+              onClick={handleAddRecommendedItems}
+              disabled={isLoading}
+              className="mt-4 w-full py-3 border-2 border-dashed border-gray-300 rounded-2xl text-gray-500 text-base hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50"
+            >
+              + 권장 준비물 {RECOMMENDED_ITEMS_TEXT.length}개 추가하기
+            </button>
+          )}
         </div>
       )}
 

@@ -5,54 +5,51 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { logger } from '@/lib/logger';
 import { TestModeInfo } from '@/lib/test-mode-client';
 import TestChatInteractiveUI from './TestChatInteractiveUI'; // 테스트 고객 전용 컴포넌트
 import TutorialWelcomePopup from './TutorialWelcomePopup';
 import TutorialCountdown from './TutorialCountdown';
-import TutorialFeatureGuide from './TutorialFeatureGuide';
 import { clearAllLocalStorage } from '@/lib/csrf-client';
+import { showError } from '@/components/ui/Toast';
 import PWAInstallButtonMall from '@/components/PWAInstallButtonMall';
+
+// 컴포넌트 외부 상수 — 렌더마다 재생성 방지
+const CHAT_FEATURES = [
+  {
+    title: '크루즈닷 가자',
+    description: '클릭만 해도 원하는 관광지, 맛집을 찾아드려요',
+    example: '클릭만 하면 바로 추천!',
+  },
+  {
+    title: '크루즈닷 보여줘',
+    description: '"오키나와 보여줘"라고만 입력해도 오키나와를 다 보여줘요',
+    example: '예: "오키나와 보여줘"',
+    bonus: '보너스! 크루즈닷 만의 실제 여행 후 경험 컨텐츠도 보여드려요',
+  },
+  {
+    title: '일반',
+    description: '정확한 크루즈 정보를 알려드려요',
+    example: '예: "코스타세레나는 몇 톤이야?"',
+  },
+];
 
 interface TutorialChatPageProps {
   testModeInfo: TestModeInfo;
 }
 
 export default function TutorialChatPage({ testModeInfo }: TutorialChatPageProps) {
-  const router = useRouter();
   const [showWelcome, setShowWelcome] = useState(false);
-  const [showFeatureGuide, setShowFeatureGuide] = useState(false);
-  const [currentGuideStep, setCurrentGuideStep] = useState(0);
   const [currentFeatureIndex, setCurrentFeatureIndex] = useState(0);
-
-  // 3가지 대화 기능 메시지
-  const chatFeatures = [
-    {
-      title: '크루즈닷 가자',
-      description: '클릭만 해도 원하는 관광지, 맛집을 찾아드려요',
-      example: '클릭만 하면 바로 추천!',
-    },
-    {
-      title: '크루즈닷 보여줘',
-      description: '"오키나와 보여줘"라고만 입력해도 오키나와를 다 보여줘요',
-      example: '예: "오키나와 보여줘"',
-      bonus: '보너스! 크루즈닷 만의 실제 여행 후 경험 컨텐츠도 보여드려요',
-    },
-    {
-      title: '일반',
-      description: '정확한 크루즈 정보를 알려드려요',
-      example: '예: "코스타세레나는 몇 톤이야?"',
-    },
-  ];
 
   // 3초마다 기능 메시지 자동 변경
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentFeatureIndex((prev) => (prev + 1) % chatFeatures.length);
+      setCurrentFeatureIndex((prev) => (prev + 1) % CHAT_FEATURES.length);
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [chatFeatures.length]);
+  }, []);
 
   useEffect(() => {
     // 환영 팝업 표시 (페이지 진입 시마다 항상 표시)
@@ -80,12 +77,12 @@ export default function TutorialChatPage({ testModeInfo }: TutorialChatPageProps
         // 로그아웃 후 로그인 페이지로 이동
         window.location.href = '/login-test';
       } else {
-        console.error('로그아웃 실패');
-        alert('로그아웃에 실패했습니다. 다시 시도해주세요.');
+        logger.error('로그아웃 실패');
+        showError('로그아웃에 실패했습니다. 다시 시도해주세요.');
       }
     } catch (error) {
-      console.error('로그아웃 요청 중 오류 발생:', error);
-      alert('로그아웃 중 오류가 발생했습니다.');
+      logger.error('로그아웃 요청 중 오류 발생:', error);
+      showError('로그아웃 중 오류가 발생했습니다.');
     }
   };
 
@@ -102,17 +99,6 @@ export default function TutorialChatPage({ testModeInfo }: TutorialChatPageProps
         />
       )}
 
-      {/* 기능 안내 팝업 - 비활성화됨 */}
-      {/* {showFeatureGuide && (
-        <TutorialFeatureGuide
-          currentStep={currentGuideStep}
-          onNext={() => setCurrentGuideStep(prev => prev + 1)}
-          onPrev={() => setCurrentGuideStep(prev => prev - 1)}
-          onClose={() => setShowFeatureGuide(false)}
-          totalSteps={5}
-        />
-      )} */}
-
       {/* 튜토리얼 버전 메인 콘텐츠 */}
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* 헤더 */}
@@ -125,34 +111,7 @@ export default function TutorialChatPage({ testModeInfo }: TutorialChatPageProps
           </p>
         </div>
 
-        {/* 마케팅 카드들 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 mb-8 px-4">
-          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border-2 border-purple-200 transform hover:scale-105 transition-all">
-            <div className="text-5xl md:text-6xl mb-4">💬</div>
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 leading-tight">AI 채팅 상담</h3>
-            <p className="text-base md:text-lg text-gray-600 leading-relaxed">
-              크루즈 여행에 대한 모든 질문을 AI 크루즈닷에게 물어보세요! 실시간으로 답변해드립니다.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border-2 border-blue-200 transform hover:scale-105 transition-all">
-            <div className="text-5xl md:text-6xl mb-4">✅</div>
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 leading-tight">스마트 체크리스트</h3>
-            <p className="text-base md:text-lg text-gray-600 leading-relaxed">
-              여행 준비물을 놓치지 않도록 체크리스트로 관리하세요. 알림 기능까지 제공됩니다!
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border-2 border-green-200 transform hover:scale-105 transition-all">
-            <div className="text-5xl md:text-6xl mb-4">🗺️</div>
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 leading-tight">실시간 여행 지도</h3>
-            <p className="text-base md:text-lg text-gray-600 leading-relaxed">
-              크루즈 경로와 방문지 정보를 지도에서 한눈에 확인하세요. GPS 기반 안내도 제공됩니다!
-            </p>
-          </div>
-        </div>
-
-        {/* 실제 채팅 인터페이스 - TestChatInteractiveUI 사용 (테스트 고객 전용, 완전 분리) */}
+        {/* 실제 채팅 인터페이스 - TestChatInteractiveUI 사용 (테스트 고객 전용, 완전 분리) — 헤더 바로 아래 */}
         <div className="bg-white rounded-3xl shadow-2xl p-5 md:p-6 border-4 border-purple-300 mx-4">
           <div className="text-center mb-6">
             <div className="inline-block bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 rounded-full font-bold text-lg md:text-xl mb-4">
@@ -165,22 +124,22 @@ export default function TutorialChatPage({ testModeInfo }: TutorialChatPageProps
                 {currentFeatureIndex === 2 && '💬'}
               </div>
               <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 leading-tight">
-                &quot;{chatFeatures[currentFeatureIndex].title}&quot;
+                &quot;{CHAT_FEATURES[currentFeatureIndex].title}&quot;
               </h3>
               <p className="text-gray-700 mb-3 text-lg md:text-xl leading-relaxed">
-                {chatFeatures[currentFeatureIndex].description}
+                {CHAT_FEATURES[currentFeatureIndex].description}
               </p>
-              {chatFeatures[currentFeatureIndex].bonus && (
+              {CHAT_FEATURES[currentFeatureIndex].bonus && (
                 <p className="text-base md:text-lg text-purple-600 font-semibold mb-3 leading-relaxed">
-                  ✨ {chatFeatures[currentFeatureIndex].bonus}
+                  ✨ {CHAT_FEATURES[currentFeatureIndex].bonus}
                 </p>
               )}
               <p className="text-gray-600 italic text-base md:text-lg leading-relaxed">
-                💡 {chatFeatures[currentFeatureIndex].example}
+                💡 {CHAT_FEATURES[currentFeatureIndex].example}
               </p>
               {/* 진행 표시 점들 */}
               <div className="flex justify-center gap-2 mt-5">
-                {chatFeatures.map((_, index) => (
+                {CHAT_FEATURES.map((_, index) => (
                   <div
                     key={index}
                     className={`h-3 rounded-full transition-all duration-300 ${
@@ -207,6 +166,33 @@ export default function TutorialChatPage({ testModeInfo }: TutorialChatPageProps
                 <PWAInstallButtonMall />
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* 마케팅 카드들 - 채팅 아래로 이동 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 mt-8 mb-0 px-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border-2 border-purple-200 transform hover:scale-105 transition-all">
+            <div className="text-5xl md:text-6xl mb-4">💬</div>
+            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 leading-tight">AI 채팅 상담</h3>
+            <p className="text-base md:text-lg text-gray-600 leading-relaxed">
+              크루즈 여행에 대한 모든 질문을 AI 크루즈닷에게 물어보세요! 실시간으로 답변해드립니다.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border-2 border-blue-200 transform hover:scale-105 transition-all">
+            <div className="text-5xl md:text-6xl mb-4">✅</div>
+            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 leading-tight">스마트 체크리스트</h3>
+            <p className="text-base md:text-lg text-gray-600 leading-relaxed">
+              여행 준비물을 놓치지 않도록 체크리스트로 관리하세요. 알림 기능까지 제공됩니다!
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border-2 border-green-200 transform hover:scale-105 transition-all">
+            <div className="text-5xl md:text-6xl mb-4">🗺️</div>
+            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 leading-tight">실시간 여행 지도</h3>
+            <p className="text-base md:text-lg text-gray-600 leading-relaxed">
+              크루즈 경로와 방문지 정보를 지도에서 한눈에 확인하세요. GPS 기반 안내도 제공됩니다!
+            </p>
           </div>
         </div>
 

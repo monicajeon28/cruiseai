@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { sendNotificationToUser } from '@/lib/push/server';
 import { getSession } from '@/lib/session';
+import { logger } from '@/lib/logger';
 
 /**
  * 테스트: 사용자 자신에게 푸시 알림을 전송합니다.
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('[API] 테스트 알림 전송 오류:', error);
+    logger.error('[API] 테스트 알림 전송 오류:', error);
     return NextResponse.json(
       { error: '알림 전송 중 오류가 발생했습니다' },
       { status: 500 }

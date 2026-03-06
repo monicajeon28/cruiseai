@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
-import { nanoid } from 'nanoid';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,9 +73,9 @@ export async function GET(req: NextRequest) {
       sessionId: history.sessionId,
     });
   } catch (error: any) {
-    console.error('[API] 채팅 히스토리 조회 오류:', error);
+    logger.error('[API] 채팅 히스토리 조회 오류:', error?.code);
     return NextResponse.json(
-      { ok: false, error: error.message || '히스토리 조회 중 오류가 발생했습니다' },
+      { ok: false, error: '히스토리 조회 중 오류가 발생했습니다' },
       { status: 500 }
     );
   }
@@ -179,9 +179,9 @@ export async function POST(req: NextRequest) {
       });
     }
   } catch (error: any) {
-    console.error('[API] 채팅 히스토리 저장 오류:', error);
+    logger.error('[API] 채팅 히스토리 저장 오류:', error?.code);
     return NextResponse.json(
-      { ok: false, error: error.message || '히스토리 저장 중 오류가 발생했습니다' },
+      { ok: false, error: '히스토리 저장 중 오류가 발생했습니다' },
       { status: 500 }
     );
   }

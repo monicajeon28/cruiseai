@@ -10,6 +10,7 @@ import { trackFeature } from '@/lib/analytics';
 import TutorialCountdown from '@/app/chat/components/TutorialCountdown';
 import { checkTestModeClient, TestModeInfo, getCorrectPath } from '@/lib/test-mode-client';
 import { clearAllLocalStorage } from '@/lib/csrf-client';
+import { logger } from '@/lib/logger';
 
 // 체크리스트 아이템 타입 정의 (API 응답 형식에 맞춤)
 type ChecklistItem = {
@@ -62,11 +63,9 @@ export default function ChecklistPage() {
         clearAllLocalStorage();
         window.location.href = '/login-test';
       } else {
-        console.error('로그아웃 실패');
         alert('로그아웃에 실패했습니다. 다시 시도해주세요.');
       }
-    } catch (error) {
-      console.error('로그아웃 요청 중 오류 발생:', error);
+    } catch {
       alert('로그아웃 중 오류가 발생했습니다.');
     }
   };
@@ -86,7 +85,7 @@ export default function ChecklistPage() {
           setIsPaused(false);
         }
       } catch (error) {
-        console.error('Resume error:', error);
+        logger.error('Resume error:', error);
         // resume 실패 시 처음부터 다시 시작
         window.speechSynthesis.cancel();
         setSpeakingCategory(null);
@@ -120,7 +119,7 @@ export default function ChecklistPage() {
     };
 
     utterance.onerror = (event) => {
-      console.error('Speech synthesis error:', event);
+      logger.error('Speech synthesis error:', event);
       setSpeakingCategory(null);
       setIsPaused(false);
       // pause/resume 관련 오류는 사용자에게 알리지 않음
@@ -132,7 +131,7 @@ export default function ChecklistPage() {
     try {
       window.speechSynthesis.speak(utterance);
     } catch (error) {
-      console.error('Speak error:', error);
+      logger.error('Speak error:', error);
       setSpeakingCategory(null);
       setIsPaused(false);
       alert('음성 읽기를 시작할 수 없습니다.');
@@ -170,7 +169,7 @@ export default function ChecklistPage() {
         }
       }
     } catch (error) {
-      console.error('Pause/Resume error:', error);
+      logger.error('Pause/Resume error:', error);
       // 오류 발생 시 상태 리셋
       setSpeakingCategory(null);
       setIsPaused(false);
@@ -248,11 +247,11 @@ export default function ChecklistPage() {
           await new Promise(resolve => setTimeout(resolve, 200));
         } else if (res.status === 429) {
           // Rate limit이면 더 긴 대기
-          console.warn('[Checklist] Rate limit, waiting longer...');
+          logger.warn('[Checklist] Rate limit, waiting longer...');
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
       } catch (error) {
-        console.error('[Checklist] Error creating default item on server:', error);
+        logger.error('[Checklist] Error creating default item on server:', error);
         // 에러 발생 시에도 계속 진행 (다음 항목 시도)
         await new Promise(resolve => setTimeout(resolve, 200));
       }
@@ -290,7 +289,7 @@ export default function ChecklistPage() {
       });
       
       if (!res.ok) {
-        console.warn('[Checklist] Failed to fetch server items for migration');
+        logger.warn('[Checklist] Failed to fetch server items for migration');
         return;
       }
       
@@ -302,7 +301,7 @@ export default function ChecklistPage() {
       const itemsToMigrate = localItems.filter(item => !serverTexts.has(item.text));
       
       if (itemsToMigrate.length > 0) {
-        console.log(`[Checklist] Migrating ${itemsToMigrate.length} items from localStorage to server...`);
+        logger.log(`[Checklist] Migrating ${itemsToMigrate.length} items from localStorage to server...`);
         
         // 각 항목을 서버에 저장
         for (const item of itemsToMigrate) {
@@ -337,7 +336,7 @@ export default function ChecklistPage() {
               await new Promise(resolve => setTimeout(resolve, 200));
             }
           } catch (migrateError) {
-            console.error('[Checklist] Error migrating item to server:', migrateError);
+            logger.error('[Checklist] Error migrating item to server:', migrateError);
           }
         }
       }
@@ -346,12 +345,12 @@ export default function ChecklistPage() {
       localStorage.setItem(MIGRATION_KEY, 'true');
       localStorage.removeItem(STORAGE_KEY); // 기존 데이터 삭제
       
-      console.log(`✅ ${itemsToMigrate.length}개 체크리스트 항목 마이그레이션 완료`);
+      logger.log(`✅ ${itemsToMigrate.length}개 체크리스트 항목 마이그레이션 완료`);
       
       // 서버에서 다시 로드
       await loadItems();
     } catch (error) {
-      console.error('[Checklist] Migration error:', error);
+      logger.error('[Checklist] Migration error:', error);
     }
   };
 
@@ -397,7 +396,7 @@ export default function ChecklistPage() {
           setItems(defaultItems);
           // 백그라운드에서 서버에 저장 (한 번만 실행되도록 플래그 사용)
           createDefaultItemsOnServer(defaultItems).catch((error) => {
-            console.error('[Checklist] Error creating default items:', error);
+            logger.error('[Checklist] Error creating default items:', error);
             // 서버 저장 실패해도 UI에는 표시됨
           });
         } else {
@@ -408,7 +407,7 @@ export default function ChecklistPage() {
       }
     } catch (err: any) {
       // 에러는 항상 로깅
-      console.error('[Checklist] Error loading from API:', err);
+      logger.error('[Checklist] Error loading from API:', err);
 
       const errorMessage = err?.message || '';
 
@@ -423,7 +422,7 @@ export default function ChecklistPage() {
         const defaultItems = getDefaultItems();
         setItems(defaultItems);
         // 백그라운드에서 서버에 저장 시도 (실패해도 UI에는 표시됨)
-        createDefaultItemsOnServer(defaultItems).catch(console.error);
+        createDefaultItemsOnServer(defaultItems).catch((e) => logger.error(e));
       }
     } finally {
       setIsLoading(false);
@@ -441,7 +440,7 @@ export default function ChecklistPage() {
       })
       .catch((error) => {
         // 마이그레이션 실패해도 로드 시도
-        console.error('[Checklist] Migration error, loading items anyway:', error);
+        logger.error('[Checklist] Migration error, loading items anyway:', error);
         loadItems();
       });
     
@@ -492,7 +491,7 @@ export default function ChecklistPage() {
       setItems(prev => [...prev, finalItem]);
     } catch (err: any) {
       // 에러는 항상 로깅
-      console.error('[Checklist] Error adding item:', err);
+      logger.error('[Checklist] Error adding item:', err);
       setError(`항목 추가 중 오류가 발생했습니다: ${err.message || '알 수 없는 오류'}`);
     } finally {
       setIsLoading(false);
@@ -554,7 +553,7 @@ export default function ChecklistPage() {
       ));
     } catch (err: any) {
       // 에러는 항상 로깅
-      console.error('[Checklist] Error toggling item:', err);
+      logger.error('[Checklist] Error toggling item:', err);
       const errorMessage = err.message || '알 수 없는 오류';
       setError(`상태 변경 중 오류가 발생했습니다: ${errorMessage}`);
       
@@ -562,7 +561,7 @@ export default function ChecklistPage() {
       if (!errorMessage.includes('인증') && !errorMessage.includes('너무 많')) {
         // 짧은 딜레이 후 재시도 (무한 루프 방지)
         setTimeout(() => {
-          loadItems(true).catch(console.error);
+          loadItems(true).catch((e) => logger.error(e));
         }, 1000);
       }
     } finally {
@@ -623,7 +622,7 @@ export default function ChecklistPage() {
       ));
     } catch (err: any) {
       // 에러는 항상 로깅
-      console.error('[Checklist] Error updating item:', err);
+      logger.error('[Checklist] Error updating item:', err);
       const errorMessage = err.message || '알 수 없는 오류';
       setError(`수정 중 오류가 발생했습니다: ${errorMessage}`);
       
@@ -631,7 +630,7 @@ export default function ChecklistPage() {
       if (!errorMessage.includes('인증') && !errorMessage.includes('너무 많')) {
         // 짧은 딜레이 후 재시도 (무한 루프 방지)
         setTimeout(() => {
-          loadItems(true).catch(console.error);
+          loadItems(true).catch((e) => logger.error(e));
         }, 1000);
       }
     } finally {
@@ -675,10 +674,10 @@ export default function ChecklistPage() {
           });
           
           if (!res.ok) {
-            console.warn(`[Checklist] Failed to delete item ${item.id}`);
+            logger.warn(`[Checklist] Failed to delete item ${item.id}`);
           }
         } catch (e) {
-          console.error(`[Checklist] Error deleting item ${item.id}:`, e);
+          logger.error(`[Checklist] Error deleting item ${item.id}:`, e);
         }
       }
 
@@ -690,11 +689,11 @@ export default function ChecklistPage() {
       hasCreatedDefaultsRef.current = false;
 
       // 백그라운드에서 API로 전송
-      createDefaultItemsOnServer(defaultItems).catch(console.error);
+      createDefaultItemsOnServer(defaultItems).catch((e) => logger.error(e));
 
     } catch (err: any) {
       setError('리셋 중 오류가 발생했습니다.');
-      console.error('Reset error:', err);
+      logger.error('Reset error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -735,7 +734,7 @@ export default function ChecklistPage() {
       }
     } catch (err: any) {
       // 에러는 항상 로깅
-      console.error('[Checklist] Error deleting item:', err);
+      logger.error('[Checklist] Error deleting item:', err);
       const errorMessage = err.message || '알 수 없는 오류';
       setError(`삭제 중 오류가 발생했습니다: ${errorMessage}`);
       

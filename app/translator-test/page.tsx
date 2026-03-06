@@ -4,11 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { FiArrowLeft, FiMic, FiMicOff } from 'react-icons/fi';
 import { csrfFetch } from '@/lib/csrf-client';
-import { PHRASE_CATEGORIES_DATA } from './PHRASE_CATEGORIES_DATA';
+import { loadPhrasesForLang } from '@/app/translator/phrases';
+import type { PhraseCategory } from '@/app/translator/phrases';
 import { trackFeature } from '@/lib/analytics';
 import TutorialCountdown from '@/app/chat/components/TutorialCountdown';
 import { checkTestModeClient, TestModeInfo, getCorrectPath } from '@/lib/test-mode-client';
 import { clearAllLocalStorage } from '@/lib/csrf-client';
+import { showError, showWarning } from '@/components/ui/Toast';
+import { logger } from '@/lib/logger';
 
 // 국가별 → 현지어 매핑
 const DESTINATION_LANGUAGE_MAP: Record<string, { code: string; name: string; flag: string }> = {
@@ -91,12 +94,12 @@ export default function TranslatorPage() {
         clearAllLocalStorage();
         window.location.href = '/login-test';
       } else {
-        console.error('로그아웃 실패');
-        alert('로그아웃에 실패했습니다. 다시 시도해주세요.');
+        logger.error('로그아웃 실패');
+        showError('로그아웃에 실패했습니다. 다시 시도해주세요.');
       }
     } catch (error) {
-      console.error('로그아웃 요청 중 오류 발생:', error);
-      alert('로그아웃 중 오류가 발생했습니다.');
+      logger.error('로그아웃 요청 중 오류 발생:', error);
+      showError('로그아웃 중 오류가 발생했습니다.');
     }
   };
 
@@ -118,6 +121,17 @@ export default function TranslatorPage() {
 
   // 기본 현지어는 영어(US)로 시작(API 로드 후 교체)
   const [localLang, setLocalLang] = useState({ code: 'en-US', name: '영어', flag: '🇺🇸' });
+  const [currentPhrases, setCurrentPhrases] = useState<PhraseCategory[]>([]);
+
+  // 현재 언어의 회화 데이터 동적 로딩 (cleanup: race condition 방지)
+  useEffect(() => {
+    let cancelled = false;
+    loadPhrasesForLang(localLang.code)
+      .then((phrases) => { if (!cancelled) setCurrentPhrases(phrases); })
+      .catch(() => { if (!cancelled) setCurrentPhrases([]); });
+    return () => { cancelled = true; };
+  }, [localLang.code]);
+
   const [destination, setDestination] = useState<string>('확인 중...');
   const [portInfo, setPortInfo] = useState<string>('');
   const [isCruising, setIsCruising] = useState(false);
@@ -165,6 +179,7 @@ export default function TranslatorPage() {
   const recRef = useRef<SpeechRecognition | null>(null);
   const isProcessingRef = useRef(false); // race condition 방지
   const interimTextRef = useRef(''); // stale closure 방지용 ref
+  const speakTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // speak setTimeout cleanup
   const [listening, setListening] = useState<'none' | 'pressing' | 'recording'>('none');
   const [preview, setPreview] = useState('');
   const [finalText, setFinalText] = useState(''); // 최종 확정된 텍스트
@@ -222,7 +237,7 @@ export default function TranslatorPage() {
           setDestination('일정 정보 없음');
         }
       } catch (error) {
-        console.error('Error loading current itinerary:', error);
+        logger.error('Error loading current itinerary:', error);
         setDestination('로드 실패');
       }
     })();
@@ -236,7 +251,7 @@ export default function TranslatorPage() {
       window.webkitSpeechRecognition || (window as any).SpeechRecognition;
 
     if (!SR) {
-      console.warn('이 브라우저는 음성 인식을 지원하지 않습니다.');
+      logger.warn('이 브라우저는 음성 인식을 지원하지 않습니다.');
       recRef.current = null; // 명시적으로 null 설정
       return;
     }
@@ -248,7 +263,7 @@ export default function TranslatorPage() {
     recog.lang = 'ko-KR'; // 기본 언어 (나중에 변경됨)
 
     recog.onerror = (e: any) => {
-      console.warn('[SpeechRecognition error]', e?.error);
+      logger.warn('[SpeechRecognition error]', e?.error);
       // 권한 문제 등 친절 메시지 (TODO: 사용자에게 알림)
     };
     recog.onend = () => {
@@ -267,6 +282,7 @@ export default function TranslatorPage() {
       recRef.current = null;
       micStreamRef.current?.getTracks().forEach(track => track.stop());
       micStreamRef.current = null;
+      if (speakTimeoutRef.current) clearTimeout(speakTimeoutRef.current);
     };
   }, []);
 
@@ -284,7 +300,7 @@ export default function TranslatorPage() {
         return pronunciationCache[cacheKey];
       }
 
-      console.log('[Pronunciation] Calling API:', { text: foreignText, langCode, cacheKey, retryCount });
+      logger.log('[Pronunciation] Calling API:', { text: foreignText, langCode, cacheKey, retryCount });
       const res = await csrfFetch('/api/translation/pronunciation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -293,11 +309,11 @@ export default function TranslatorPage() {
 
       if (!res.ok) {
         const errorText = await res.text().catch(() => '');
-        console.error('[Pronunciation] API error:', res.status, res.statusText, errorText);
+        logger.error('[Pronunciation] API error:', res.status, res.statusText, errorText);
 
         // 재시도 (최대 2번)
         if (retryCount < 2) {
-          console.log(`[Pronunciation] Retrying... (${retryCount + 1}/2)`);
+          logger.log(`[Pronunciation] Retrying... (${retryCount + 1}/2)`);
           await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1))); // 지수 백오프
           return getPronunciation(foreignText, langCode, useCache, retryCount + 1);
         }
@@ -306,14 +322,14 @@ export default function TranslatorPage() {
       }
 
       const data = await res.json();
-      console.log('[Pronunciation] API response:', JSON.stringify(data, null, 2));
+      logger.log('[Pronunciation] API response:', JSON.stringify(data, null, 2));
 
       if (!data.ok) {
-        console.error('[Pronunciation] API returned error:', data.error);
+        logger.error('[Pronunciation] API returned error:', data.error);
 
         // 재시도 (최대 2번)
         if (retryCount < 2) {
-          console.log(`[Pronunciation] Retrying after error... (${retryCount + 1}/2)`);
+          logger.log(`[Pronunciation] Retrying after error... (${retryCount + 1}/2)`);
           await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1)));
           return getPronunciation(foreignText, langCode, useCache, retryCount + 1);
         }
@@ -324,11 +340,11 @@ export default function TranslatorPage() {
       let pronunciation = data?.pronunciation || '';
 
       if (!pronunciation) {
-        console.error('[Pronunciation] Empty pronunciation in API response:', data);
+        logger.error('[Pronunciation] Empty pronunciation in API response:', data);
 
         // 재시도 (최대 2번)
         if (retryCount < 2) {
-          console.log(`[Pronunciation] Retrying after empty response... (${retryCount + 1}/2)`);
+          logger.log(`[Pronunciation] Retrying after empty response... (${retryCount + 1}/2)`);
           await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1)));
           return getPronunciation(foreignText, langCode, useCache, retryCount + 1);
         }
@@ -341,24 +357,24 @@ export default function TranslatorPage() {
         pronunciation = `(${pronunciation.trim()})`;
       }
 
-      console.log('[Pronunciation] Final pronunciation:', pronunciation);
+      logger.log('[Pronunciation] Final pronunciation:', pronunciation);
 
       // 캐시에 저장
       if (useCache && pronunciation) {
         setPronunciationCache(prev => {
           const newCache = { ...prev, [cacheKey]: pronunciation };
-          console.log('[Pronunciation] Updated cache:', newCache);
+          logger.log('[Pronunciation] Updated cache:', newCache);
           return newCache;
         });
       }
 
       return pronunciation;
     } catch (error: any) {
-      console.warn('[Pronunciation] Error:', error);
+      logger.warn('[Pronunciation] Error:', error);
 
       // 재시도 (최대 2번)
       if (retryCount < 2) {
-        console.log(`[Pronunciation] Retrying after exception... (${retryCount + 1}/2)`);
+        logger.log(`[Pronunciation] Retrying after exception... (${retryCount + 1}/2)`);
         await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1)));
         return getPronunciation(foreignText, langCode, useCache, retryCount + 1);
       }
@@ -376,7 +392,7 @@ export default function TranslatorPage() {
       const fromEnglish = getEnglishLanguageName(fromLabel);
       const toEnglish = getEnglishLanguageName(toLabel);
 
-      console.log(`[Translation] Translating from ${fromLabel}(${fromEnglish}) to ${toLabel}(${toEnglish}):`, text);
+      logger.log(`[Translation] Translating from ${fromLabel}(${fromEnglish}) to ${toLabel}(${toEnglish}):`, text);
 
       // 텍스트가 비어있거나 너무 짧으면 그대로 반환
       if (!text || text.trim().length === 0) {
@@ -395,7 +411,7 @@ export default function TranslatorPage() {
       });
 
       if (!res.ok) {
-        console.error('[Translation] API error:', res.status, res.statusText);
+        logger.error('[Translation] API error:', res.status, res.statusText);
         if (res.status === 429) {
           return { translated: '⏳ 번역 서버가 바쁩니다. 잠시 후 다시 시도해주세요.', pronunciation: '', isError: true };
         }
@@ -417,20 +433,20 @@ export default function TranslatorPage() {
 
       // ⚠️ 중요: 번역 실패 감지
       if (!data.ok) {
-        console.error('[Translation] API returned error:', data.error);
+        logger.error('[Translation] API returned error:', data.error);
         // 에러 시 원문 반환 (alert 제거 - 사용자 경험 개선)
         return { translated: text, pronunciation: '' };
       }
 
       // 에러 메시지 감지
       if (translated && (translated.includes('번역 중 오류가 발생했습니다') || translated.includes('번역에 실패했습니다'))) {
-        console.error('[Translation] Error message in response');
+        logger.error('[Translation] Error message in response');
         return { translated: text, pronunciation: '' }; // 원문 반환
       }
 
       // 번역 결과가 없거나 빈 문자열인 경우
       if (!translated || translated.trim() === '') {
-        console.error('[Translation] Empty translation received');
+        logger.error('[Translation] Empty translation received');
         return { translated: text, pronunciation: '' }; // 원문 반환
       }
 
@@ -439,13 +455,13 @@ export default function TranslatorPage() {
       const trimmedOriginal = text.trim();
 
       if (trimmedTranslated === trimmedOriginal && trimmedOriginal.length > 3) {
-        console.warn('[Translation] Translation same as original - returning original');
+        logger.warn('[Translation] Translation same as original - returning original');
         return { translated: text, pronunciation: '' }; // 원문 반환 (alert 제거)
       }
 
       return { translated: trimmedTranslated, pronunciation: '' };
     } catch (error: any) {
-      console.error('[Translation] Error:', error);
+      logger.error('[Translation] Error:', error);
       return { translated: text, pronunciation: '' }; // 에러 시 원문 반환
     }
   }
@@ -467,7 +483,7 @@ export default function TranslatorPage() {
         v.lang.toLowerCase().startsWith(langPrefix)
       );
       if (!hasVoice) {
-        alert(`❌ 이 기기에서 ${langCode} 언어의 음성을 지원하지 않습니다.\n\n기기 설정에서 해당 언어 음성 팩을 설치해주세요.`);
+        showWarning('기기 설정에서 해당 언어 음성 팩을 설치해주세요.', `이 기기에서 ${langCode} 언어의 음성을 지원하지 않습니다.`);
         return;
       }
     }
@@ -477,7 +493,7 @@ export default function TranslatorPage() {
     u.rate = 0.9;
     u.onerror = (e) => {
       if (e.error !== 'interrupted') {
-        console.log(`[TTS] Speech error: ${e.error} for lang ${langCode}`);
+        logger.log(`[TTS] Speech error: ${e.error} for lang ${langCode}`);
       }
     };
     synth.speak(u);
@@ -486,14 +502,14 @@ export default function TranslatorPage() {
   // 공통 음성 인식 시작(길게 누르는 동안)
   async function startPressToTalk(from: { code: string; name: string; flag: string }, to: { code: string; name: string; flag: string }) {
     if (!recRef.current) {
-      alert('❌ 이 브라우저는 음성 인식을 지원하지 않습니다.\n\n음성 인식을 지원하는 브라우저(Chrome, Edge, Safari 등)를 사용해주세요.');
+      showError('Chrome, Edge, Safari 브라우저를 사용해주세요.', '이 브라우저는 음성 인식을 지원하지 않습니다.');
       return;
     }
 
     try {
       recRef.current.abort?.(); // 혹시 켜져있으면 끊고 시작
     } catch (e) {
-      console.error("Error aborting speech recognition:", e);
+      logger.error("Error aborting speech recognition:", e);
     }
 
     setListening('pressing');
@@ -513,7 +529,7 @@ export default function TranslatorPage() {
           if (!stream || stream.getTracks().every(t => t.readyState === 'ended')) {
             stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch((err) => {
               // Permissions Policy 경고는 무시 (실제 권한은 있을 수 있음)
-              console.log('[getUserMedia] Caught error (may be Permissions Policy warning):', err);
+              logger.log('[getUserMedia] Caught error (may be Permissions Policy warning):', err);
               throw err;
             });
             micStreamRef.current = stream;
@@ -537,7 +553,7 @@ export default function TranslatorPage() {
       // 2단계: Speech Recognition 시작
       const r = recRef.current!;
       if (!r) {
-        alert('❌ 음성 인식 초기화에 실패했습니다.');
+        showError('음성 인식 초기화에 실패했습니다. 다시 시도해주세요.');
         setListening('none');
         setPreview('');
         return;
@@ -584,7 +600,7 @@ export default function TranslatorPage() {
 
         // ⚡ 권한이 허용된 경우 → 모든 에러 조용히 처리 (메시지 없음)
         if (micPermissionRef.current) {
-          console.log('[Speech Recognition] Permission granted, error silently handled:', errorType);
+          logger.log('[Speech Recognition] Permission granted, error silently handled:', errorType);
           setListening('none');
           setPreview('');
           return; // 조용히 종료 (사용자에게 알림 안 함)
@@ -595,15 +611,15 @@ export default function TranslatorPage() {
         setPreview('');
 
         if (errorType === 'not-allowed' || errorType === 'permission-denied') {
-          alert('❌ 마이크 권한이 필요합니다.\n\n💡 해결 방법:\n1. 브라우저 주소창 왼쪽 🔒 아이콘 클릭\n2. "마이크" → "허용" 선택\n3. 페이지 새로고침 (F5)\n4. 버튼을 다시 눌러주세요');
+          showWarning('주소창 🔒 아이콘 > 마이크 허용 후 새로고침(F5)해주세요.', '마이크 권한이 필요합니다.');
         } else if (errorType === 'no-speech') {
           // 말이 없으면 조용히 처리 (알림 없음)
-          console.log('음성이 감지되지 않았습니다.');
+          logger.log('음성이 감지되지 않았습니다.');
         } else if (errorType === 'network') {
-          alert('⚠️ 네트워크 오류가 발생했습니다.\n인터넷 연결을 확인해주세요.');
+          showError('인터넷 연결을 확인해주세요.', '네트워크 오류가 발생했습니다.');
         } else {
           // 다른 에러는 조용히 로그만
-          console.error('[Speech Recognition Error]', errorType);
+          logger.error('[Speech Recognition Error]', errorType);
         }
       };
 
@@ -613,22 +629,22 @@ export default function TranslatorPage() {
       } catch (startError: any) {
         // ⚡ 권한이 허용된 경우 → 에러 무시 (메시지 없음)
         if (micPermissionRef.current) {
-          console.log('[Speech Recognition Start] Permission granted, error silently handled:', startError);
+          logger.log('[Speech Recognition Start] Permission granted, error silently handled:', startError);
           setListening('none');
           setPreview('');
           return; // 조용히 종료
         }
 
         // 권한이 거부된 경우만 에러 처리
-        console.error('[Speech Recognition Start Error]', startError);
+        logger.error('[Speech Recognition Start Error]', startError);
         setListening('none');
         setPreview('');
 
         if (startError?.name === 'NotAllowedError' || startError?.message?.includes('permission')) {
-          alert('❌ 마이크 권한이 필요합니다.\n\n💡 해결 방법:\n1. 브라우저 주소창 왼쪽 🔒 아이콘 클릭\n2. "마이크" → "허용" 선택\n3. 페이지 새로고침 (F5)\n4. 버튼을 다시 눌러주세요');
+          showWarning('주소창 🔒 아이콘 > 마이크 허용 후 새로고침(F5)해주세요.', '마이크 권한이 필요합니다.');
         } else {
           // 다른 오류는 조용히 처리
-          console.error('[Speech Recognition Start]', startError);
+          logger.error('[Speech Recognition Start]', startError);
         }
         return;
       }
@@ -644,22 +660,22 @@ export default function TranslatorPage() {
     } catch (error: any) {
       // ⚡ 권한이 허용된 경우 → 에러 무시 (메시지 없음)
       if (micPermissionRef.current) {
-        console.log('[Speech Recognition] Permission granted, catch block error silently handled:', error);
+        logger.log('[Speech Recognition] Permission granted, catch block error silently handled:', error);
         setListening('none');
         setPreview('');
         return; // 조용히 종료
       }
 
       // 권한이 거부된 경우만 에러 처리
-      console.error('[Start Speech Recognition Error]', error);
+      logger.error('[Start Speech Recognition Error]', error);
       setListening('none');
       setPreview('');
 
       if (error?.name === 'NotAllowedError' || error?.message?.includes('permission')) {
-        alert('❌ 마이크 권한이 필요합니다.\n\n💡 해결 방법:\n1. 브라우저 주소창 왼쪽 🔒 아이콘 클릭\n2. "마이크" → "허용" 선택\n3. 페이지 새로고침 (F5)\n4. 버튼을 다시 눌러주세요');
+        showWarning('주소창 🔒 아이콘 > 마이크 허용 후 새로고침(F5)해주세요.', '마이크 권한이 필요합니다.');
       } else {
         // 예상치 못한 에러는 조용히 로그만
-        console.error('[Speech Recognition] Unexpected error:', error);
+        logger.error('[Speech Recognition] Unexpected error:', error);
       }
     }
   }
@@ -714,12 +730,13 @@ export default function TranslatorPage() {
       // 에러 메시지는 TTS로 읽지 않음
       if (!isError) {
         // iOS/Android에서 gesture context 유지를 위해 setTimeout 사용
-        setTimeout(() => {
+        if (speakTimeoutRef.current) clearTimeout(speakTimeoutRef.current);
+        speakTimeoutRef.current = setTimeout(() => {
           speak(translated, pair.to.code);
         }, 10);
       }
     } catch (error) {
-      console.error('[stopPressToTalk] Unexpected error:', error);
+      logger.error('[stopPressToTalk] Unexpected error:', error);
     } finally {
       isProcessingRef.current = false; // 예외 여부와 무관하게 항상 해제
       if (micStreamRef.current) {
@@ -837,22 +854,13 @@ export default function TranslatorPage() {
     if (!pronunciation || langCode === 'ko-KR') return null;
 
     return (
-      <div className="text-xs text-gray-500 italic mt-1">
+      <div className="text-sm text-gray-600 italic mt-1 break-words">
         💬 {pronunciation}
       </div>
     );
   }
 
-  // 카테고리별 빠른 문장 데이터 (50대 이상 사용자 친화적)
-  type PhraseCategory = {
-    id: string;
-    name: string;
-    emoji: string;
-    phrases: Array<{ ko: string; target: string; pronunciation?: string; emoji: string }>;
-  };
-
-  // 사용자가 제공한 샘플 데이터 사용 (발음 포함)
-  const PHRASE_CATEGORIES: Record<string, PhraseCategory[]> = PHRASE_CATEGORIES_DATA as Record<string, PhraseCategory[]>;
+  // 현재 언어의 카테고리 배열 (동적 로딩으로 교체됨)
   // 빠른 문장 데이터 (자주 쓰는 문장) - 하위 호환을 위해 유지 (현재 미사용)
   const _QUICK_PHRASES: Record<string, Array<{ ko: string; target: string; emoji: string }>> = {
     'ja-JP': [ // 일본어
@@ -1211,7 +1219,7 @@ export default function TranslatorPage() {
             {/* 카테고리 버튼 (선택된 카테고리가 없을 때) */}
             {isPhraseHelperExpanded && !selectedCategory && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {(PHRASE_CATEGORIES[localLang.code] || PHRASE_CATEGORIES['en-US'] || []).map((category) => (
+                {currentPhrases.map((category) => (
                   <button
                     key={category.id}
                     onClick={() => setSelectedCategory(category.id)}
@@ -1240,7 +1248,7 @@ export default function TranslatorPage() {
                   ← 카테고리 목록으로
                 </button>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {((PHRASE_CATEGORIES[localLang.code] || PHRASE_CATEGORIES['en-US'] || []).find(c => c.id === selectedCategory)?.phrases || []).map((phrase, idx) => (
+                  {(currentPhrases.find(c => c.id === selectedCategory)?.phrases || []).map((phrase, idx) => (
                     <button
                       key={idx}
                       onClick={() => {

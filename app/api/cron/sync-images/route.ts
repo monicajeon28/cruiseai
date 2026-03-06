@@ -34,6 +34,6 @@ export async function GET(req: NextRequest) {
     });
   } catch (error: any) {
     logger.error('[SyncImages] 오류:', error);
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: '이미지 동기화 중 오류가 발생했습니다.' }, { status: 500 });
   }
 }

@@ -3,13 +3,14 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 // GET: 고객의 미확인 메시지 조회
 export async function GET(req: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) {
-      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ ok: false, error: '인증이 필요합니다' }, { status: 401 });
     }
 
     // 현재 사용자에게 발송된 메시지 조회
@@ -58,9 +59,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ ok: true, messages: formattedMessages });
   } catch (error) {
-    console.error('[User Messages GET] Error:', error);
+    logger.error('[User Messages GET] Error');
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : 'Failed to fetch messages' },
+      { ok: false, error: '메시지 조회 중 오류가 발생했습니다' },
       { status: 500 }
     );
   }

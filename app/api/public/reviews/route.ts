@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 // 한글 닉네임 목록
 const KOREAN_NICKNAMES = [
@@ -285,7 +286,7 @@ export async function GET(req: Request) {
       reviews: formattedReviews
     });
   } catch (error: any) {
-    console.error('[PUBLIC REVIEWS] Error:', error);
+    logger.error('[PUBLIC REVIEWS] Error:', error);
     // 에러 발생 시 샘플 데이터 반환 (fallback)
     return NextResponse.json({
       ok: false,

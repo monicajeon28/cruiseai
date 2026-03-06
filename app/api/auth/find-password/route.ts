@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function POST(req: Request) {
   try {
@@ -102,7 +103,7 @@ export async function POST(req: Request) {
 
       // NOTE: 이메일 전송 기능 구현 필요 (See GitHub Issue #TBD)
       // 임시: 로그에만 기록하고 성공 응답 반환
-      console.log('[FIND PASSWORD] 비밀번호 전송 시뮬레이션:', {
+      logger.log('[FIND PASSWORD] 비밀번호 전송 시뮬레이션:', {
         email: user.email || email,
         password: password ? '(exists)' : '(not found)',
         timestamp: new Date().toISOString()
@@ -146,14 +147,12 @@ export async function POST(req: Request) {
       { status: 404 }
     );
   } catch (error: any) {
-    console.error('[FIND PASSWORD] Error:', error);
+    logger.error('[FIND PASSWORD] Error:', error);
     
     return NextResponse.json(
       { 
         ok: false, 
-        error: process.env.NODE_ENV === 'development' 
-          ? `비밀번호 찾기 중 오류가 발생했습니다: ${error.message || 'Unknown error'}`
-          : '비밀번호 찾기 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+        error: '비밀번호 찾기 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
       },
       { status: 500 }
     );

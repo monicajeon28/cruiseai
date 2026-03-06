@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 const SESSION_COOKIE = 'cg.sid.v2';
 
@@ -95,7 +96,7 @@ export async function PATCH(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('PATCH /api/trips/companion error:', error);
+    logger.error('PATCH /api/trips/companion error:', error);
     return NextResponse.json(
       { ok: false, message: 'Internal server error' },
       { status: 500 }

@@ -2,6 +2,7 @@ import type { ChatMessage } from '@/lib/chat-types';
 import { searchPhotos, getSubfolders } from '@/lib/photos-search';
 import { searchImagesFromDB, getSubfoldersFromDB } from '@/lib/image-cache-search';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function handleShowPhotos(text: string): Promise<ChatMessage[]> {
   // DB 캐시에서 이미지 검색 (더 빠름)
@@ -13,7 +14,7 @@ export async function handleShowPhotos(text: string): Promise<ChatMessage[]> {
 
   // 크루즈 사진이 없어도 구글 이미지 검색 결과를 표시
   if (!result.items || result.items.length === 0) {
-    console.log('[handleShowPhotos] No cruise photos found, showing Google Images');
+    logger.log('[handleShowPhotos] No cruise photos found, showing Google Images');
 
     return [{
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
@@ -34,7 +35,7 @@ export async function handleShowPhotos(text: string): Promise<ChatMessage[]> {
   const subfolders = useDbCache
     ? await getSubfoldersFromDB(text)
     : await getSubfolders(text);
-  console.log('[handleShowPhotos] Subfolders found:', {
+  logger.log('[handleShowPhotos] Subfolders found:', {
     query: text,
     subfoldersCount: subfolders.length,
     subfolders: subfolders.slice(0, 5)

@@ -8,6 +8,7 @@ import ddayMessages from '@/data/dday_messages.json';
 import TTSToggle from '@/app/profile-test/components/TTSToggle';
 import PushToggle from '@/app/profile-test/components/PushToggle';
 import TripInfoSection from '@/app/profile/components/TripInfoSection';
+import LogoutButton from '@/app/profile/components/LogoutButton';
 import { FiArrowLeft, FiUser } from 'react-icons/fi';
 import { checkTestMode, getCorrectPath } from '@/lib/test-mode';
 import { redirect } from 'next/navigation';
@@ -592,6 +593,13 @@ export default async function ProfilePage() {
                 </Link>
               </section>
             )}
+
+            {/* 로그아웃 */}
+            <div className="mt-6">
+              <section className="bg-white rounded-2xl shadow-xl p-6 border-2 border-gray-200">
+                <LogoutButton />
+              </section>
+            </div>
           </>
         )}
       </div>

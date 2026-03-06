@@ -3,38 +3,40 @@
 
 'use client';
 
+import { logger } from '@/lib/logger';
+
 /**
  * Service Worker 등록
  */
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) {
-    console.warn('[Push Client] Service Worker not supported');
+    logger.warn('[Push Client] Service Worker not supported');
     return null;
   }
 
   // 관리자 페이지에서는 Service Worker를 등록하지 않음
   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
-    console.log('[Push Client] Skipping Service Worker registration on admin pages');
+    logger.log('[Push Client] Skipping Service Worker registration on admin pages');
     return null;
   }
 
   try {
-    console.log('[Push Client] Service Worker 등록 시도: /sw.js');
+    logger.log('[Push Client] Service Worker 등록 시도: /sw.js');
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
     });
 
-    console.log('[Push Client] Service Worker registered:', registration.scope);
-    
+    logger.log('[Push Client] Service Worker registered:', registration.scope);
+
     // Service Worker가 활성화될 때까지 대기
     await navigator.serviceWorker.ready;
-    console.log('[Push Client] Service Worker ready');
-    
+    logger.log('[Push Client] Service Worker ready');
+
     return registration;
   } catch (error) {
-    console.error('[Push Client] Service Worker registration failed:', error);
+    logger.error('[Push Client] Service Worker registration failed:', error);
     if (error instanceof Error) {
-      console.error('[Push Client] Error details:', {
+      logger.error('[Push Client] Error details:', {
         message: error.message,
         name: error.name,
         stack: error.stack
@@ -49,7 +51,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
  */
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
   if (!('Notification' in window)) {
-    console.warn('[Push Client] Notifications not supported');
+    logger.warn('[Push Client] Notifications not supported');
     return 'denied';
   }
 
@@ -63,10 +65,10 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 
   try {
     const permission = await Notification.requestPermission();
-    console.log('[Push Client] Permission result:', permission);
+    logger.log('[Push Client] Permission result:', permission);
     return permission;
   } catch (error) {
-    console.error('[Push Client] Permission request failed:', error);
+    logger.error('[Push Client] Permission request failed:', error);
     return 'denied';
   }
 }
@@ -81,7 +83,7 @@ export async function subscribeToPush(
     const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
     if (!vapidPublicKey) {
-      console.error('[Push Client] VAPID public key not configured');
+      logger.error('[Push Client] VAPID public key not configured');
       return null;
     }
 
@@ -93,10 +95,10 @@ export async function subscribeToPush(
       applicationServerKey: convertedVapidKey,
     });
 
-    console.log('[Push Client] Subscribed to push:', subscription.endpoint);
+    logger.log('[Push Client] Subscribed to push:', subscription.endpoint);
     return subscription;
   } catch (error) {
-    console.error('[Push Client] Failed to subscribe:', error);
+    logger.error('[Push Client] Failed to subscribe:', error);
     return null;
   }
 }
@@ -122,15 +124,15 @@ export async function saveSubscriptionToServer(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('[Push Client] Failed to save subscription:', response.status, errorData);
+      logger.error('[Push Client] Failed to save subscription:', response.status, errorData);
       return false;
     }
 
     const data = await response.json();
-    console.log('[Push Client] Subscription saved to server:', data);
+    logger.log('[Push Client] Subscription saved to server:', data);
     return true;
   } catch (error) {
-    console.error('[Push Client] Error saving subscription:', error);
+    logger.error('[Push Client] Error saving subscription:', error);
     return false;
   }
 }
@@ -158,13 +160,13 @@ export async function unsubscribeFromPush(): Promise<boolean> {
         }),
       });
 
-      console.log('[Push Client] Unsubscribed from push');
+      logger.log('[Push Client] Unsubscribed from push');
       return true;
     }
 
     return false;
   } catch (error) {
-    console.error('[Push Client] Unsubscribe failed:', error);
+    logger.error('[Push Client] Unsubscribe failed:', error);
     return false;
   }
 }
@@ -174,28 +176,28 @@ export async function unsubscribeFromPush(): Promise<boolean> {
  */
 export async function checkPushSubscription(): Promise<PushSubscription | null> {
   try {
-    console.log('[Push Client] checkPushSubscription 시작');
-    
+    logger.log('[Push Client] checkPushSubscription 시작');
+
     if (!('serviceWorker' in navigator)) {
-      console.warn('[Push Client] Service Worker not supported');
+      logger.warn('[Push Client] Service Worker not supported');
       return null;
     }
 
     // Service Worker가 등록되어 있는지 확인
     const registrations = await navigator.serviceWorker.getRegistrations();
     if (registrations.length === 0) {
-      console.log('[Push Client] Service Worker가 등록되지 않음');
+      logger.log('[Push Client] Service Worker가 등록되지 않음');
       return null;
     }
 
     const registration = await navigator.serviceWorker.ready;
-    console.log('[Push Client] Service Worker ready:', registration.scope);
-    
+    logger.log('[Push Client] Service Worker ready:', registration.scope);
+
     const subscription = await registration.pushManager.getSubscription();
-    console.log('[Push Client] 구독 정보:', subscription ? '있음' : '없음', subscription?.endpoint);
+    logger.log('[Push Client] 구독 정보:', subscription ? '있음' : '없음', subscription?.endpoint);
     return subscription;
   } catch (error) {
-    console.error('[Push Client] Failed to check subscription:', error);
+    logger.error('[Push Client] Failed to check subscription:', error);
     return null;
   }
 }
@@ -212,19 +214,19 @@ export async function initializePushNotifications(): Promise<{
 }> {
   try {
     // 1. Service Worker 등록
-    console.log('[Push Client] Step 1: Service Worker 등록 시작...');
+    logger.log('[Push Client] Step 1: Service Worker 등록 시작...');
     const registration = await registerServiceWorker();
     if (!registration) {
-      console.error('[Push Client] Service Worker 등록 실패');
+      logger.error('[Push Client] Service Worker 등록 실패');
       return { success: false, error: 'Service Worker 등록에 실패했습니다. 브라우저를 지원하지 않거나 네트워크 문제가 있을 수 있습니다.', step: 'service-worker' };
     }
-    console.log('[Push Client] Step 1 완료: Service Worker 등록 성공');
+    logger.log('[Push Client] Step 1 완료: Service Worker 등록 성공');
 
     // 2. 권한 요청
-    console.log('[Push Client] Step 2: 알림 권한 요청 시작...');
+    logger.log('[Push Client] Step 2: 알림 권한 요청 시작...');
     const permission = await requestNotificationPermission();
     if (permission !== 'granted') {
-      console.error('[Push Client] 알림 권한 거부됨:', permission);
+      logger.error('[Push Client] 알림 권한 거부됨:', permission);
       return { 
         success: false, 
         permission,
@@ -234,21 +236,21 @@ export async function initializePushNotifications(): Promise<{
         step: 'permission'
       };
     }
-    console.log('[Push Client] Step 2 완료: 알림 권한 획득');
+    logger.log('[Push Client] Step 2 완료: 알림 권한 획득');
 
     // 3. 기존 구독 확인
-    console.log('[Push Client] Step 3: 기존 구독 확인 중...');
+    logger.log('[Push Client] Step 3: 기존 구독 확인 중...');
     let subscription = await checkPushSubscription();
     if (subscription) {
-      console.log('[Push Client] 기존 구독 발견:', subscription.endpoint);
+      logger.log('[Push Client] 기존 구독 발견:', subscription.endpoint);
     }
 
     // 4. 구독이 없으면 새로 생성
     if (!subscription) {
-      console.log('[Push Client] Step 4: 새 푸시 구독 생성 시작...');
+      logger.log('[Push Client] Step 4: 새 푸시 구독 생성 시작...');
       subscription = await subscribeToPush(registration);
       if (!subscription) {
-        console.error('[Push Client] 푸시 구독 생성 실패');
+        logger.error('[Push Client] 푸시 구독 생성 실패');
         const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
         if (!vapidKey) {
           return { 
@@ -265,14 +267,14 @@ export async function initializePushNotifications(): Promise<{
           step: 'subscription'
         };
       }
-      console.log('[Push Client] Step 4 완료: 푸시 구독 생성 성공');
+      logger.log('[Push Client] Step 4 완료: 푸시 구독 생성 성공');
     }
 
     // 5. 서버에 저장 (실패해도 브라우저 구독은 성공한 것으로 처리)
-    console.log('[Push Client] Step 5: 서버에 구독 정보 저장 시작...');
+    logger.log('[Push Client] Step 5: 서버에 구독 정보 저장 시작...');
     const saved = await saveSubscriptionToServer(subscription);
     if (!saved) {
-      console.warn('[Push Client] 서버 저장 실패, 하지만 브라우저 구독은 성공');
+      logger.warn('[Push Client] 서버 저장 실패, 하지만 브라우저 구독은 성공');
       // 서버 저장 실패는 경고만 하고 성공으로 처리 (브라우저 구독은 성공했으므로)
       return {
         success: true, // 브라우저 구독은 성공했으므로 true
@@ -282,7 +284,7 @@ export async function initializePushNotifications(): Promise<{
         step: 'server-save'
       };
     }
-    console.log('[Push Client] Step 5 완료: 서버 저장 성공');
+    logger.log('[Push Client] Step 5 완료: 서버 저장 성공');
 
     return {
       success: true,
@@ -290,7 +292,7 @@ export async function initializePushNotifications(): Promise<{
       subscription,
     };
   } catch (error) {
-    console.error('[Push Client] initializePushNotifications 전체 프로세스 오류:', error);
+    logger.error('[Push Client] initializePushNotifications 전체 프로세스 오류:', error);
     const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다';
     return {
       success: false,

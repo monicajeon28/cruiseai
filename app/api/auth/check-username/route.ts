@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET(req: Request) {
   try {
@@ -40,7 +41,7 @@ export async function GET(req: Request) {
       message: existingUser ? '이미 사용 중인 아이디입니다.' : '사용 가능한 아이디입니다.'
     });
   } catch (error: any) {
-    console.error('[CHECK USERNAME] Error:', error);
+    logger.error('[CHECK USERNAME] Error:', error);
     return NextResponse.json(
       { ok: false, available: false, message: '확인 중 오류가 발생했습니다.' },
       { status: 500 }

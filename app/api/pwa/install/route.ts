@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 /**
  * POST: PWA 설치 완료 추적
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    console.log(`[PWA Install] ${type === 'genie' ? '크루즈가이드 지니' : '크루즈몰'} PWA 설치 기록:`, {
+    logger.log(`[PWA Install] ${type === 'genie' ? '크루즈가이드 지니' : '크루즈몰'} PWA 설치 기록:`, {
       userId: user.id,
       userName: user.name,
       installedAt: updateData[type === 'genie' ? 'pwaGenieInstalledAt' : 'pwaMallInstalledAt'],
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
       installedAt: updatedUser[type === 'genie' ? 'pwaGenieInstalledAt' : 'pwaMallInstalledAt'],
     });
   } catch (error) {
-    console.error('[PWA Install] Error:', error);
+    logger.error('[PWA Install] Error:', error);
     return NextResponse.json(
       { ok: false, error: '설치 기록 중 오류가 발생했습니다' },
       { status: 500 }

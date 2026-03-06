@@ -3,6 +3,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from '@/lib/logger';
 
 interface ImageInfo {
   url: string;
@@ -88,14 +89,14 @@ export function getDestinationImages(destinations: string[]): ImageInfo[] {
                   });
                 }
               } catch (error) {
-                console.warn(`[Cruise Images] Skipping inaccessible file: ${itemRelativePath}`, error);
+                logger.warn(`[Cruise Images] Skipping inaccessible file: ${itemRelativePath}`, error);
               }
             }
           }
         }
       }
     } catch (error) {
-      console.error(`[Cruise Images] Error searching directory ${dirPath}:`, error);
+      logger.error(`[Cruise Images] Error searching directory ${dirPath}:`, error);
     }
   }
 
@@ -123,7 +124,7 @@ export function getCruiseReviewImages(
   // 크루즈정보사진 원본 폴더 사용 (백업 폴더는 삭제되었으므로 원본만 사용)
   const reviewDir = path.join(process.cwd(), 'public', '크루즈정보사진', '고객 후기 자료');
   if (!fs.existsSync(reviewDir)) {
-    console.warn('[Cruise Images] Review directory not found:', reviewDir);
+    logger.warn('[Cruise Images] Review directory not found:', reviewDir);
     return [];
   }
 
@@ -177,13 +178,13 @@ export function getCruiseReviewImages(
               title: entry.name.replace(/\.[^/.]+$/, ''), // 확장자 제거
             });
           } catch (error) {
-            console.warn(`[Cruise Images] Skipping inaccessible file: ${entryRelative}`, error);
+            logger.warn(`[Cruise Images] Skipping inaccessible file: ${entryRelative}`, error);
           }
         }
       }
     } catch (error) {
       // 디렉토리 접근 실패 시 무시하고 계속 진행
-      console.warn(`[Cruise Images] Failed to access directory ${dirPath}:`, error);
+      logger.warn(`[Cruise Images] Failed to access directory ${dirPath}:`, error);
     }
   };
 
@@ -401,14 +402,14 @@ export function getRoomImages(limit: number = 3): ImageInfo[] {
                   });
                 }
               } catch (error) {
-                console.warn(`[Cruise Images] Skipping inaccessible file: ${itemRelativePath}`, error);
+                logger.warn(`[Cruise Images] Skipping inaccessible file: ${itemRelativePath}`, error);
               }
             }
           }
         }
       }
     } catch (error) {
-      console.error(`[Cruise Images] Error searching directory ${dirPath}:`, error);
+      logger.error(`[Cruise Images] Error searching directory ${dirPath}:`, error);
     }
   }
 

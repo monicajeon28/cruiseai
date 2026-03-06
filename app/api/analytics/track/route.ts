@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 // POST: 사용자 활동 추적
 export async function POST(req: NextRequest) {
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('[Analytics Track] Error:', error);
+    logger.error('[Analytics Track] Error:', error);
     // 추적 실패는 사용자 경험에 영향 없도록 200 반환
     return NextResponse.json({ ok: true });
   }
