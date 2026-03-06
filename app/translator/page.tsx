@@ -8,16 +8,32 @@ import { csrfFetch } from '@/lib/csrf-client';
 import dynamic from 'next/dynamic';
 import { trackFeature } from '@/lib/analytics';
 import { checkTestModeClient, getCorrectPath } from '@/lib/test-mode-client';
-import { showError, showWarning } from '@/components/ui/Toast';
-// 언어별 회화 데이터 동적 로더 (현재 언어만 로드)
-import { loadPhrasesForLang } from './phrases';
-import type { PhraseCategory } from './phrases';
 
 // 성능 최적화: 큰 컴포넌트와 데이터를 동적 임포트
 const TranslatorTutorial = dynamic(() => import('./components/TranslatorTutorial'), {
   loading: () => <div className="animate-pulse">튜토리얼 로딩 중...</div>,
   ssr: false,
 });
+
+// PHRASE_CATEGORIES_DATA 타입 정의
+type PhraseCategory = {
+  id: string;
+  name: string;
+  emoji: string;
+  phrases: Array<{ ko: string; target: string; pronunciation?: string; emoji: string }>;
+};
+
+type PhraseCategoriesData = Record<string, PhraseCategory[]>;
+
+// PHRASE_CATEGORIES_DATA도 동적 임포트 (큰 데이터 파일)
+let PHRASE_CATEGORIES_DATA: PhraseCategoriesData | null = null;
+const loadPhraseCategories = async (): Promise<PhraseCategoriesData> => {
+  if (!PHRASE_CATEGORIES_DATA) {
+    const phraseModule = await import('./PHRASE_CATEGORIES_DATA');
+    PHRASE_CATEGORIES_DATA = phraseModule.PHRASE_CATEGORIES_DATA as PhraseCategoriesData;
+  }
+  return PHRASE_CATEGORIES_DATA;
+};
 
 // 국가별 → 현지어 매핑
 const DESTINATION_LANGUAGE_MAP: Record<string, { code: string; name: string; flag: string }> = {
@@ -39,15 +55,6 @@ const DESTINATION_LANGUAGE_MAP: Record<string, { code: string; name: string; fla
   스페인: { code: 'es-ES', name: '스페인어', flag: '🇪🇸' },
   독일: { code: 'de-DE', name: '독일어', flag: '🇩🇪' },
   러시아: { code: 'ru-RU', name: '러시아어', flag: '🇷🇺' },
-  // 지중해/유럽 추가
-  그리스: { code: 'el-GR', name: '그리스어', flag: '🇬🇷' },
-  크로아티아: { code: 'hr-HR', name: '크로아티아어', flag: '🇭🇷' },
-  포르투갈: { code: 'pt-PT', name: '포르투갈어', flag: '🇵🇹' },
-  // 북유럽 추가
-  노르웨이: { code: 'nb-NO', name: '노르웨이어', flag: '🇳🇴' },
-  스웨덴: { code: 'sv-SE', name: '스웨덴어', flag: '🇸🇪' },
-  덴마크: { code: 'da-DK', name: '덴마크어', flag: '🇩🇰' },
-  핀란드: { code: 'fi-FI', name: '핀란드어', flag: '🇫🇮' },
 };
 
 type ConversationItem = {
@@ -99,8 +106,6 @@ export default function TranslatorPage() {
 
   // 마이크 권한 상태 (전역으로 관리하여 모든 에러 핸들러에서 접근 가능)
   const micPermissionRef = useRef<boolean>(false);
-  // 마이크 스트림 캐시 (권한 팝업 반복 방지)
-  const micStreamRef = useRef<MediaStream | null>(null);
 
   // 기본 현지어는 영어(US)로 시작(API 로드 후 교체)
   const [localLang, setLocalLang] = useState({ code: 'en-US', name: '영어', flag: '🇺🇸' });
@@ -108,33 +113,34 @@ export default function TranslatorPage() {
   const [portInfo, setPortInfo] = useState<string>('');
   const [isCruising, setIsCruising] = useState(false);
 
-  // 성능 최적화: 현재 언어 회화 데이터만 동적 로딩
-  const [phraseCategoriesData, setPhraseCategoriesData] = useState<PhraseCategory[] | null>(null);
+  // 성능 최적화: PHRASE_CATEGORIES_DATA 동적 로딩
+  const [phraseCategoriesData, setPhraseCategoriesData] = useState<PhraseCategoriesData | null>(null);
   const [isLoadingPhraseData, setIsLoadingPhraseData] = useState(true);
 
   useEffect(() => {
-    let cancelled = false;
-    setIsLoadingPhraseData(true);
-    loadPhrasesForLang(localLang.code)
-      .then((phrases) => {
-        if (!cancelled) setPhraseCategoriesData(phrases);
+    loadPhraseCategories()
+      .then((data) => {
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          setPhraseCategoriesData(data);
+        } else {
+          logger.warn('[Translator] Invalid PHRASE_CATEGORIES_DATA format');
+          setPhraseCategoriesData({}); // 기본값
+        }
       })
       .catch((error) => {
-        logger.error('[Translator] Failed to load phrases', error);
-        if (!cancelled) setPhraseCategoriesData([]);
+        logger.error('[Translator] Failed to load PHRASE_CATEGORIES_DATA:', error);
+        setPhraseCategoriesData({}); // 기본값
       })
       .finally(() => {
-        if (!cancelled) setIsLoadingPhraseData(false);
+        setIsLoadingPhraseData(false);
       });
-    return () => { cancelled = true; };
-  }, [localLang.code]);
+  }, []);
 
   // 첫 방문 시 튜토리얼 표시
   useEffect(() => {
     const hasSeen = localStorage.getItem('hasSeenTranslatorTutorial');
     if (!hasSeen) {
-      const t = setTimeout(() => setShowTutorial(true), 1000);
-      return () => clearTimeout(t);
+      setTimeout(() => setShowTutorial(true), 1000);
     }
   }, []);
 
@@ -159,7 +165,9 @@ export default function TranslatorPage() {
   const recRef = useRef<SpeechRecognition | null>(null);
   const isProcessingRef = useRef(false); // race condition 방지
   const interimTextRef = useRef(''); // stale closure 방지용 ref
-  const speakTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // speak setTimeout cleanup
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null); // 중복 재생 방지
+  const audioCtxRef = useRef<AudioContext | null>(null); // iOS AudioContext 잠금 해제용
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null); // AudioContext 재생 중 중단용
   const [listening, setListening] = useState<'none' | 'pressing' | 'recording'>('none');
   const [preview, setPreview] = useState('');
   const [finalText, setFinalText] = useState(''); // 최종 확정된 텍스트
@@ -173,13 +181,9 @@ export default function TranslatorPage() {
 
   // 현재 날짜의 기항지 정보를 읽어 현지어 자동 설정
   useEffect(() => {
-    const controller = new AbortController();
     (async () => {
       try {
-        const res = await fetch('/api/itinerary/current', {
-          credentials: 'include',
-          signal: controller.signal,
-        });
+        const res = await fetch('/api/itinerary/current', { credentials: 'include' });
         const data = await res.json();
 
         if (!data.ok) {
@@ -220,14 +224,11 @@ export default function TranslatorPage() {
         } else {
           setDestination('일정 정보 없음');
         }
-      } catch (error: any) {
-        if (error?.name !== 'AbortError') {
-          logger.error('Error loading current itinerary', error);
-          setDestination('로드 실패');
-        }
+      } catch (error) {
+        logger.error('Error loading current itinerary:', error);
+        setDestination('로드 실패');
       }
     })();
-    return () => controller.abort();
   }, []);
 
   // 음성인식 초기화(webkit + 표준 둘 다 커버)
@@ -250,12 +251,21 @@ export default function TranslatorPage() {
     recog.lang = 'ko-KR'; // 기본 언어 (나중에 변경됨)
 
     recog.onerror = (e: any) => {
-      logger.warn('[SpeechRecognition error]', e?.error);
-      // 권한 문제 등 친절 메시지 (TODO: 사용자에게 알림)
+      setListening('none');
+      const errorType = e?.error || 'unknown';
+      if (errorType === 'no-speech') return;
+      if (errorType === 'not-allowed' || errorType === 'service-not-allowed') {
+        micPermissionRef.current = false;
+        alert('마이크 권한이 필요합니다. 브라우저 설정에서 마이크를 허용해주세요.');
+        return;
+      }
+      if (errorType === 'network') {
+        alert('네트워크 오류로 음성 인식에 실패했습니다.');
+        return;
+      }
+      logger.warn('[STT] error:', errorType);
     };
     recog.onend = () => {
-      // 버튼 뗐거나, 자동 종료
-      // 이 부분은 startPressToTalk/stopPressToTalk 로직과 연동되므로 listening 상태만 idle로
       setListening('none');
       setPreview('');
       setFinalText('');
@@ -267,9 +277,17 @@ export default function TranslatorPage() {
     return () => {
       try { recog.abort(); } catch { }
       recRef.current = null;
-      micStreamRef.current?.getTracks().forEach(track => track.stop());
-      micStreamRef.current = null;
-      if (speakTimeoutRef.current) clearTimeout(speakTimeoutRef.current);
+    };
+  }, []);
+
+  // speechSynthesis cleanup
+  useEffect(() => {
+    return () => {
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      currentAudioRef.current?.pause();
+      currentAudioRef.current = null;
+      audioCtxRef.current?.close();
+      audioCtxRef.current = null;
     };
   }, []);
 
@@ -409,8 +427,8 @@ export default function TranslatorPage() {
           };
         }
 
-        // 다른 API 오류 시 에러 표시 (원문 그대로 반환하면 번역된 것처럼 보임)
-        return { translated: '⚠️ 번역에 실패했습니다. 잠시 후 다시 시도해주세요.', pronunciation: '', isError: true };
+        // 다른 API 오류 시 원문 반환 (부분 번역 시도 안 함)
+        return { translated: text, pronunciation: '' };
       }
 
       const data = await res.json();
@@ -461,43 +479,116 @@ export default function TranslatorPage() {
     }
   }
 
-  // 말하기(TTS)
-  function speak(text: string, langCode: string) {
+  // Web Speech API fallback (Supertone 미지원 언어 또는 실패 시)
+  function speakWebSpeech(text: string, langCode: string) {
     if (!('speechSynthesis' in window)) return;
-    const synth = window.speechSynthesis;
-
-    // 이전 음성 큐 비우기
-    synth.cancel();
-
-    // 음성 목록이 로드된 경우에만 지원 여부 확인
-    const voices = synth.getVoices();
-    if (voices.length > 0) {
-      const langPrefix = langCode.split('-')[0].toLowerCase();
-      const hasVoice = voices.some(v =>
-        v.lang === langCode ||
-        v.lang.toLowerCase().startsWith(langPrefix)
-      );
-      if (!hasVoice) {
-        showWarning('기기 설정에서 해당 언어 음성 팩을 설치해주세요.', `이 기기에서 ${langCode} 언어의 음성을 지원하지 않습니다.`);
-        return;
-      }
-    }
-
+    window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = langCode;
     u.rate = 0.9;
-    u.onerror = (e) => {
-      if (e.error !== 'interrupted') {
-        logger.log(`[TTS] Speech error: ${e.error} for lang ${langCode}`);
-      }
+    u.onerror = (e: SpeechSynthesisErrorEvent) => {
+      if (e.error !== 'interrupted') logger.warn('[TTS] WebSpeech error:', e.error);
     };
-    synth.speak(u);
+    const assignVoiceAndSpeak = () => {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        const baseLang = langCode.split('-')[0];
+        const matched =
+          voices.find((v) => v.lang.startsWith(baseLang) && v.localService) ||
+          voices.find((v) => v.lang.startsWith(baseLang));
+        if (matched) u.voice = matched;
+      }
+      window.speechSynthesis.speak(u);
+    };
+    if (window.speechSynthesis.getVoices().length === 0) {
+      window.speechSynthesis.addEventListener('voiceschanged', assignVoiceAndSpeak, { once: true });
+    } else {
+      assignVoiceAndSpeak();
+    }
+  }
+
+  // 말하기(TTS) — Supertone(한/영/일) + Web Speech API fallback(기타 언어)
+  // iOS 대응: AudioContext를 제스처 핸들러 동기 부분에서 미리 잠금 해제
+  async function speak(text: string, langCode: string) {
+    // 이전 재생 중단 (중복 재생 방지)
+    if (sourceRef.current) { try { sourceRef.current.stop(); } catch { } sourceRef.current = null; }
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+    // iOS AudioContext 잠금 해제 — 이 코드는 await 전 동기 실행 (제스처 컨텍스트 유지)
+    try {
+      const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext | undefined;
+      if (AudioContextClass && !audioCtxRef.current) {
+        audioCtxRef.current = new AudioContextClass();
+      }
+      if (audioCtxRef.current?.state === 'suspended') {
+        audioCtxRef.current.resume(); // 동기 호출 — await 없이 잠금만 해제
+      }
+    } catch { /* AudioContext 미지원 환경 무시 */ }
+
+    try {
+      const res = await csrfFetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, langCode }),
+      });
+      // 204: Supertone 미지원 언어 → Web Speech API로 fallback
+      if (res.status === 204) {
+        speakWebSpeech(text, langCode);
+        return;
+      }
+      if (!res.ok) throw new Error(`TTS API ${res.status}`);
+
+      const arrayBuffer = await res.arrayBuffer();
+
+      // AudioContext로 재생 (iOS 잠금 해제 후 재생 가능)
+      if (audioCtxRef.current) {
+        const audioBuffer = await audioCtxRef.current.decodeAudioData(arrayBuffer);
+        const source = audioCtxRef.current.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioCtxRef.current.destination);
+        source.start(0);
+        sourceRef.current = source;
+        source.onended = () => { if (sourceRef.current === source) sourceRef.current = null; };
+        return;
+      }
+
+      // AudioContext 미지원 환경 — HTMLAudioElement fallback
+      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      currentAudioRef.current = audio;
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        if (currentAudioRef.current === audio) currentAudioRef.current = null;
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        if (currentAudioRef.current === audio) currentAudioRef.current = null;
+        speakWebSpeech(text, langCode);
+      };
+      await audio.play();
+    } catch {
+      // 네트워크 오류 또는 디코딩 실패 → Web Speech API fallback
+      currentAudioRef.current = null;
+      speakWebSpeech(text, langCode);
+    }
   }
 
   // 공통 음성 인식 시작(길게 누르는 동안)
   async function startPressToTalk(from: { code: string; name: string; flag: string }, to: { code: string; name: string; flag: string }) {
+    // P1-4: PTT onTouchStart 제스처 컨텍스트에서 AudioContext 미리 잠금 해제
+    // speak()가 await translateText() 이후 호출되므로 제스처 컨텍스트가 소멸 — 여기서 미리 unlock
+    try {
+      const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext | undefined;
+      if (AudioContextClass && !audioCtxRef.current) audioCtxRef.current = new AudioContextClass();
+      if (audioCtxRef.current?.state === 'suspended') audioCtxRef.current.resume();
+    } catch { }
     if (!recRef.current) {
-      showError('Chrome, Edge, Safari 브라우저를 사용해주세요.', '이 브라우저는 음성 인식을 지원하지 않습니다.');
+      alert('❌ 이 브라우저는 음성 인식을 지원하지 않습니다.\n\n음성 인식을 지원하는 브라우저(Chrome, Edge, Safari 등)를 사용해주세요.');
       return;
     }
 
@@ -519,16 +610,13 @@ export default function TranslatorPage() {
 
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         try {
-          // 캐시된 스트림 재사용 (권한 팝업 반복 방지)
-          let stream = micStreamRef.current;
-          if (!stream || stream.getTracks().every(t => t.readyState === 'ended')) {
-            stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch((err) => {
-              // Permissions Policy 경고는 무시 (실제 권한은 있을 수 있음)
-              logger.log('[getUserMedia] Caught error (may be Permissions Policy warning):', err);
-              throw err;
-            });
-            micStreamRef.current = stream;
-          }
+          // Permissions Policy 경고는 무시하고 getUserMedia 시도
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch((err) => {
+            // Permissions Policy 경고는 무시 (실제 권한은 있을 수 있음)
+            logger.log('[getUserMedia] Caught error (may be Permissions Policy warning):', err);
+            throw err;
+          });
+          stream.getTracks().forEach(track => track.stop());
           micPermissionRef.current = true; // ✅ 권한 확인됨 - 전역 상태 저장
           setPreview('✅ 마이크 준비됨! 말씀하세요...');
         } catch (mediaError: any) {
@@ -548,7 +636,7 @@ export default function TranslatorPage() {
       // 2단계: Speech Recognition 시작
       const r = recRef.current!;
       if (!r) {
-        showError('음성 인식 초기화에 실패했습니다. 다시 시도해주세요.');
+        alert('❌ 음성 인식 초기화에 실패했습니다.');
         setListening('none');
         setPreview('');
         return;
@@ -606,12 +694,12 @@ export default function TranslatorPage() {
         setPreview('');
 
         if (errorType === 'not-allowed' || errorType === 'permission-denied') {
-          showWarning('주소창 🔒 아이콘 > 마이크 허용 후 새로고침(F5)해주세요.', '마이크 권한이 필요합니다.');
+          alert('❌ 마이크 권한이 필요합니다.\n\n💡 해결 방법:\n1. 브라우저 주소창 왼쪽 🔒 아이콘 클릭\n2. "마이크" → "허용" 선택\n3. 페이지 새로고침 (F5)\n4. 버튼을 다시 눌러주세요');
         } else if (errorType === 'no-speech') {
           // 말이 없으면 조용히 처리 (알림 없음)
           logger.log('음성이 감지되지 않았습니다.');
         } else if (errorType === 'network') {
-          showError('인터넷 연결을 확인해주세요.', '네트워크 오류가 발생했습니다.');
+          alert('⚠️ 네트워크 오류가 발생했습니다.\n인터넷 연결을 확인해주세요.');
         } else {
           // 다른 에러는 조용히 로그만
           logger.error('[Speech Recognition Error]', errorType);
@@ -636,7 +724,7 @@ export default function TranslatorPage() {
         setPreview('');
 
         if (startError?.name === 'NotAllowedError' || startError?.message?.includes('permission')) {
-          showWarning('주소창 🔒 아이콘 > 마이크 허용 후 새로고침(F5)해주세요.', '마이크 권한이 필요합니다.');
+          alert('❌ 마이크 권한이 필요합니다.\n\n💡 해결 방법:\n1. 브라우저 주소창 왼쪽 🔒 아이콘 클릭\n2. "마이크" → "허용" 선택\n3. 페이지 새로고침 (F5)\n4. 버튼을 다시 눌러주세요');
         } else {
           // 다른 오류는 조용히 처리
           logger.error('[Speech Recognition Start]', startError);
@@ -667,7 +755,7 @@ export default function TranslatorPage() {
       setPreview('');
 
       if (error?.name === 'NotAllowedError' || error?.message?.includes('permission')) {
-        showWarning('주소창 🔒 아이콘 > 마이크 허용 후 새로고침(F5)해주세요.', '마이크 권한이 필요합니다.');
+        alert('❌ 마이크 권한이 필요합니다.\n\n💡 해결 방법:\n1. 브라우저 주소창 왼쪽 🔒 아이콘 클릭\n2. "마이크" → "허용" 선택\n3. 페이지 새로고침 (F5)\n4. 버튼을 다시 눌러주세요');
       } else {
         // 예상치 못한 에러는 조용히 로그만
         logger.error('[Speech Recognition] Unexpected error:', error);
@@ -676,24 +764,15 @@ export default function TranslatorPage() {
   }
 
   async function stopPressToTalk() {
-    // iOS/Android gesture context 유지를 위해 즉시 cancel 호출 (speechSynthesis를 활성화)
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-
-    // 마이크는 항상 멈춰야 함 (번역 중이라도)
-    const r: any = recRef.current;
-    if (r) {
-      try { r.stop(); } catch { }
-    }
-    setListening('none');
-    setPreview('');
-
-    // 번역 이미 진행 중이면 마이크만 멈추고 종료 (중복 번역 방지)
-    if (isProcessingRef.current) return;
+    if (isProcessingRef.current) return; // 중복 실행 방지
     isProcessingRef.current = true;
 
+    const r: any = recRef.current;
     if (!r) { isProcessingRef.current = false; return; }
+    try {
+      r.stop();
+    } catch { }
+    setListening('none');
     const pair = r.__translatePair as { from: any; to: any } | undefined;
     const acc = typeof r.__acc === 'function' ? r.__acc() : '';
 
@@ -701,6 +780,7 @@ export default function TranslatorPage() {
     const finalAcc = acc || (finalText + ' ' + interimText).trim();
 
     // 상태 초기화
+    setPreview('');
     setFinalText('');
     setInterimText('');
 
@@ -724,21 +804,12 @@ export default function TranslatorPage() {
 
       // 에러 메시지는 TTS로 읽지 않음
       if (!isError) {
-        // iOS/Android에서 gesture context 유지를 위해 setTimeout 사용
-        if (speakTimeoutRef.current) clearTimeout(speakTimeoutRef.current);
-        speakTimeoutRef.current = setTimeout(() => {
-          speak(translated, pair.to.code);
-        }, 10);
+        speak(translated, pair.to.code);
       }
     } catch (error) {
       logger.error('[stopPressToTalk] Unexpected error:', error);
     } finally {
       isProcessingRef.current = false; // 예외 여부와 무관하게 항상 해제
-      // 마이크 트랙 해제 (모바일 마이크 점유 표시 제거, 다음 클릭 시 재획득)
-      if (micStreamRef.current) {
-        micStreamRef.current.getTracks().forEach(track => track.stop());
-        micStreamRef.current = null;
-      }
     }
   }
 
@@ -804,36 +875,6 @@ export default function TranslatorPage() {
       'Russian': 'Russian',
       'ru-RU': 'Russian',
       'ru': 'Russian',
-      // 지중해/유럽
-      '그리스어': 'Greek',
-      'Greek': 'Greek',
-      'el-GR': 'Greek',
-      'el': 'Greek',
-      '크로아티아어': 'Croatian',
-      'Croatian': 'Croatian',
-      'hr-HR': 'Croatian',
-      'hr': 'Croatian',
-      '포르투갈어': 'Portuguese',
-      'Portuguese': 'Portuguese',
-      'pt-PT': 'Portuguese',
-      'pt': 'Portuguese',
-      // 북유럽
-      '노르웨이어': 'Norwegian',
-      'Norwegian': 'Norwegian',
-      'nb-NO': 'Norwegian',
-      'nb': 'Norwegian',
-      '스웨덴어': 'Swedish',
-      'Swedish': 'Swedish',
-      'sv-SE': 'Swedish',
-      'sv': 'Swedish',
-      '덴마크어': 'Danish',
-      'Danish': 'Danish',
-      'da-DK': 'Danish',
-      'da': 'Danish',
-      '핀란드어': 'Finnish',
-      'Finnish': 'Finnish',
-      'fi-FI': 'Finnish',
-      'fi': 'Finnish',
     };
     return languageMap[koreanName] || koreanName;
   }
@@ -850,7 +891,7 @@ export default function TranslatorPage() {
     if (!pronunciation || langCode === 'ko-KR') return null;
 
     return (
-      <div className="text-sm text-gray-600 italic mt-1 break-words">
+      <div className="text-xs text-gray-500 italic mt-1">
         💬 {pronunciation}
       </div>
     );
@@ -860,14 +901,28 @@ export default function TranslatorPage() {
 
   // 사용자가 제공한 샘플 데이터 사용 (발음 포함)
   // 빌드 시점 안전성을 위해 항상 객체로 보장
-  // 현재 언어의 카테고리 배열 (이미 localLang.code에 맞는 데이터가 로드됨)
-  const getCategoriesForLang = (_langCode: string): PhraseCategory[] => {
-    if (!phraseCategoriesData || !Array.isArray(phraseCategoriesData)) return [];
-    return phraseCategoriesData;
+  const PHRASE_CATEGORIES: PhraseCategoriesData =
+    (phraseCategoriesData && typeof phraseCategoriesData === 'object' && !Array.isArray(phraseCategoriesData))
+      ? phraseCategoriesData
+      : {};
+
+  // 안전한 카테고리 배열 가져오기 헬퍼 함수 (빌드 시점 안전성 보장)
+  const getCategoriesForLang = (langCode: string): PhraseCategory[] => {
+    try {
+      if (!PHRASE_CATEGORIES || typeof PHRASE_CATEGORIES !== 'object' || Array.isArray(PHRASE_CATEGORIES)) {
+        return [];
+      }
+      const categories = PHRASE_CATEGORIES[langCode] || PHRASE_CATEGORIES['en-US'];
+      if (!categories) return [];
+      return Array.isArray(categories) ? categories : [];
+    } catch (error) {
+      // 빌드 시점 에러 방지
+      return [];
+    }
   };
 
-  // 빠른 문장 데이터 (자주 쓰는 문장) - 하위 호환을 위해 유지 (현재 미사용)
-  const _QUICK_PHRASES: Record<string, Array<{ ko: string; target: string; emoji: string }>> = {
+  // 빠른 문장 데이터 (자주 쓰는 문장) - 하위 호환을 위해 유지
+  const QUICK_PHRASES: Record<string, Array<{ ko: string; target: string; emoji: string }>> = {
     'ja-JP': [ // 일본어
       { ko: '화장실이 어디에요?', target: 'トイレはどこですか？', emoji: '🚻' },
       { ko: '얼마예요?', target: 'いくらですか？', emoji: '💰' },
@@ -941,31 +996,26 @@ export default function TranslatorPage() {
         <TranslatorTutorial onComplete={() => setShowTutorial(false)} />
       )}
 
-      <div className="h-[100dvh] bg-[#F5F7FA] text-gray-900 flex flex-col overflow-hidden">
-        {/* 헤더 — 1줄 압축 (모바일 최적화) */}
-        <header className="flex-none z-20 border-b bg-white/95 backdrop-blur shadow-sm">
-          <div className="max-w-3xl mx-auto h-14 flex items-center gap-2 px-3">
-            {/* 뒤로가기 */}
-            <button
-              onClick={() => router.push('/chat')}
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center -ml-1 text-gray-700 hover:text-black flex-shrink-0"
-            >
-              <FiArrowLeft size={22} />
+      <div className="min-h-screen bg-[#F5F7FA] text-gray-900 flex flex-col">
+        {/* 헤더 */}
+        <header className="sticky top-0 z-20 border-b bg-white/95 backdrop-blur px-4 py-2 md:py-4">
+          <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
+            <button onClick={() => router.push('/chat')} className="inline-flex items-center gap-2 text-gray-700 hover:text-black text-lg md:text-xl font-semibold">
+              <FiArrowLeft size={24} className="md:w-6 md:h-6" />
+              <span className="font-medium">뒤로가기</span>
             </button>
-            {/* 제목 + 기항지 부제목 */}
-            <div className="flex-1 min-w-0">
-              <h1 className="text-base font-bold leading-none">AI 통번역기</h1>
-              {(isCruising || (destination !== '여행 미등록' && destination !== '여행 정보 없음' && destination !== '로드 실패' && destination !== '확인 중...')) && (
-                <p className="text-xs truncate mt-0.5 font-medium">
-                  {isCruising
-                    ? <span className="text-blue-600">⛵ 항해 중</span>
-                    : <span className="text-green-600">🏝️ {destination}</span>
-                  }
-                </p>
-              )}
+            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold">AI 통번역기</h1>
+          </div>
+          <div className="max-w-3xl mx-auto mt-3 flex flex-col sm:flex-row sm:items-center gap-3 text-base md:text-lg">
+            <div className={`inline-flex items-center gap-2 px-4 md:px-5 py-2 md:py-2.5 rounded-lg ${isCruising ? 'bg-blue-50 text-blue-700' : 'bg-green-50 text-green-700'
+              }`}>
+              <span className="text-xl md:text-2xl">{isCruising ? '⛵' : '🏝️'}</span>
+              <span className="font-semibold">
+                {isCruising ? '항해 중' : `현재 기항지: ${destination}`}
+              </span>
             </div>
-            {/* 언어 선택 드롭다운 (우측, compact) */}
-            <div className="relative flex-shrink-0">
+            {/* 언어 선택 드롭다운 */}
+            <div className="relative">
               <select
                 value={localLang.code}
                 onChange={(e) => {
@@ -973,11 +1023,16 @@ export default function TranslatorPage() {
                   const selectedLang = Object.values(DESTINATION_LANGUAGE_MAP).find(lang => lang.code === selectedCode)
                     || { code: 'en-US', name: '영어', flag: '🇺🇸' };
                   setLocalLang(selectedLang);
-                  setSelectedCategory(null);
+                  setSelectedCategory(null); // 언어 변경 시 카테고리 초기화
                 }}
-                className="appearance-none bg-purple-50 border border-purple-200 rounded-lg
-                  pl-2 pr-6 py-1.5 text-sm font-semibold text-purple-800 min-h-[44px] min-w-[100px]
-                  hover:border-purple-400 focus:border-purple-500 cursor-pointer"
+                className="
+                inline-flex items-center gap-2 px-4 md:px-5 py-2 md:py-2.5 rounded-lg 
+                bg-purple-50 text-purple-700 font-semibold text-base md:text-lg
+                border-2 border-purple-200
+                hover:border-purple-400 focus:border-purple-500
+                cursor-pointer appearance-none
+                pr-10 min-w-[160px] md:min-w-[180px]
+              "
               >
                 {Object.values(DESTINATION_LANGUAGE_MAP).map((lang) => (
                   <option key={lang.code} value={lang.code}>
@@ -985,13 +1040,20 @@ export default function TranslatorPage() {
                   </option>
                 ))}
               </select>
-              <span className="absolute right-1.5 top-1/2 transform -translate-y-1/2 pointer-events-none text-purple-700 text-xs">▼</span>
+              <span className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-purple-700 text-lg">
+                ▼
+              </span>
             </div>
+            {portInfo && (
+              <div className="text-sm md:text-base text-gray-500">
+                {portInfo}
+              </div>
+            )}
           </div>
         </header>
 
         {/* 본문 */}
-        <main className="max-w-3xl mx-auto w-full flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+        <main className="max-w-3xl mx-auto w-full flex-1 px-4 py-6 md:py-8">
           {/* 프리뷰(인식 중) - 개선된 버전: 인식 과정을 실시간으로 표시 */}
           {listening !== 'none' && (
             <div className="rounded-xl border-2 border-blue-400 bg-gradient-to-r from-blue-50 to-purple-50 p-6 md:p-8 mb-6 shadow-lg">
@@ -1269,32 +1331,34 @@ export default function TranslatorPage() {
           </div>
         </main>
 
-        {/* 하단 고정 버튼 — 컴팩트 (모바일 최적화) */}
-        <footer className="flex-none border-t-2 bg-white/95 backdrop-blur px-3 shadow-lg
-          pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-          <div className="max-w-3xl mx-auto pt-2 pb-1 grid grid-cols-2 gap-2">
+        {/* 하단 고정 버튼들(모바일에 최적) - 크기 조정 */}
+        <footer className="sticky bottom-0 z-20 border-t-2 bg-white/95 backdrop-blur px-4 pb-[env(safe-area-inset-bottom)] shadow-lg">
+          <div className="max-w-3xl mx-auto py-3 md:py-4 grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
             {BTN_PAIRS.map((p) => (
               <button
                 key={p.label}
                 onMouseDown={() => startPressToTalk(p.from, p.to)}
                 onMouseUp={stopPressToTalk}
-                onTouchStart={(e) => { e.preventDefault(); startPressToTalk(p.from, p.to); }}
-                onTouchEnd={(e) => { e.preventDefault(); stopPressToTalk(); }}
+                onTouchStart={() => startPressToTalk(p.from, p.to)}
+                onTouchEnd={stopPressToTalk}
                 className={`
-                  w-full px-2 py-2.5 rounded-xl font-bold shadow min-h-[56px]
-                  ${listening === 'recording'
+                w-full px-4 md:px-5 py-5 md:py-6 rounded-xl text-lg md:text-xl font-bold shadow-lg
+                min-h-[72px] md:min-h-[100px]
+                ${listening === 'recording'
                     ? 'bg-gradient-to-r from-red-600 to-red-500 text-white animate-pulse'
                     : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600'
                   }
-                  active:scale-95 transition-all
-                `}
+                active:scale-95 transition-all
+              `}
               >
-                <div className="flex items-center justify-center gap-2">
-                  <span className="text-xl">{listening === 'recording' ? '🔴' : '🎤'}</span>
-                  <div className="text-left">
-                    <div className="font-bold text-xs leading-tight">{p.label}</div>
-                    <div className="text-xs opacity-80 font-normal mt-0.5">꾹 누르고 말하기</div>
-                  </div>
+                <div className="flex flex-col items-center gap-2 md:gap-3">
+                  <span className="text-3xl md:text-4xl">
+                    {listening === 'recording' ? '🔴' : '🎤'}
+                  </span>
+                  <span className="text-lg md:text-xl">{p.label}</span>
+                  <span className="text-xs md:text-sm font-normal opacity-90">
+                    (버튼을 꾹 누르고 말하세요)
+                  </span>
                 </div>
               </button>
             ))}

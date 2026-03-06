@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { showError } from '@/components/ui/Toast';
-import { logger } from '@/lib/logger';
 import { useRouter, usePathname } from 'next/navigation';
 import { FiChevronLeft, FiTrash2, FiPlus, FiCheck, FiChevronDown, FiChevronUp, FiX, FiVolume2, FiPause, FiPlay } from 'react-icons/fi';
 import { hapticClick, hapticSuccess, hapticImpact } from '@/lib/haptic';
@@ -33,12 +31,9 @@ export default function ChecklistPage() {
   const [editingText, setEditingText] = useState('');
   const [speakingCategory, setSpeakingCategory] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [showProgressModal, setShowProgressModal] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const hasCreatedDefaultsRef = useRef(false); // 기본 항목 생성 플래그
-  const [hasAddedRecommended, setHasAddedRecommended] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    try { return localStorage.getItem('checklist-recommended-added-v1') === 'true'; } catch { return false; }
-  });
 
   // 경로 보호: 테스트 모드 사용자는 /checklist-test로 리다이렉트
   useEffect(() => {
@@ -54,16 +49,9 @@ export default function ChecklistPage() {
     checkPath();
   }, [pathname, router]);
 
-  // items 변화 시 자동으로 localStorage 캐시 갱신 (서버 데이터 있을 때만)
-  useEffect(() => {
-    if (items.length > 0 && !isLoading) {
-      try { localStorage.setItem('checklist-items-cache-v1', JSON.stringify(items)); } catch { /* 무시 */ }
-    }
-  }, [items, isLoading]);
-
   const startSpeaking = (text: string, category: string) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      showError('이 브라우저는 음성 읽기 기능을 지원하지 않습니다.');
+      alert('이 브라우저는 음성 읽기 기능을 지원하지 않습니다.');
       return;
     }
 
@@ -89,13 +77,13 @@ export default function ChecklistPage() {
     };
 
     utterance.onerror = (event) => {
-      logger.error('Speech synthesis error:', event);
+      console.error('Speech synthesis error:', event);
       utteranceRef.current = null;
       setSpeakingCategory(null);
       setIsPaused(false);
       // pause/resume 관련 오류는 사용자에게 알리지 않음
       if (event.error !== 'interrupted' && event.error !== 'canceled') {
-        showError('음성 읽기 중 오류가 발생했습니다.');
+        alert('음성 읽기 중 오류가 발생했습니다.');
       }
     };
 
@@ -103,17 +91,17 @@ export default function ChecklistPage() {
       utteranceRef.current = utterance;
       window.speechSynthesis.speak(utterance);
     } catch (error) {
-      logger.error('Speak error:', error);
+      console.error('Speak error:', error);
       utteranceRef.current = null;
       setSpeakingCategory(null);
       setIsPaused(false);
-      showError('음성 읽기를 시작할 수 없습니다.');
+      alert('음성 읽기를 시작할 수 없습니다.');
     }
   };
 
   const handleSpeechToggle = (category: string, text: string) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      showError('이 브라우저는 음성 읽기 기능을 지원하지 않습니다.');
+      alert('이 브라우저는 음성 읽기 기능을 지원하지 않습니다.');
       return;
     }
 
@@ -133,7 +121,7 @@ export default function ChecklistPage() {
           startSpeaking(text, category);
         }
       } catch (error) {
-        logger.error('Pause/Resume error:', error);
+        console.error('Pause/Resume error:', error);
         try {
           synth.cancel();
         } catch (e) {
@@ -157,35 +145,24 @@ export default function ChecklistPage() {
     trackFeature('checklist');
   }, []);
 
-  // 필수 항목 (3개) — 첫 방문 시 즉시 생성
-  const ESSENTIAL_ITEMS_TEXT = [
-    '여권 (유효기간 6개월 이상)',
-    '신용카드 (해외 사용 가능)',
-    '여행자 보험 증서',
+  // 기본 체크리스트 항목들 (핵심 15개 - 추가/삭제 기능으로 커스텀 가능)
+  const getDefaultItems = (): ChecklistItem[] => [
+    { id: Date.now() + 1, text: '여권 (유효기간 6개월 이상)', completed: false },
+    { id: Date.now() + 2, text: 'E-티켓 또는 승선권', completed: false },
+    { id: Date.now() + 3, text: '신용카드 (해외 사용 가능)', completed: false },
+    { id: Date.now() + 4, text: '현금 (달러 또는 현지 화폐)', completed: false },
+    { id: Date.now() + 5, text: '여행자 보험 증서', completed: false },
+    { id: Date.now() + 6, text: '선상 정장 (캡틴 디너용)', completed: false },
+    { id: Date.now() + 7, text: '편한 신발 (관광용)', completed: false },
+    { id: Date.now() + 8, text: '수영복', completed: false },
+    { id: Date.now() + 9, text: '휴대폰 충전기', completed: false },
+    { id: Date.now() + 10, text: '보조배터리', completed: false },
+    { id: Date.now() + 11, text: '멀티 어댑터', completed: false },
+    { id: Date.now() + 12, text: '상비약 (소화제, 진통제)', completed: false },
+    { id: Date.now() + 13, text: '멀미약', completed: false },
+    { id: Date.now() + 14, text: '세면도구 (칫솔, 치약)', completed: false },
+    { id: Date.now() + 15, text: '선글라스', completed: false },
   ];
-
-  // 권장 항목 (12개) — "권장 항목 추가" 버튼 클릭 시 생성
-  const RECOMMENDED_ITEMS_TEXT = [
-    'E-티켓 또는 승선권',
-    '현금 (달러 또는 현지 화폐)',
-    '선상 정장 (캡틴 디너용)',
-    '편한 신발 (관광용)',
-    '수영복',
-    '휴대폰 충전기',
-    '보조배터리',
-    '멀티 어댑터',
-    '상비약 (소화제, 진통제)',
-    '멀미약',
-    '세면도구 (칫솔, 치약)',
-    '선글라스',
-  ];
-
-  const getDefaultItems = (): ChecklistItem[] =>
-    ESSENTIAL_ITEMS_TEXT.map((text, i) => ({
-      id: Date.now() + i + 1,
-      text,
-      completed: false,
-    }));
 
   // 기본 항목을 서버에 저장하는 함수 (한 번만 실행되도록 보호)
   const createDefaultItemsOnServer = async (defaultItems: ChecklistItem[]) => {
@@ -194,65 +171,45 @@ export default function ChecklistPage() {
       return;
     }
 
-    const serverItems: Array<ChecklistItem | null> = new Array(defaultItems.length).fill(null);
-
-    const results = await Promise.allSettled(
-      defaultItems.map(async (item, index) => {
+    for (const item of defaultItems) {
+      try {
         const res = await fetch('/api/checklist', {
           method: 'POST',
-          headers: { 'content-type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ text: item.text, completed: false, order: index }),
+          body: JSON.stringify({ text: item.text }),
         });
-        if (!res.ok) throw new Error(`Failed: ${res.status}`);
-        const data = await res.json();
-        const finalItem = { ...item, id: data.id ?? item.id };
-        serverItems[index] = finalItem;
-        return finalItem;
-      })
-    );
 
-    // 배치 업데이트 (1번만 리렌더링)
-    setItems(prev => {
-      const updated = [...prev];
-      serverItems.forEach((serverItem, index) => {
-        if (serverItem) {
-          const idx = updated.findIndex(i => i.id === defaultItems[index].id);
-          if (idx !== -1) updated[idx] = serverItem;
+        if (res.ok) {
+          const serverItem = await res.json();
+          const finalItem = serverItem.item || serverItem;
+          // 서버에서 받은 ID로 업데이트
+          setItems(prev => {
+            const updated = prev.map(localItem =>
+              localItem.id === item.id ? finalItem : localItem
+            );
+            return updated;
+          });
+          // 서버 저장 간격 조절 (429 에러 방지)
+          await new Promise(resolve => setTimeout(resolve, 200));
+        } else if (res.status === 429) {
+          // Rate limit이면 더 긴 대기
+          console.warn('[Checklist] Rate limit, waiting longer...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
-      });
-      return updated;
-    });
-
-    const failedCount = results.filter(r => r.status === 'rejected').length;
-    if (failedCount > 0) {
-      logger.error(`[Checklist] ${failedCount}개 기본 항목 서버 저장 실패`);
+      } catch (error) {
+        console.error('[Checklist] Error creating default item on server:', error);
+        // 에러 발생 시에도 계속 진행 (다음 항목 시도)
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
     }
   };
 
-  // localStorage 캐시 (즉시 표시용)
-  const CHECKLIST_CACHE_KEY = 'checklist-items-cache-v1';
-  const saveToCache = (items: ChecklistItem[]) => {
-    try { localStorage.setItem(CHECKLIST_CACHE_KEY, JSON.stringify(items)); } catch { /* 무시 */ }
-  };
-  const loadFromCache = (): ChecklistItem[] => {
-    try {
-      const s = localStorage.getItem(CHECKLIST_CACHE_KEY);
-      return s ? JSON.parse(s) : [];
-    } catch { return []; }
-  };
+  // localStorage 동기화 함수 제거 - 이제 API만 사용
 
-  // API: 체크리스트 목록 불러오기 (localStorage 우선 → API 백그라운드 동기화)
+  // API: 체크리스트 목록 불러오기 (API 전용)
   const loadItems = async (skipError = false) => {
-    // localStorage 즉시 표시 (0ms)
-    const cached = loadFromCache();
-    if (cached.length > 0) {
-      setItems(cached);
-      setIsLoading(false); // 로딩 스피너 즉시 제거
-    } else {
-      setIsLoading(true);
-    }
-
+    setIsLoading(true);
     if (!skipError) {
       setError(null);
     }
@@ -289,34 +246,33 @@ export default function ChecklistPage() {
           hasCreatedDefaultsRef.current = true;
           const defaultItems = getDefaultItems();
           setItems(defaultItems);
-          saveToCache(defaultItems);
           // 백그라운드에서 서버에 저장 (한 번만 실행되도록 플래그 사용)
-          createDefaultItemsOnServer(defaultItems).catch(e => logger.error('[Checklist] 기본 항목 생성 실패:', e));
+          createDefaultItemsOnServer(defaultItems).catch(console.error);
         } else {
           setItems(formattedItems);
-          saveToCache(formattedItems); // localStorage 캐시 갱신
         }
       } else {
         throw new Error('잘못된 데이터 형식입니다.');
       }
     } catch (err: any) {
       // 에러는 항상 로깅
-      logger.error('[Checklist] Error loading from API:', err);
+      console.error('[Checklist] Error loading from API:', err);
 
       const errorMessage = err?.message || '';
 
-      // 429(요청 과다) 또는 401(인증) 에러 메시지 표시
-      if (!skipError && (errorMessage.includes('너무 많') || errorMessage.includes('인증'))) {
-        setError(errorMessage);
+      // 429 에러(요청 과다)만 에러 메시지 표시
+      if (!skipError && errorMessage.includes('너무 많')) {
+        setError(`요청이 너무 많습니다. 잠시 후 다시 시도해주세요.`);
       }
 
-      // 429 오류가 아니면 기본 항목 표시 (인증 오류 시에도 기본 항목 표시)
-      if (!errorMessage.includes('너무 많') && !hasCreatedDefaultsRef.current) {
+      // 인증 오류와 429 오류가 아닌 경우에만 기본 항목 표시
+      const isAuthError = errorMessage.includes('인증');
+      if (!isAuthError && !errorMessage.includes('너무 많') && !hasCreatedDefaultsRef.current) {
         hasCreatedDefaultsRef.current = true;
         const defaultItems = getDefaultItems();
         setItems(defaultItems);
         // 백그라운드에서 서버에 저장 시도 (실패해도 UI에는 표시됨)
-        createDefaultItemsOnServer(defaultItems).catch(e => logger.error('[Checklist] 기본 항목 생성 실패:', e));
+        createDefaultItemsOnServer(defaultItems).catch(console.error);
       }
     } finally {
       setIsLoading(false);
@@ -380,7 +336,7 @@ export default function ChecklistPage() {
       setItems(prev => [...prev, finalItem]);
     } catch (err: any) {
       // 에러는 항상 로깅
-      logger.error('[Checklist] Error adding item:', err);
+      console.error('[Checklist] Error adding item:', err);
       setError(`항목 추가 중 오류가 발생했습니다: ${err.message || '알 수 없는 오류'}`);
     } finally {
       setIsLoading(false);
@@ -444,8 +400,10 @@ export default function ChecklistPage() {
       ));
     } catch (err: any) {
       // 에러는 항상 로깅
-      logger.error('[Checklist] Error toggling item:', err);
-      setError('작업에 실패했습니다. 다시 시도해주세요.');
+      console.error('[Checklist] Error toggling item:', err);
+      const errorMessage = err.message || '알 수 없는 오류';
+      setError(`상태 변경 중 오류가 발생했습니다: ${errorMessage}`);
+
     } finally {
       setIsLoading(false);
     }
@@ -506,8 +464,10 @@ export default function ChecklistPage() {
       ));
     } catch (err: any) {
       // 에러는 항상 로깅
-      logger.error('[Checklist] Error updating item:', err);
-      setError('작업에 실패했습니다. 다시 시도해주세요.');
+      console.error('[Checklist] Error updating item:', err);
+      const errorMessage = err.message || '알 수 없는 오류';
+      setError(`수정 중 오류가 발생했습니다: ${errorMessage}`);
+
     } finally {
       setIsLoading(false);
     }
@@ -552,72 +512,35 @@ export default function ChecklistPage() {
             // 개별 삭제 실패는 경고만 (전체 실패는 아님)
             // 개발 환경에서만 로깅
             if (process.env.NODE_ENV === 'development') {
-              logger.warn(`[Checklist] Failed to delete item ${item.id}`);
+              console.warn(`[Checklist] Failed to delete item ${item.id}`);
             }
           }
         } catch (e) {
           // 개별 삭제 실패는 무시 (개발 환경에서만 로깅)
           if (process.env.NODE_ENV === 'development') {
-            logger.warn(`[Checklist] Error deleting item ${item.id}:`, e);
+            console.warn(`[Checklist] Error deleting item ${item.id}:`, e);
           }
         }
       }
 
-      // 기본 항목 생성 (필수 3개만)
+      // 기본 항목 생성
       const defaultItems = getDefaultItems();
-      setItems(defaultItems);
 
-      // 권장 항목 상태 리셋
-      try { localStorage.removeItem('checklist-recommended-added-v1'); } catch { /* 무시 */ }
-      setHasAddedRecommended(false);
+      // 상태 업데이트
+      setItems(defaultItems);
 
       // 서버에 기본 항목 저장
       await createDefaultItemsOnServer(defaultItems);
 
     } catch (err: any) {
       // 에러는 항상 로깅
-      logger.error('[Checklist] Reset error:', err);
+      console.error('[Checklist] Reset error:', err);
       setError(`리셋 중 오류가 발생했습니다: ${err.message || '알 수 없는 오류'}`);
       // 에러 발생 시 다시 로드
       await loadItems();
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // 권장 항목 추가 핸들러 (사용자 선택 시)
-  const handleAddRecommendedItems = async () => {
-    if (hasAddedRecommended || isLoading) return;
-    setIsLoading(true);
-    const ts = Date.now();
-    const recommendedItems: ChecklistItem[] = RECOMMENDED_ITEMS_TEXT.map((text, i) => ({
-      id: ts + i + 100,
-      text,
-      completed: false,
-    }));
-    setItems(prev => [...prev, ...recommendedItems]);
-    try {
-      localStorage.setItem('checklist-recommended-added-v1', 'true');
-    } catch { /* 무시 */ }
-    setHasAddedRecommended(true);
-    // createDefaultItemsOnServer는 "기본값 없을 때만" 가드가 걸려 있어 권장 항목에 재사용 불가.
-    // 직접 API에 저장 (실패해도 낙관적 UI 유지)
-    Promise.allSettled(
-      recommendedItems.map((item, index) =>
-        fetch('/api/checklist', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ text: item.text, completed: false, order: (items.length + index) }),
-        })
-      )
-    ).then(results => {
-      const failedCount = results.filter(r => r.status === 'rejected').length;
-      if (failedCount > 0) {
-        logger.error(`[Checklist] ${failedCount}개 권장 항목 서버 저장 실패`);
-      }
-    }).catch(() => {});
-    setIsLoading(false);
   };
 
   // 삭제 (API 전용)
@@ -659,8 +582,10 @@ export default function ChecklistPage() {
       // 서버에서 삭제 성공 (이미 UI에서 제거됨)
     } catch (err: any) {
       // 에러는 항상 로깅
-      logger.error('[Checklist] Error deleting item:', err);
-      setError('작업에 실패했습니다. 다시 시도해주세요.');
+      console.error('[Checklist] Error deleting item:', err);
+      const errorMessage = err.message || '알 수 없는 오류';
+      setError(`삭제 중 오류가 발생했습니다: ${errorMessage}`);
+
     } finally {
       setIsLoading(false);
     }
@@ -758,51 +683,44 @@ export default function ChecklistPage() {
     <main className="min-h-screen bg-[#F5F7FA]">
       {/* 상단 고정 헤더 */}
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b">
-        <div className="mx-auto max-w-3xl px-4 py-4 md:py-5 flex items-center justify-between">
+        <div className="mx-auto max-w-3xl px-4 pt-3 pb-2 flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
             <Link
               href="/tools"
-              className="shrink-0 inline-flex items-center gap-1 rounded-xl border px-3 md:px-5 py-2 md:py-2.5 hover:bg-gray-50 text-base md:text-lg font-semibold"
+              className="inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 hover:bg-gray-50 text-sm font-semibold flex-shrink-0"
               aria-label="뒤로가기"
             >
-              <FiChevronLeft className="text-xl md:text-2xl" />
-              <span className="font-semibold">뒤로</span>
+              <FiChevronLeft className="text-base" />
+              <span>뒤로</span>
             </Link>
-            <h1 className="ml-1 text-lg md:text-2xl lg:text-3xl font-extrabold leading-tight truncate min-w-0">
+            <h1 className="ml-1 text-base font-bold text-gray-900 truncate">
               여행 준비물 체크리스트
             </h1>
           </div>
-          <Link
-            href="/chat"
-            className="hidden sm:inline-flex items-center rounded-xl border px-4 md:px-5 py-2 md:py-2.5 hover:bg-gray-50 text-base md:text-lg font-semibold"
+          <button
+            onClick={() => setShowProgressModal(true)}
+            className="ml-2 w-8 h-8 min-h-0 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-sm font-bold flex-shrink-0 p-0 active:bg-gray-200"
+            aria-label="진행률 상세 보기"
           >
-            크루즈닷과 대화하기
-          </Link>
+            ?
+          </button>
         </div>
 
         {/* 에러 메시지 */}
         {error && (
-          <div className="mx-auto max-w-3xl px-4 pb-3">
+          <div className="mx-auto max-w-3xl px-4 pb-2">
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
               ⚠️ {error}
             </div>
           </div>
         )}
 
-        {/* 진행률 */}
-        <div className="mx-auto max-w-3xl px-4 pb-4 md:pb-5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xl md:text-2xl text-gray-600 font-semibold leading-relaxed">
-              진행률 <span className="text-gray-900">{completed}</span> / {total}
-            </span>
-            <span className="text-3xl md:text-4xl font-extrabold text-blue-600">{progress}%</span>
-          </div>
-          <div className="h-4 md:h-5 w-full rounded-full bg-gray-200 overflow-hidden shadow-inner">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-[#FDB931] to-[#E1A21E] transition-all shadow-md"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+        {/* 얇은 진행바만 표시 */}
+        <div className="h-1.5 w-full bg-gray-200">
+          <div
+            className="h-full bg-blue-500 transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
         </div>
       </header>
 
@@ -1154,17 +1072,6 @@ export default function ChecklistPage() {
               </li>
             ))}
           </ul>
-
-          {/* 권장 항목 추가 버튼 — 필수 3개만 생성된 첫 방문 시 표시 */}
-          {!hasAddedRecommended && (
-            <button
-              onClick={handleAddRecommendedItems}
-              disabled={isLoading}
-              className="mt-4 w-full py-3 border-2 border-dashed border-gray-300 rounded-2xl text-gray-500 text-base hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50"
-            >
-              + 권장 준비물 {RECOMMENDED_ITEMS_TEXT.length}개 추가하기
-            </button>
-          )}
         </div>
       )}
 
@@ -1189,6 +1096,41 @@ export default function ChecklistPage() {
           </button>
         </div>
       </div>
+
+      {/* 진행률 상세 모달 */}
+      {showProgressModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setShowProgressModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 mx-4 w-full max-w-sm shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-bold text-gray-900 mb-4">진행률 상세</h2>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-gray-600 font-medium">완료한 항목</span>
+              <span className="text-xl font-extrabold text-gray-900">{completed} / {total}</span>
+            </div>
+            <div className="h-4 w-full rounded-full bg-gray-200 overflow-hidden mb-3">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[#FDB931] to-[#E1A21E] transition-all"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="text-center text-4xl font-extrabold text-blue-600 mb-1">{progress}%</p>
+            <p className="text-center text-sm text-gray-500">
+              {total - completed > 0 ? `${total - completed}개 남았어요` : '모두 완료했어요!'}
+            </p>
+            <button
+              onClick={() => setShowProgressModal(false)}
+              className="mt-5 w-full py-2.5 min-h-0 rounded-xl bg-gray-100 text-gray-700 font-semibold active:bg-gray-200"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

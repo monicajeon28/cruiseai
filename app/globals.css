@@ -7,6 +7,7 @@
 .quickbtn {
   @apply flex items-center justify-center rounded-lg border bg-white py-4 px-6 text-center text-base font-semibold text-gray-900 shadow-md hover:bg-gray-50 transition-colors;
   min-height: 52px;
+  /* ⭐ 최소 높이 보장 */
 }
 
 /* 채팅 카드/버튼 기본 패딩/그리드 */
@@ -30,11 +31,16 @@ body,
 
 body {
   background-color: #ffffff;
+  /* Clean White for Readability */
   color: #111827;
+  /* tailwind gray-900 정도 */
   overflow: auto;
+  /* 전역 스크롤 다시 허용 */
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
   font-size: 1.25rem;
+  /* ⭐ 20px (50대 이상 사용자 친화 크기) */
   line-height: 1.75;
+  /* ⭐ 넉넉한 줄 간격으로 가독성 향상 */
 
   /* 보안: 텍스트 선택 방지 */
   -webkit-user-select: none;
@@ -76,49 +82,58 @@ img {
   -o-user-drag: none;
   user-drag: none;
   pointer-events: auto;
+  /* 클릭은 가능하지만 드래그는 불가능 */
 }
 
 /* 전역 글씨 크기 설정 */
 :root[data-font-size="sm"] body {
   font-size: 1rem;
+  /* 16px */
 }
 
 :root[data-font-size="md"] body {
   font-size: 1.125rem;
+  /* 18px (기본값) */
 }
 
 :root[data-font-size="lg"] body {
   font-size: 1.25rem;
+  /* 20px */
 }
 
 /* 글씨 크기별 채팅 말풍선 조정 */
 :root[data-font-size="sm"] .chat-bubble {
   font-size: 1rem;
+  /* 16px */
 }
 
 :root[data-font-size="md"] .chat-bubble {
   font-size: 1.125rem;
+  /* 18px */
 }
 
 :root[data-font-size="lg"] .chat-bubble {
   font-size: 1.25rem;
+  /* 20px */
 }
 
 /* 중요 버튼/칩 최소 높이 56px (50대 이상 사용자 친화) */
-/* @layer base: Tailwind 유틸리티(min-h-0, h-auto, py-*)가 이 규칙을 override 가능 */
-@layer base {
-  button,
-  .button,
-  .chip,
-  input[type="submit"],
-  input[type="button"],
-  a.button {
-    min-height: 56px;
-    padding-top: 1rem;
-    padding-bottom: 1rem;
-    font-weight: 600;
-    font-size: 1.125rem;
-  }
+button,
+.button,
+.chip,
+input[type="submit"],
+input[type="button"],
+a.button {
+  min-height: 56px;
+  /* ⭐ 52px → 56px로 상향 */
+  padding-top: 1rem;
+  /* py-4 */
+  padding-bottom: 1rem;
+  /* py-4 */
+  font-weight: 600;
+  /* ⭐ font-semibold 적용 */
+  font-size: 1.125rem;
+  /* ⭐ 18px 기본 크기 */
 }
 
 /* 입력 필드 가독성 개선 */
@@ -130,22 +145,30 @@ input[type="number"],
 textarea,
 select {
   font-size: 1.125rem;
+  /* ⭐ 18px 기본 크기 */
   line-height: 1.75;
+  /* ⭐ 넉넉한 줄 간격 */
   padding: 0.875rem 1rem;
+  /* ⭐ py-3.5 px-4 */
   min-height: 56px;
+  /* ⭐ 최소 높이 보장 */
 }
 
 /* 키보드 포커스 링 */
 *:focus-visible {
   outline: 2px solid #3B82F6;
+  /* blue-500 */
   outline-offset: 2px;
   border-radius: 4px;
+  /* 테두리 둥글게 */
 }
 
 /* 챗봇 말풍선 가독성 (50대 이상 사용자 친화) */
 .chat-bubble {
   line-height: 1.75;
+  /* ⭐ 줄 간격 증가 */
   font-size: 1.125rem;
+  /* ⭐ 18px (base 크기) */
   word-break: keep-all;
   overflow-wrap: break-word;
 }
@@ -158,19 +181,22 @@ select {
   /* 스크롤바 숨김 */
   .scrollbar-hide {
     -ms-overflow-style: none;
+    /* IE and Edge */
     scrollbar-width: none;
+    /* Firefox */
   }
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+    /* Chrome, Safari and Opera */
   }
 
-  /* iOS safe-area 하단 여백 유틸리티 */
+  /* Safe Area 유틸리티 */
   .safe-bottom {
-    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
   }
-  .safe-bottom-sm {
-    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
   }
 }
 
@@ -190,16 +216,26 @@ select {
   animation: scaleIn 0.3s ease-out forwards;
 }
 
+/* 배경 이미지 부드러운 줌 애니메이션 (동영상 대체용) */
 @keyframes subtle-zoom {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 .animate-subtle-zoom {
   animation: subtle-zoom 20s ease-in-out infinite;
 }
 
+/* /en 페이지용 애니메이션 */
 @keyframes bounce-slow {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
@@ -237,6 +273,14 @@ select {
   animation-name: zoom-in;
 }
 
+/* 모바일 터치 최적화 */
+button,
+[role="button"],
+a {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
 .animate-in.slide-in-from-bottom-5,
 .animate-in.slide-in-from-bottom-10 {
   animation-name: slide-in-from-bottom;
@@ -245,3 +289,98 @@ select {
 /* 애니메이션 딜레이 */
 .delay-100 { animation-delay: 100ms; }
 .delay-200 { animation-delay: 200ms; }
+/* =============================================================
+   크루즈닷 럭셔리 디자인 시스템 (Phase 3 — 2026-03-03)
+   ============================================================= */
+
+/* 골드 shimmer 버튼 */
+.animate-gold-shimmer {
+  background: linear-gradient(90deg, #D4AF37 0%, #F5D76E 40%, #D4AF37 100%);
+  background-size: 200% auto;
+  animation: gold-shimmer 3s linear infinite;
+}
+
+/* 골드 텍스트 그라데이션 */
+.text-gradient-gold {
+  background: linear-gradient(135deg, #D4AF37, #F5D76E, #D4AF37);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 럭셔리 카드 (hover 시 골드 언더라인 + 그림자) */
+.luxury-card {
+  @apply bg-white rounded-2xl overflow-hidden border border-transparent
+         shadow-[0_4px_20px_rgba(10,35,66,0.08)]
+         hover:shadow-[0_12px_40px_rgba(10,35,66,0.18)]
+         hover:border-[#D4AF37]/30 hover:-translate-y-1
+         transition-all duration-300;
+}
+
+/* CTA 버튼 — 골드 배경 */
+.btn-luxury-gold {
+  @apply px-8 py-4 font-black rounded-full
+         shadow-[0_4px_16px_rgba(212,175,55,0.3)]
+         hover:shadow-[0_8px_32px_rgba(212,175,55,0.5)]
+         active:scale-95 transition-all duration-200;
+  color: #051C2C;
+  background: linear-gradient(135deg, #D4AF37 0%, #F5D76E 50%, #D4AF37 100%);
+  background-size: 200% auto;
+}
+.btn-luxury-gold:hover { background-position: right center; }
+
+/* 섹션 제목 + 골드 언더라인 */
+.section-title {
+  @apply text-3xl md:text-4xl font-black tracking-tight;
+  color: #0A2342;
+}
+.section-title::after {
+  content: '';
+  @apply block w-12 h-1 rounded-full mt-4 mx-auto;
+  background: #D4AF37;
+}
+
+/* 글라스모피즘 패널 */
+.glass-panel {
+  @apply backdrop-blur-md border border-white/30;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* 히어로 타이포그래피 */
+.heading-hero {
+  font-family: 'Pretendard', 'Noto Serif KR', serif;
+  @apply text-5xl sm:text-6xl lg:text-7xl font-black leading-tight tracking-tight;
+}
+
+/* 가격 표시 타이포그래피 */
+.price-display {
+  font-family: 'Pretendard', serif;
+  @apply text-2xl md:text-3xl font-bold;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 섹션 SVG 물결 구분선 유틸리티 */
+.wave-divider {
+  @apply w-full -mb-px overflow-hidden leading-none;
+}
+
+/* 스크롤 reveal — 초기 숨김 상태 */
+.reveal-hidden {
+  opacity: 0;
+  transform: translateY(32px);
+}
+.reveal-visible {
+  animation: slide-up-fade 0.6s ease-out forwards;
+}
+
+/* Ken Burns 슬라이더 (HeroSection Phase 4) */
+@keyframes kb-zoom-tl {
+  0%   { transform: scale(1.0) translate(0%, 0%); }
+  100% { transform: scale(1.12) translate(-2%, -2%); }
+}
+@keyframes kb-zoom-tr {
+  0%   { transform: scale(1.0) translate(0%, 0%); }
+  100% { transform: scale(1.12) translate(2%, -2%); }
+}
+.animate-kb-zoom-tl { animation: kb-zoom-tl 6s ease-in-out forwards; }
+.animate-kb-zoom-tr { animation: kb-zoom-tr 6s ease-in-out forwards; }
