@@ -1637,15 +1637,15 @@ export async function POST(req: Request) {
       const normalizePhone = (phone: string) => phone.replace(/\D/g, '');
       const normalizedPhone = normalizePhone(phone);
 
-      // 이름, 정규화된 전화번호로 사용자 찾기 (비밀번호는 나중에 확인)
+      // 전화번호로만 1차 조회 (이름 조건 제거 — 이름 불일치로 인한 403 차단 버그 수정)
       let activeUser = await prisma.user.findFirst({
         where: {
           phone: normalizedPhone,
-          name,
           role: 'user',
         },
         select: {
           id: true,
+          name: true,
           password: true,
           onboarded: true,
           loginCount: true,
@@ -1669,7 +1669,18 @@ export async function POST(req: Request) {
           ok: false,
           error: '구매 기록이 없습니다. 크루즈닷에서 상품 구매 후 이용 가능합니다.',
         }, { status: 403 });
-      } else {
+      }
+
+      // 이름 소프트 검증 (trim 후 비교 — 공백 차이 허용)
+      if (activeUser.name?.trim() !== name.trim()) {
+        logger.warn('[Login] 3800 이름 불일치:', { stored: activeUser.name, provided: name });
+        return NextResponse.json({
+          ok: false,
+          error: '이름, 전화번호, 비밀번호를 확인해주세요.',
+        }, { status: 401 });
+      }
+
+      {
         // 기존 사용자: customerSource 확인
         const userSource = activeUser.customerSource || null;
         logger.info('[Login] 3800 기존 사용자 확인:', {
