@@ -3,18 +3,10 @@
 import { useEffect, useState } from 'react';
 import { dDiff } from '@/lib/date';
 import { User, Trip } from '@/types/app'; // Import global User and Trip types
+import { logger } from '@/lib/logger';
 
 type DMap = Record<string, { title: string; message: string }>;
 type Row = { dday?: number; emoji?: string; message?: string; d_day?: string; title?: string; message_template?: string };
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 const FALLBACK_DMAP: DMap = {
   "3": { title: "전자기기 충전 및 확인", message: "[고객명]님, D-3일 남았습니다!\n카메라/보조배터리 충전하고 메모리 카드 확인!" },
@@ -48,13 +40,23 @@ function normalizeRowsToMap(rows: Row[]): DMap {
   return out;
 }
 
+function escapeHtml(str: string): string {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 const fill = (s: string, u: User | null, t: Trip | null) => {
   const name = escapeHtml(u?.name ?? '');
   const ship = escapeHtml(t?.cruiseName ?? '');
-  const rawDest = (() => {
+  const dest = escapeHtml((() => {
     const v = t?.destination as unknown;
     if (Array.isArray(v)) return v.join(', ');
     if (typeof v === 'string') {
+      // 혹시 문자열로 JSON 배열이 저장돼 온 경우도 방어
       try {
         const parsed = JSON.parse(v);
         if (Array.isArray(parsed)) return parsed.join(', ');
@@ -64,8 +66,7 @@ const fill = (s: string, u: User | null, t: Trip | null) => {
       return v;
     }
     return '';
-  })();
-  const dest = escapeHtml(rawDest);
+  })());
 
   return (s || '')
     .replaceAll('[고객명]', name)
@@ -86,10 +87,9 @@ export default function DdayPopup({ initialUser, initialTrip }: DdayPopupProps) 
   const [trip, setTrip] = useState<Trip | null>(initialTrip);
 
   useEffect(() => {
-    const controller = new AbortController();
     (async () => {
       try {
-        const res = await fetch('/data/dday_messages.json', { cache: 'no-store', signal: controller.signal });
+        const res = await fetch('/data/dday_messages.json', { cache: 'no-store' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const raw = await res.json();
 
@@ -103,17 +103,16 @@ export default function DdayPopup({ initialUser, initialTrip }: DdayPopupProps) 
         }
 
         if (!normalized || Object.keys(normalized).length === 0) {
-          setDmap(FALLBACK_DMAP);
+          logger.warn('D-Day JSON 빈 값 또는 포맷 오작동. 화면에 표시할 데이터가 없습니다.');
+          setDmap(FALLBACK_DMAP); // 빈 경우 폴백 사용
           return;
         }
         setDmap(normalized);
-      } catch (e: any) {
-        if (e?.name !== 'AbortError') {
-          setDmap(FALLBACK_DMAP);
-        }
+      } catch (e) {
+        logger.error('D-Day JSON 로드 실패');
+        setDmap(FALLBACK_DMAP); // 실패 시 폴백 사용
       }
     })();
-    return () => controller.abort();
   }, []);
 
   useEffect(() => {

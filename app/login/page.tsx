@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -10,6 +12,7 @@ function LoginPageContent() {
   const [password, setPassword] = useState('');  // ← 공백
   const [name, setName] = useState('');          // ← 공백
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -23,24 +26,29 @@ function LoginPageContent() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isSubmitting) return;
     setError(null); // 에러 초기화
+    setIsSubmitting(true);
 
     // 입력값 앞뒤 공백 제거
     const trimmedName = name.trim();
     const trimmedPhone = phone.trim();
-    const trimmedPassword = password.trim();
+    const trimmedPassword = password; // 비밀번호는 trim 하지 않음 (공백 포함 비밀번호 지원)
 
     // 필수 필드 검증 (3800 일반 모드)
     if (!trimmedName) {
+      setIsSubmitting(false);
       setError('이름을 입력해주세요.');
       return;
     }
     if (!trimmedPhone) {
+      setIsSubmitting(false);
       setError('전화번호를 입력해주세요.');
       return;
     }
     if (!trimmedPassword) {
-      setError('이용코드를 입력해주세요.');
+      setIsSubmitting(false);
+      setError('비밀번호를 입력해주세요.');
       return;
     }
 
@@ -76,16 +84,23 @@ function LoginPageContent() {
       const data = await r.json().catch(() => {
         return { ok: false, error: '서버 응답을 처리할 수 없습니다.' };
       });
-
+      
       if (!r.ok || !data?.ok) {
         const errorMessage = data?.error ?? '로그인 실패';
-
-        if (r.status === 401 || errorMessage.includes('비밀번호') || errorMessage.includes('코드') || errorMessage.includes('올바르지 않습니다')) {
-          setError('이용코드가 올바르지 않습니다. 코드를 다시 확인해주세요.');
+        const errorDetails = data?.details ?? '';
+        
+        // 비밀번호 오류인 경우 명확한 메시지 표시
+        if (r.status === 401 || errorMessage.includes('비밀번호') || errorMessage.includes('올바르지 않습니다')) {
+          setError('비밀번호가 올바르지 않습니다. 비밀번호를 확인해주세요.');
         } else {
-          setError(errorMessage);
+          // 테스트 모드 오류인 경우 상세 정보 포함
+          const fullErrorMessage = errorDetails 
+            ? `${errorMessage}\n\n상세 정보: ${errorDetails}` 
+            : errorMessage;
+          setError(fullErrorMessage);
         }
-        return;
+        setIsSubmitting(false);
+        return; // 절대 리다이렉트하지 않음
       }
 
       // 새 사용자 로그인 시 이전 사용자의 localStorage 데이터 정리
@@ -96,18 +111,15 @@ function LoginPageContent() {
         setCsrfToken(data.csrfToken);
       }
 
-      // 서버가 알려준 next로 이동
+      // 서버가 알려준 next로 이동 (온보딩으로는 절대 이동하지 않음)
       const nextParam = sp.get('next');
       const decodedNext = nextParam ? decodeURIComponent(nextParam) : null;
-      let next = data.next || decodedNext || '/chat';
-
-      // 1101(3일체험) 코드 감지 시 /chat-test로 강제 리다이렉트
-      if (trimmedPassword === '1101') {
-        next = '/chat-test';
-      }
-
+      // 서버 data.next를 우선 사용 — 클라이언트에서 비밀번호로 분기하지 않음
+      const next = data.next || decodedNext || '/chat';
       router.push(next);
     } catch (error: any) {
+      setIsSubmitting(false);
+      // 에러 유형에 따른 상세 메시지
       let errorMessage = '네트워크 오류가 발생했습니다.';
 
       if (error.name === 'AbortError') {
@@ -119,11 +131,13 @@ function LoginPageContent() {
       }
 
       setError(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 text-gray-900 relative overflow-hidden">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-gray-50 via-white to-gray-50 text-gray-900 relative overflow-hidden">
       {/* 크루즈 배경 이미지 */}
       <div className="absolute inset-0">
         <div 
@@ -135,7 +149,7 @@ function LoginPageContent() {
         <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/60 to-white/80"></div>
       </div>
 
-      <div className="relative z-10 flex items-center justify-center min-h-screen px-4 py-8 md:py-12">
+      <div className="relative z-10 flex items-center justify-center min-h-[100dvh] px-4 py-8 md:py-12">
         <div className="w-full max-w-lg">
           {/* 헤더 섹션 */}
           <div className="text-center mb-6 space-y-4">
@@ -166,8 +180,8 @@ function LoginPageContent() {
           </div>
 
           {/* YouTube 영상 */}
-          <div className="mb-4 rounded-2xl overflow-hidden shadow-2xl border-2 border-gray-200 bg-white max-h-[200px]">
-            <div className="aspect-video w-full max-h-[200px]">
+          <div className="mb-6 rounded-2xl overflow-hidden shadow-2xl border-2 border-gray-200 bg-white hidden md:block">
+            <div className="aspect-video w-full">
               <iframe
                 src="https://www.youtube.com/embed/-p_6G69MgyQ?autoplay=1&mute=1&loop=1&playlist=-p_6G69MgyQ&controls=1&modestbranding=1&rel=0&enablejsapi=1"
                 title="크루즈닷AI 소개 영상"
@@ -178,16 +192,6 @@ function LoginPageContent() {
               ></iframe>
             </div>
           </div>
-
-          {/* 3일 무료 체험 버튼 */}
-          <Link
-            href="/login-test"
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-lg py-3.5 rounded-2xl shadow-xl mb-4 hover:from-purple-600 hover:to-pink-600 active:scale-95 transition-all duration-200"
-          >
-            <span>🎁</span>
-            <span>3일 무료 체험하기</span>
-            <span>✨</span>
-          </Link>
 
           {/* 메인 콘텐츠 카드 */}
           <div className="bg-white rounded-3xl shadow-2xl border-2 border-gray-200 p-6 md:p-8 space-y-6">
@@ -238,20 +242,18 @@ function LoginPageContent() {
                 </div>
                 
                 <div>
-                  <label className="block text-base md:text-lg font-semibold text-gray-700 mb-1">
-                    이용코드 <span className="text-red-500">*</span>
+                  <label className="block text-base md:text-lg font-semibold text-gray-700 mb-3">
+                    비밀번호 <span className="text-red-500">*</span>
                   </label>
-                  <p className="text-sm text-gray-500 mb-3">담당 매니저님이 알려드린 코드를 입력하세요</p>
                   <input
                     name="password"
                     type="password"
-                    inputMode="numeric"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required
                     autoComplete="off"
                     className="w-full bg-gray-50 border-2 border-gray-300 rounded-xl px-5 py-4 text-lg md:text-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                    placeholder="이용코드를 입력하세요"
+                    placeholder="비밀번호를 입력하세요"
                     style={{ fontSize: '18px', minHeight: '56px' }}
                   />
                 </div>
@@ -259,12 +261,22 @@ function LoginPageContent() {
 
               <button
                 type="submit"
+                disabled={isSubmitting}
                 className="w-full bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 hover:from-blue-700 hover:via-blue-800 hover:to-indigo-800 text-white font-bold text-xl md:text-2xl py-6 md:py-7 rounded-xl shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
               >
                 <span className="relative z-10 flex items-center justify-center gap-3">
-                  <span className="text-2xl md:text-3xl">🚀</span>
-                  <span>로그인</span>
-                  <span className="text-2xl md:text-3xl">✨</span>
+                  {isSubmitting ? (
+                    <>
+                      <span className="text-2xl md:text-3xl animate-spin">⏳</span>
+                      <span>로그인 중...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-2xl md:text-3xl">🚀</span>
+                      <span>로그인</span>
+                      <span className="text-2xl md:text-3xl">✨</span>
+                    </>
+                  )}
                 </span>
               </button>
             </form>
@@ -280,7 +292,7 @@ function LoginPageContent() {
               </a>
             </div>
             <div className="leading-relaxed">
-              이용코드를 모르시나요? <span className="font-semibold text-gray-900">담당 매니저에게 문의하세요.</span>
+              비밀번호가 기억나지 않으신가요? <span className="font-semibold text-gray-900">관리자에게 문의하세요.</span>
             </div>
           </div>
           
@@ -297,7 +309,7 @@ function LoginPageContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">로딩 중...</div>}>
+    <Suspense fallback={<div className="flex min-h-[100dvh] items-center justify-center">로딩 중...</div>}>
       <LoginPageContent />
     </Suspense>
   );

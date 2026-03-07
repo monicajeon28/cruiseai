@@ -4,7 +4,8 @@ import { logger } from '@/lib/logger';
 import { useEffect, useRef, useState, Suspense } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { FiArrowLeft, FiMic, FiMicOff } from 'react-icons/fi';
-import { csrfFetch } from '@/lib/csrf-client';
+import { csrfFetch, clearAllLocalStorage } from '@/lib/csrf-client';
+import { showError } from '@/components/ui/Toast';
 import dynamic from 'next/dynamic';
 import { trackFeature } from '@/lib/analytics';
 import { checkTestModeClient, getCorrectPath } from '@/lib/test-mode-client';
@@ -94,6 +95,15 @@ export default function TranslatorPage() {
     checkPath();
   }, [pathname, router]);
 
+  const handleLogout = async () => {
+    try {
+      await csrfFetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      clearAllLocalStorage();
+      router.push('/login');
+    }
+  };
+
   // 튜토리얼 상태
   const [showTutorial, setShowTutorial] = useState(false);
 
@@ -104,8 +114,8 @@ export default function TranslatorPage() {
   // 발음 캐시 (phrase.target -> pronunciation)
   const [pronunciationCache, setPronunciationCache] = useState<Record<string, string>>({});
 
-  // 마이크 권한 상태 (전역으로 관리하여 모든 에러 핸들러에서 접근 가능)
-  const micPermissionRef = useRef<boolean>(false);
+  // 마이크 권한 상태 (null=미확인, true=허용, false=거부)
+  const micPermissionRef = useRef<boolean | null>(null);
 
   // 기본 현지어는 영어(US)로 시작(API 로드 후 교체)
   const [localLang, setLocalLang] = useState({ code: 'en-US', name: '영어', flag: '🇺🇸' });
@@ -140,7 +150,8 @@ export default function TranslatorPage() {
   useEffect(() => {
     const hasSeen = localStorage.getItem('hasSeenTranslatorTutorial');
     if (!hasSeen) {
-      setTimeout(() => setShowTutorial(true), 1000);
+      const tutorialTimer = setTimeout(() => setShowTutorial(true), 1000);
+      return () => clearTimeout(tutorialTimer);
     }
   }, []);
 
@@ -158,12 +169,25 @@ export default function TranslatorPage() {
     }
   }, []);
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    try {
+      // 최대 100개만 저장 (QuotaExceededError 방지)
+      const toSave = items.slice(-100);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    } catch {
+      // QuotaExceededError: 절반 삭제 후 재시도
+      try {
+        const half = items.slice(-50);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(half));
+      } catch {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
   }, [items]);
 
   // 음성 인식 객체
   const recRef = useRef<SpeechRecognition | null>(null);
   const isProcessingRef = useRef(false); // race condition 방지
+  const isListeningRef = useRef(false); // 버튼 눌림 상태 추적용 (iOS continuous 워크어라운드)
   const interimTextRef = useRef(''); // stale closure 방지용 ref
   const currentAudioRef = useRef<HTMLAudioElement | null>(null); // 중복 재생 방지
   const audioCtxRef = useRef<AudioContext | null>(null); // iOS AudioContext 잠금 해제용
@@ -172,7 +196,9 @@ export default function TranslatorPage() {
   const [preview, setPreview] = useState('');
   const [finalText, setFinalText] = useState(''); // 최종 확정된 텍스트
   const [interimText, setInterimText] = useState(''); // 인식 중인 텍스트 (실시간 업데이트)
-
+  const [isSpeaking, setSpeaking] = useState(false); // TTS 재생 중 상태
+  const audioBufferCache = useRef<Map<string, AudioBuffer>>(new Map()); // TTS AudioBuffer 캐시
+  const ttsAbortCtrl = useRef<AbortController | null>(null); // TTS 이전 요청 취소용
 
   // 기능 사용 추적
   useEffect(() => {
@@ -256,25 +282,39 @@ export default function TranslatorPage() {
       if (errorType === 'no-speech') return;
       if (errorType === 'not-allowed' || errorType === 'service-not-allowed') {
         micPermissionRef.current = false;
-        alert('마이크 권한이 필요합니다. 브라우저 설정에서 마이크를 허용해주세요.');
+        showError('마이크 권한이 필요합니다. 브라우저 설정에서 마이크를 허용해주세요.');
         return;
       }
       if (errorType === 'network') {
-        alert('네트워크 오류로 음성 인식에 실패했습니다.');
+        showError('네트워크 오류로 음성 인식에 실패했습니다.');
         return;
       }
       logger.warn('[STT] error:', errorType);
     };
     recog.onend = () => {
-      setListening('none');
-      setPreview('');
-      setFinalText('');
-      setInterimText('');
+      if (isListeningRef.current && !isProcessingRef.current) {
+        // 버튼 아직 눌려있음 → iOS continuous 끊김 → 재시작
+        try {
+          recog.start();
+          logger.debug('[PTT] iOS continuous workaround: restarting recognition');
+        } catch (e) {
+          // 이미 시작된 경우 무시
+          logger.debug('[PTT] Recognition restart skipped:', e);
+          isListeningRef.current = false;
+          setListening('none');
+        }
+      } else {
+        setListening('none');
+        setPreview('');
+        setFinalText('');
+        setInterimText('');
+      }
     };
 
     recRef.current = recog;
 
     return () => {
+      isListeningRef.current = false;
       try { recog.abort(); } catch { }
       recRef.current = null;
     };
@@ -283,6 +323,7 @@ export default function TranslatorPage() {
   // speechSynthesis cleanup
   useEffect(() => {
     return () => {
+      ttsAbortCtrl.current?.abort();
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
       currentAudioRef.current?.pause();
       currentAudioRef.current = null;
@@ -486,8 +527,10 @@ export default function TranslatorPage() {
     const u = new SpeechSynthesisUtterance(text);
     u.lang = langCode;
     u.rate = 0.9;
+    u.onend = () => { setSpeaking(false); };
     u.onerror = (e: SpeechSynthesisErrorEvent) => {
       if (e.error !== 'interrupted') logger.warn('[TTS] WebSpeech error:', e.error);
+      setSpeaking(false);
     };
     const assignVoiceAndSpeak = () => {
       const voices = window.speechSynthesis.getVoices();
@@ -508,18 +551,22 @@ export default function TranslatorPage() {
   }
 
   // 말하기(TTS) — Supertone(한/영/일) + Web Speech API fallback(기타 언어)
-  // iOS 대응: AudioContext를 제스처 핸들러 동기 부분에서 미리 잠금 해제
+  // P1-2: isSpeaking state + AudioBuffer 캐시 + AbortController + iOS AudioContext 잠금 해제
   async function speak(text: string, langCode: string) {
+    if (!text?.trim()) return;
+    setSpeaking(true);
+
+    // 이전 TTS 요청 중단
+    ttsAbortCtrl.current?.abort();
+    ttsAbortCtrl.current = new AbortController();
+
     // 이전 재생 중단 (중복 재생 방지)
     if (sourceRef.current) { try { sourceRef.current.stop(); } catch { } sourceRef.current = null; }
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause();
-      currentAudioRef.current = null;
-    }
+    if (currentAudioRef.current) { currentAudioRef.current.pause(); currentAudioRef.current = null; }
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
-    // iOS AudioContext 잠금 해제 — 이 코드는 await 전 동기 실행 (제스처 컨텍스트 유지)
     try {
+      // iOS AudioContext 잠금 해제 — await 전 동기 실행 (제스처 컨텍스트 유지)
       const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext | undefined;
       if (AudioContextClass && !audioCtxRef.current) {
         audioCtxRef.current = new AudioContextClass();
@@ -527,59 +574,87 @@ export default function TranslatorPage() {
       if (audioCtxRef.current?.state === 'suspended') {
         audioCtxRef.current.resume(); // 동기 호출 — await 없이 잠금만 해제
       }
-    } catch { /* AudioContext 미지원 환경 무시 */ }
 
-    try {
-      const res = await csrfFetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, langCode }),
-      });
-      // 204: Supertone 미지원 언어 → Web Speech API로 fallback
-      if (res.status === 204) {
-        speakWebSpeech(text, langCode);
-        return;
+      // 클라이언트 AudioBuffer 캐시 확인 (같은 텍스트 반복 시 API 재호출 방지)
+      const cacheKey = `${langCode}:${text.trim().slice(0, 150)}`;
+      let audioBuffer = audioBufferCache.current.get(cacheKey);
+
+      if (!audioBuffer) {
+        const res = await csrfFetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: text.trim(), langCode }),
+          signal: ttsAbortCtrl.current.signal,
+        });
+        // 204: Supertone 미지원 언어 → Web Speech API로 fallback (setSpeaking은 u.onend에서 처리)
+        if (res.status === 204) {
+          speakWebSpeech(text, langCode);
+          return; // finally 스킵됨 — speakWebSpeech의 u.onend가 setSpeaking(false) 담당
+        }
+        if (!res.ok) throw new Error(`TTS API ${res.status}`);
+
+        const arrayBuffer = await res.arrayBuffer();
+
+        if (audioCtxRef.current) {
+          audioBuffer = await audioCtxRef.current.decodeAudioData(arrayBuffer);
+          // LRU: 캐시 최대 50개 제한 (메모리 누수 방지)
+          if (audioBufferCache.current.size >= 50) {
+            const firstKey = audioBufferCache.current.keys().next().value;
+            if (firstKey) audioBufferCache.current.delete(firstKey);
+          }
+          audioBufferCache.current.set(cacheKey, audioBuffer);
+        } else {
+          // AudioContext 미지원 환경 — HTMLAudioElement fallback
+          const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          currentAudioRef.current = audio;
+          // 핸들러를 play() 이전에 등록 → race condition 방지 (짧은 오디오에서 ended가 먼저 발생 가능)
+          await new Promise<void>((resolve, reject) => {
+            audio.onended = () => {
+              URL.revokeObjectURL(url);
+              if (currentAudioRef.current === audio) currentAudioRef.current = null;
+              resolve();
+            };
+            audio.onerror = () => {
+              URL.revokeObjectURL(url);
+              if (currentAudioRef.current === audio) currentAudioRef.current = null;
+              speakWebSpeech(text, langCode);
+              resolve(); // fallback 실행 후 resolve (setSpeaking은 finally에서 처리)
+            };
+            audio.play().catch(reject); // play 실패 시 catch 블록으로 전달
+          });
+          return;
+        }
       }
-      if (!res.ok) throw new Error(`TTS API ${res.status}`);
 
-      const arrayBuffer = await res.arrayBuffer();
+      if (!audioCtxRef.current || !audioBuffer) { speakWebSpeech(text, langCode); return; } // u.onend가 setSpeaking(false) 담당
 
-      // AudioContext로 재생 (iOS 잠금 해제 후 재생 가능)
-      if (audioCtxRef.current) {
-        const audioBuffer = await audioCtxRef.current.decodeAudioData(arrayBuffer);
-        const source = audioCtxRef.current.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(audioCtxRef.current.destination);
-        source.start(0);
-        sourceRef.current = source;
-        source.onended = () => { if (sourceRef.current === source) sourceRef.current = null; };
-        return;
-      }
-
-      // AudioContext 미지원 환경 — HTMLAudioElement fallback
-      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      currentAudioRef.current = audio;
-      audio.onended = () => {
-        URL.revokeObjectURL(url);
-        if (currentAudioRef.current === audio) currentAudioRef.current = null;
-      };
-      audio.onerror = () => {
-        URL.revokeObjectURL(url);
-        if (currentAudioRef.current === audio) currentAudioRef.current = null;
-        speakWebSpeech(text, langCode);
-      };
-      await audio.play();
-    } catch {
+      const source = audioCtxRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioCtxRef.current.destination);
+      sourceRef.current = source;
+      source.start(0);
+      // timeout fallback: 짧은 오디오나 onended 미발생 시 무한 대기 방지
+      await Promise.race([
+        new Promise<void>(resolve => { source.onended = () => resolve(); }),
+        new Promise<void>(resolve => setTimeout(resolve, (audioBuffer.duration + 2) * 1000)),
+      ]);
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') return; // 정상 취소
       // 네트워크 오류 또는 디코딩 실패 → Web Speech API fallback
+      logger.error('[TTS] speak 오류:', e);
       currentAudioRef.current = null;
       speakWebSpeech(text, langCode);
+    } finally {
+      setSpeaking(false);
+      sourceRef.current = null;
     }
   }
 
   // 공통 음성 인식 시작(길게 누르는 동안)
   async function startPressToTalk(from: { code: string; name: string; flag: string }, to: { code: string; name: string; flag: string }) {
+    isListeningRef.current = true; // iOS continuous 워크어라운드: 버튼 눌림 상태 기록
     // P1-4: PTT onTouchStart 제스처 컨텍스트에서 AudioContext 미리 잠금 해제
     // speak()가 await translateText() 이후 호출되므로 제스처 컨텍스트가 소멸 — 여기서 미리 unlock
     try {
@@ -588,57 +663,45 @@ export default function TranslatorPage() {
       if (audioCtxRef.current?.state === 'suspended') audioCtxRef.current.resume();
     } catch { }
     if (!recRef.current) {
-      alert('❌ 이 브라우저는 음성 인식을 지원하지 않습니다.\n\n음성 인식을 지원하는 브라우저(Chrome, Edge, Safari 등)를 사용해주세요.');
+      showError('이 브라우저는 음성 인식을 지원하지 않습니다. Chrome, Edge, Safari 등을 사용해주세요.');
+      isListeningRef.current = false;
       return;
     }
 
-    try {
-      recRef.current.abort?.(); // 혹시 켜져있으면 끊고 시작
-    } catch (e) {
-      logger.error("Error aborting speech recognition:", e);
-    }
-
-    setListening('pressing');
-    setPreview('마이크 준비 중...');
-    setFinalText('');
-    setInterimText('');
-
-    // ⚡ 마이크 권한 확인 및 Speech Recognition 시작
-    try {
-      // 1단계: 실제 마이크 권한 확인 (getUserMedia로 확실하게 확인)
-      micPermissionRef.current = false; // 초기화
-
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        try {
-          // Permissions Policy 경고는 무시하고 getUserMedia 시도
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch((err) => {
-            // Permissions Policy 경고는 무시 (실제 권한은 있을 수 있음)
-            logger.log('[getUserMedia] Caught error (may be Permissions Policy warning):', err);
-            throw err;
-          });
-          stream.getTracks().forEach(track => track.stop());
-          micPermissionRef.current = true; // ✅ 권한 확인됨 - 전역 상태 저장
-          setPreview('✅ 마이크 준비됨! 말씀하세요...');
-        } catch (mediaError: any) {
-          // 권한이 실제로 거부된 경우만 false 유지
-          if (mediaError.name === 'NotAllowedError' || mediaError.name === 'PermissionDeniedError') {
-            micPermissionRef.current = false;
-          } else {
-            // 다른 오류는 권한은 있을 수 있으므로 true로 설정
-            micPermissionRef.current = true;
-          }
-        }
-      } else {
-        // getUserMedia 지원 안 함 - 일단 시도 (권한 체크 불가능)
-        micPermissionRef.current = true;
+    // P1-1: 이미 권한 허용된 경우 getUserMedia 건너뛰고 바로 시작
+    if (micPermissionRef.current === true) {
+      setListening('pressing');
+      setPreview('마이크 준비 중...');
+      setFinalText('');
+      setInterimText('');
+      try {
+        recRef.current.abort?.();
+      } catch { }
+      // 아래 2단계(Speech Recognition 시작)로 바로 진행
+    } else {
+      // 첫 호출 또는 권한 거부 후 재시도: getUserMedia로 권한 확인
+      try {
+        recRef.current.abort?.();
+      } catch (e) {
+        logger.error("Error aborting speech recognition:", e);
       }
 
-      // 2단계: Speech Recognition 시작
+      setListening('pressing');
+      setPreview('마이크 준비 중...');
+      setFinalText('');
+      setInterimText('');
+    }
+
+    // ⚡ Speech Recognition 시작 (getUserMedia 별도 호출 제거 — iOS 이중 권한 프롬프트 방지)
+    // SpeechRecognition 자체가 마이크 권한을 요청함. onerror 'not-allowed'로 거부 감지.
+    try {
+      // Speech Recognition 시작
       const r = recRef.current!;
       if (!r) {
-        alert('❌ 음성 인식 초기화에 실패했습니다.');
+        showError('음성 인식 초기화에 실패했습니다.');
         setListening('none');
         setPreview('');
+        isListeningRef.current = false;
         return;
       }
 
@@ -647,11 +710,18 @@ export default function TranslatorPage() {
 
       let accumulatedFinalText = '';
 
+      r.onstart = () => {
+        micPermissionRef.current = true; // 권한 허용 확인 — 다음 호출부터 재확인 불필요
+        setPreview('말씀하세요...');
+      };
+
       r.onresult = (e: SpeechRecognitionEvent) => {
         let newFinalText = accumulatedFinalText;
         let newInterimText = '';
 
-        for (let i = e.resultIndex; i < e.results.length; i++) {
+        // P2-5: resultIndex 보정 (Safari/Firefox 호환성)
+        const startIdx = Math.max(e.resultIndex, 0);
+        for (let i = startIdx; i < e.results.length; i++) {
           const chunk = e.results[i][0].transcript;
           if (e.results[i].isFinal) {
             newFinalText += chunk + ' ';
@@ -679,31 +749,20 @@ export default function TranslatorPage() {
       };
 
       r.onerror = (e: any) => {
-        const errorType = e?.error || 'unknown';
-
-        // ⚡ 권한이 허용된 경우 → 모든 에러 조용히 처리 (메시지 없음)
-        if (micPermissionRef.current) {
-          logger.log('[Speech Recognition] Permission granted, error silently handled:', errorType);
+        const errorType = e?.error ?? 'unknown';
+        if (errorType === 'no-speech') {
           setListening('none');
           setPreview('');
-          return; // 조용히 종료 (사용자에게 알림 안 함)
+          return;
         }
-
-        // 권한이 거부된 경우만 에러 처리
+        if (errorType === 'not-allowed' || errorType === 'permission-denied') {
+          micPermissionRef.current = false;
+          showError('마이크 권한이 필요합니다. 브라우저 설정에서 허용해주세요.');
+        } else {
+          logger.warn('[STT] 음성인식 오류:', errorType);
+        }
         setListening('none');
         setPreview('');
-
-        if (errorType === 'not-allowed' || errorType === 'permission-denied') {
-          alert('❌ 마이크 권한이 필요합니다.\n\n💡 해결 방법:\n1. 브라우저 주소창 왼쪽 🔒 아이콘 클릭\n2. "마이크" → "허용" 선택\n3. 페이지 새로고침 (F5)\n4. 버튼을 다시 눌러주세요');
-        } else if (errorType === 'no-speech') {
-          // 말이 없으면 조용히 처리 (알림 없음)
-          logger.log('음성이 감지되지 않았습니다.');
-        } else if (errorType === 'network') {
-          alert('⚠️ 네트워크 오류가 발생했습니다.\n인터넷 연결을 확인해주세요.');
-        } else {
-          // 다른 에러는 조용히 로그만
-          logger.error('[Speech Recognition Error]', errorType);
-        }
       };
 
       // 음성 인식 시작
@@ -711,24 +770,15 @@ export default function TranslatorPage() {
         r.start();
       } catch (startError: any) {
         // ⚡ 권한이 허용된 경우 → 에러 무시 (메시지 없음)
-        if (micPermissionRef.current) {
-          logger.log('[Speech Recognition Start] Permission granted, error silently handled:', startError);
-          setListening('none');
-          setPreview('');
-          return; // 조용히 종료
+        if (startError?.name === 'NotAllowedError' || startError?.message?.includes('permission')) {
+          micPermissionRef.current = false;
+          showError('마이크 권한이 필요합니다. 브라우저 설정에서 허용해주세요.');
+        } else {
+          logger.warn('[Speech Recognition Start]', startError);
         }
-
-        // 권한이 거부된 경우만 에러 처리
-        logger.error('[Speech Recognition Start Error]', startError);
         setListening('none');
         setPreview('');
-
-        if (startError?.name === 'NotAllowedError' || startError?.message?.includes('permission')) {
-          alert('❌ 마이크 권한이 필요합니다.\n\n💡 해결 방법:\n1. 브라우저 주소창 왼쪽 🔒 아이콘 클릭\n2. "마이크" → "허용" 선택\n3. 페이지 새로고침 (F5)\n4. 버튼을 다시 눌러주세요');
-        } else {
-          // 다른 오류는 조용히 처리
-          logger.error('[Speech Recognition Start]', startError);
-        }
+        isListeningRef.current = false;
         return;
       }
 
@@ -741,31 +791,30 @@ export default function TranslatorPage() {
       };
 
     } catch (error: any) {
-      // ⚡ 권한이 허용된 경우 → 에러 무시 (메시지 없음)
-      if (micPermissionRef.current) {
-        logger.log('[Speech Recognition] Permission granted, catch block error silently handled:', error);
-        setListening('none');
-        setPreview('');
-        return; // 조용히 종료
-      }
-
-      // 권한이 거부된 경우만 에러 처리
       logger.error('[Start Speech Recognition Error]', error);
       setListening('none');
       setPreview('');
+      isListeningRef.current = false;
 
       if (error?.name === 'NotAllowedError' || error?.message?.includes('permission')) {
-        alert('❌ 마이크 권한이 필요합니다.\n\n💡 해결 방법:\n1. 브라우저 주소창 왼쪽 🔒 아이콘 클릭\n2. "마이크" → "허용" 선택\n3. 페이지 새로고침 (F5)\n4. 버튼을 다시 눌러주세요');
+        micPermissionRef.current = false;
+        showError('마이크 권한이 필요합니다. 브라우저 설정에서 허용해주세요.');
       } else {
-        // 예상치 못한 에러는 조용히 로그만
         logger.error('[Speech Recognition] Unexpected error:', error);
       }
     }
   }
 
   async function stopPressToTalk() {
+    isListeningRef.current = false; // iOS continuous 워크어라운드: 버튼 뗌 상태 기록
     if (isProcessingRef.current) return; // 중복 실행 방지
     isProcessingRef.current = true;
+
+    // CRITICAL-3 iOS: gesture context에서 AudioContext 즉시 resume
+    // (translateText await 후엔 gesture context 소멸 → speak() 무음 방지)
+    try {
+      if (audioCtxRef.current?.state === 'suspended') audioCtxRef.current.resume();
+    } catch { }
 
     const r: any = recRef.current;
     if (!r) { isProcessingRef.current = false; return; }
@@ -804,7 +853,7 @@ export default function TranslatorPage() {
 
       // 에러 메시지는 TTS로 읽지 않음
       if (!isError) {
-        speak(translated, pair.to.code);
+        await speak(translated, pair.to.code); // P1-3: await 추가 (동시 실행 방지)
       }
     } catch (error) {
       logger.error('[stopPressToTalk] Unexpected error:', error);
@@ -996,7 +1045,7 @@ export default function TranslatorPage() {
         <TranslatorTutorial onComplete={() => setShowTutorial(false)} />
       )}
 
-      <div className="min-h-screen bg-[#F5F7FA] text-gray-900 flex flex-col">
+      <div className="min-h-[100dvh] bg-[#F5F7FA] text-gray-900 flex flex-col">
         {/* 헤더 */}
         <header className="sticky top-0 z-20 border-b bg-white/95 backdrop-blur px-4 py-2 md:py-4">
           <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
@@ -1005,6 +1054,12 @@ export default function TranslatorPage() {
               <span className="font-medium">뒤로가기</span>
             </button>
             <h1 className="text-xl md:text-2xl lg:text-3xl font-bold">AI 통번역기</h1>
+            <button
+              onClick={handleLogout}
+              className="text-sm text-gray-500 hover:text-gray-800 px-3 py-2 min-h-[44px] rounded-md"
+            >
+              로그아웃
+            </button>
           </div>
           <div className="max-w-3xl mx-auto mt-3 flex flex-col sm:flex-row sm:items-center gap-3 text-base md:text-lg">
             <div className={`inline-flex items-center gap-2 px-4 md:px-5 py-2 md:py-2.5 rounded-lg ${isCruising ? 'bg-blue-50 text-blue-700' : 'bg-green-50 text-green-700'
@@ -1053,7 +1108,7 @@ export default function TranslatorPage() {
         </header>
 
         {/* 본문 */}
-        <main className="max-w-3xl mx-auto w-full flex-1 px-4 py-6 md:py-8">
+        <main className="max-w-3xl mx-auto w-full flex-1 overflow-y-auto overscroll-contain min-h-0 px-4 py-6 md:py-8">
           {/* 프리뷰(인식 중) - 개선된 버전: 인식 과정을 실시간으로 표시 */}
           {listening !== 'none' && (
             <div className="rounded-xl border-2 border-blue-400 bg-gradient-to-r from-blue-50 to-purple-50 p-6 md:p-8 mb-6 shadow-lg">
@@ -1332,15 +1387,15 @@ export default function TranslatorPage() {
         </main>
 
         {/* 하단 고정 버튼들(모바일에 최적) - 크기 조정 */}
-        <footer className="sticky bottom-0 z-20 border-t-2 bg-white/95 backdrop-blur px-4 pb-[env(safe-area-inset-bottom)] shadow-lg">
+        <footer className="sticky bottom-0 z-20 border-t-2 bg-white/95 backdrop-blur px-4 shadow-lg" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
           <div className="max-w-3xl mx-auto py-3 md:py-4 grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
             {BTN_PAIRS.map((p) => (
               <button
                 key={p.label}
-                onMouseDown={() => startPressToTalk(p.from, p.to)}
-                onMouseUp={stopPressToTalk}
-                onTouchStart={() => startPressToTalk(p.from, p.to)}
-                onTouchEnd={stopPressToTalk}
+                style={{ touchAction: 'none' }}
+                onPointerDown={() => startPressToTalk(p.from, p.to)}
+                onPointerUp={stopPressToTalk}
+                onPointerCancel={stopPressToTalk}
                 className={`
                 w-full px-4 md:px-5 py-5 md:py-6 rounded-xl text-lg md:text-xl font-bold shadow-lg
                 min-h-[72px] md:min-h-[100px]

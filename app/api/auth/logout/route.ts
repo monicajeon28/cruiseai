@@ -20,30 +20,49 @@ export async function POST() {
         }).catch(() => {
           // 세션이 이미 삭제되었거나 없는 경우 무시
         });
-      } catch (error) {
-        logger.error('[Logout] Error deleting session from DB:', error);
+      } catch {
+        logger.error('[Logout] Error deleting session from DB');
       }
     }
 
-    // 쿠키 삭제 (프로덕션에서 domain 포함 필수)
-    const domain = process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined;
-    cookieStore.set(SESSION_COOKIE, '', { path: '/', maxAge: 0, ...(domain ? { domain } : {}) });
-    // cg.mode: domain 있는 쿠키(신규) + domain 없는 쿠키(기존) 모두 삭제
-    if (domain) {
-      cookieStore.set('cg.mode', '', { path: '/', maxAge: 0, domain });
-    }
-    cookieStore.set('cg.mode', '', { path: '/', maxAge: 0 }); // 기존 domain 없는 쿠키도 삭제
+    // 쿠키 삭제 — login에서 .cruiseai.co.kr 도메인으로 심은 쿠키이므로 도메인 일치 필수
+    const cookieDomain = process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined;
+    cookieStore.set(SESSION_COOKIE, '', {
+      maxAge: 0,
+      path: '/',
+      domain: cookieDomain,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
+    cookieStore.set('cg.mode', '', {
+      maxAge: 0,
+      path: '/',
+      domain: cookieDomain,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
 
     return NextResponse.json({ ok: true });
-  } catch (error) {
-    logger.error('[Logout] Error:', error);
+  } catch {
+    logger.error('[Logout] Error');
     // 쿠키는 삭제 시도
-    const domain = process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined;
-    cookieStore.set(SESSION_COOKIE, '', { path: '/', maxAge: 0, ...(domain ? { domain } : {}) });
-    if (domain) {
-      cookieStore.set('cg.mode', '', { path: '/', maxAge: 0, domain });
-    }
-    cookieStore.set('cg.mode', '', { path: '/', maxAge: 0 }); // 기존 domain 없는 쿠키도 삭제
+    const cookieDomain = process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined;
+    cookieStore.set(SESSION_COOKIE, '', {
+      maxAge: 0,
+      path: '/',
+      domain: cookieDomain,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
+    cookieStore.set('cg.mode', '', {
+      maxAge: 0,
+      path: '/',
+      domain: cookieDomain,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
     return NextResponse.json({ ok: true }); // 에러가 있어도 로그아웃은 성공 처리
   }
 } 

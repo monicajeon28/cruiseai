@@ -3,18 +3,18 @@
 export const dynamic = 'force-dynamic';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { setCsrfToken, clearAllLocalStorage } from '@/lib/csrf-client';
-import { logger } from '@/lib/logger';
 import KakaoShareButton from '@/components/KakaoShareButton';
+import KakaoChannelButton from '@/components/KakaoChannelButton';
 
 function TestLoginPageContent() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
   const sp = useSearchParams();
 
   const [trialCode, setTrialCode] = useState<string | null>(null);
@@ -22,10 +22,10 @@ function TestLoginPageContent() {
   const [managerCode, setManagerCode] = useState<string | null>(null);
 
   useEffect(() => {
-    // URL 파라미터에서 메시지 확인 (alert 대신 setError 사용 — 피싱 벡터 차단)
+    // URL 파라미터에서 메시지 확인
     const message = sp.get('message');
     if (message) {
-      setError(decodeURIComponent(message));
+      setError(message);
     }
     
     // 3일 체험 초대 링크 파라미터 확인
@@ -60,8 +60,8 @@ function TestLoginPageContent() {
   // 연락처 유효성 검사 (10자리 또는 11자리)
   const isValidPhone = phone.length >= 10 && phone.length <= 11 && /^[0-9]{10,11}$/.test(phone);
   
-  // 버튼 활성화 조건: 이름, 연락처, 초대코드 모두 입력 시 활성화
-  const isFormValid = name.trim().length > 0 && isValidPhone && password.trim().length > 0;
+  // 버튼 활성화 조건: 이름과 연락처가 모두 유효해야 함
+  const isFormValid = name.trim().length > 0 && isValidPhone;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -89,11 +89,10 @@ function TestLoginPageContent() {
     }
     
     if (!trimmedPassword) {
-      setError('초대코드를 입력해주세요.');
+      setError('비밀번호를 입력해주세요.');
       return;
     }
 
-    setLoading(true);
     try {
       const r = await fetch('/api/auth/login', {
         method: 'POST',
@@ -117,15 +116,18 @@ function TestLoginPageContent() {
 
       if (!r.ok || !data?.ok) {
         const errorMessage = data?.error ?? '로그인 실패';
-        if (process.env.NODE_ENV === 'development') {
-          logger.error('[TEST LOGIN] Login failed:', { status: r.status, error: errorMessage });
-        }
+        const errorDetails = data?.details ?? '';
+        const errorStack = data?.stack ?? '';
         
-        // HTTP 상태 코드 기반 에러 분류 (errorMessage 내용에 의존하지 않음)
-        if (r.status === 401 || r.status === 403) {
-          setError('초대코드가 올바르지 않습니다. 상담 매니저님이 알려드린 코드를 확인해주세요.');
+        // 비밀번호 오류인 경우 명확한 메시지 표시
+        if (r.status === 401 || errorMessage.includes('비밀번호') || errorMessage.includes('올바르지 않습니다')) {
+          setError('비밀번호가 올바르지 않습니다. 테스트 모드 비밀번호를 확인해주세요.');
         } else {
-          setError(errorMessage || '로그인에 실패했습니다. 다시 시도해주세요.');
+          // 테스트 모드 오류인 경우 상세 정보 포함
+          const fullErrorMessage = errorDetails 
+            ? `${errorMessage}\n\n상세 정보: ${errorDetails}` 
+            : errorMessage;
+          setError(fullErrorMessage);
         }
         return; // 절대 리다이렉트하지 않음
       }
@@ -148,21 +150,20 @@ function TestLoginPageContent() {
       if (next === '/chat' || next.startsWith('/chat/')) {
         next = next.replace('/chat', '/chat-test');
       }
-      
+
       // 최종 안전장치: /chat-test로 시작하지 않으면 강제로 /chat-test로 변경
       if (!next.startsWith('/chat-test')) {
         next = '/chat-test';
       }
-      window.location.href = next;
-    } catch {
+
+      window.location.href = next; // router.push 대신 window.location.href 사용하여 확실하게 리다이렉트
+    } catch (error) {
       setError('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
-    } finally {
-      setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-100 to-sky-200 text-gray-900 relative overflow-hidden">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-sky-100 via-blue-100 to-sky-200 text-gray-900 relative overflow-hidden">
       {/* 크루즈 배경 이미지 */}
       <div className="absolute inset-0">
         <div 
@@ -174,7 +175,7 @@ function TestLoginPageContent() {
         <div className="absolute inset-0 bg-gradient-to-b from-sky-50/30 via-blue-50/20 to-sky-50/30"></div>
       </div>
 
-      <div className="relative z-10 flex items-center justify-center min-h-screen px-4 py-4 md:py-12">
+      <div className="relative z-10 flex items-center justify-center min-h-[100dvh] px-4 py-4 md:py-12">
         <div className="w-full max-w-lg">
           {/* 헤더 섹션 */}
           <div className="text-center mb-4 md:mb-6 space-y-2 md:space-y-4">
@@ -211,7 +212,7 @@ function TestLoginPageContent() {
           </div>
 
           {/* YouTube 영상 */}
-          <div className="mb-4 md:mb-6 rounded-xl md:rounded-2xl overflow-hidden shadow-xl md:shadow-2xl border-2 border-gray-200 bg-white">
+          <div className="mb-4 md:mb-6 rounded-xl md:rounded-2xl overflow-hidden shadow-xl md:shadow-2xl border-2 border-gray-200 bg-white hidden md:block">
             <div className="aspect-video w-full">
               <iframe
                 src="https://www.youtube.com/embed/-p_6G69MgyQ?autoplay=1&mute=1&loop=1&playlist=-p_6G69MgyQ&controls=1&modestbranding=1&rel=0&enablejsapi=1"
@@ -226,6 +227,9 @@ function TestLoginPageContent() {
 
           {/* 메인 콘텐츠 카드 */}
           <div className="bg-white rounded-2xl md:rounded-3xl shadow-xl md:shadow-2xl border-2 border-gray-200 p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6">
+            {/* 카카오톡 채널 추가 배너 */}
+            <KakaoChannelButton variant="banner" />
+            
             {/* 기능 소개 */}
             <div className="grid grid-cols-4 gap-2 md:gap-3 lg:gap-4">
               {[
@@ -321,7 +325,7 @@ function TestLoginPageContent() {
                 
                 <div>
                   <label className="block text-sm md:text-base lg:text-lg font-semibold text-gray-700 mb-2 md:mb-3">
-                    초대코드 <span className="text-red-500">*</span>
+                    비밀번호 <span className="text-red-500">*</span>
                   </label>
                   <input
                     name="password"
@@ -331,11 +335,11 @@ function TestLoginPageContent() {
                     required
                     autoComplete="off"
                     className="w-full bg-gray-50 border-2 border-gray-300 rounded-lg md:rounded-xl px-4 py-3 md:px-5 md:py-4 text-base md:text-lg lg:text-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                    placeholder="초대코드를 입력하세요"
+                    placeholder="비밀번호를 입력하세요"
                     style={{ fontSize: '16px', minHeight: '48px' }}
                   />
                   <p className="text-xs md:text-sm lg:text-base text-blue-600 mt-1 md:mt-2 ml-1 leading-relaxed font-medium">
-                    초대코드는 크루즈닷 상담 매니저님이 알려드려요
+                    비밀번호는 크루즈닷 상담 매니저님이 알려드려요
                   </p>
                 </div>
               </div>
@@ -343,20 +347,14 @@ function TestLoginPageContent() {
               {/* 3일 무료체험 시작 버튼 (로그인 제출) */}
               <button
                 type="submit"
-                disabled={!isFormValid || loading}
+                disabled={!isFormValid}
                 className="w-full bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 hover:from-blue-700 hover:via-blue-800 hover:to-indigo-800 text-white font-bold text-lg md:text-xl lg:text-2xl py-4 md:py-5 lg:py-6 rounded-lg md:rounded-xl shadow-xl md:shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none relative overflow-hidden group flex items-center justify-center"
                 style={{ minHeight: '52px' }}
               >
                 <span className="relative z-10 flex items-center justify-center gap-2 md:gap-3">
-                  {loading ? (
-                    <span>로그인 중...</span>
-                  ) : (
-                    <>
-                      <span className="text-xl md:text-2xl lg:text-3xl">🚀</span>
-                      <span>3일 무료체험 시작</span>
-                      <span className="text-xl md:text-2xl lg:text-3xl">✨</span>
-                    </>
-                  )}
+                  <span className="text-xl md:text-2xl lg:text-3xl">🚀</span>
+                  <span>3일 무료체험 시작</span>
+                  <span className="text-xl md:text-2xl lg:text-3xl">✨</span>
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
               </button>
@@ -388,13 +386,13 @@ function TestLoginPageContent() {
                   buttonText="카카오톡 친구 공유하기"
                 />
                 
-                <Link
+                <a
                   href="/"
                   className="inline-flex items-center justify-center px-5 py-3 md:px-6 md:py-4 bg-gray-100 hover:bg-gray-200 border-2 border-gray-300 rounded-lg md:rounded-xl text-gray-700 font-semibold text-sm md:text-base lg:text-lg transition-all duration-200"
                   style={{ minHeight: '48px' }}
                 >
                   크루즈몰 구경하기
-                </Link>
+                </a>
               </div>
               
               <p className="text-center text-xs md:text-sm lg:text-base text-gray-500 mt-3 md:mt-4 leading-relaxed">
@@ -410,7 +408,7 @@ function TestLoginPageContent() {
 
 export default function TestLoginPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">로딩 중...</div>}>
+    <Suspense fallback={<div className="flex min-h-[100dvh] items-center justify-center">로딩 중...</div>}>
       <TestLoginPageContent />
     </Suspense>
   );

@@ -1,16 +1,16 @@
 'use client';
 
 import { logger } from '@/lib/logger';
-import { showError } from '@/components/ui/Toast';
 import type { ChatInputMode } from '@/lib/types';
 import dynamic from 'next/dynamic';
 import { ChatInputPayload } from '@/components/chat/types';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChatMessage, TextMessage } from '@/lib/chat-types';
 import { ChatMessageSkeleton } from '@/components/ui/Skeleton';
 import { csrfFetch } from '@/lib/csrf-client';
 import tts, { extractPlainText } from '@/lib/tts';
 import { checkTestModeClient } from '@/lib/test-mode-client';
+import { showError } from '@/components/ui/Toast';
 
 // 성능 최적화: 큰 컴포넌트들을 동적 임포트
 const ChatWindow = dynamic(() => import('@/components/ChatWindow'), {
@@ -34,22 +34,56 @@ const ENABLE_CHAT_HISTORY = true; // 채팅 히스토리 활성화
 
 export default function ChatClientShell({
   mode,
-  scrollable = false,
 }: {
   mode: ChatInputMode;
-  scrollable?: boolean;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true); // 초기 로딩 상태
   const [isSending, setIsSending] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isOnline, setIsOnline] = useState(true); // 네트워크 상태
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const streamAbortRef = useRef<AbortController | null>(null); // 스트리밍 AbortController
   const prevModeRef = useRef<ChatInputMode | null>(null); // 이전 모드 추적
   const hasLoadedHistoryRef = useRef(false); // 히스토리 로드 여부 추적
-  const abortControllerRef = useRef<AbortController | null>(null); // 히스토리 fetch 취소용
-  const streamAbortControllerRef = useRef<AbortController | null>(null); // 스트리밍 취소용
   const [isTestMode, setIsTestMode] = useState(false); // test 모드 여부
+  const [keyboardPadding, setKeyboardPadding] = useState(0); // WO-MOB-10: iOS 소프트 키보드 높이
+
+  // WO-MOB-10/11: visualViewport API — iOS에서 소프트 키보드 높이 감지 (rAF throttle + NaN 처리)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    let rafId: number | null = null;
+    const handleResize = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        const offsetTop = Number.isFinite(vv.offsetTop) ? vv.offsetTop : 0;
+        const kbHeight = Math.max(0, window.innerHeight - vv.height - offsetTop);
+        setKeyboardPadding(prev => prev === kbHeight ? prev : kbHeight);
+      });
+    };
+    vv.addEventListener('resize', handleResize);
+    return () => {
+      vv.removeEventListener('resize', handleResize);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, []);
+
+  // 네트워크 온/오프라인 감지
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    // 초기 상태 동기화
+    setIsOnline(navigator.onLine);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // test 모드 확인
   useEffect(() => {
@@ -76,26 +110,10 @@ export default function ChatClientShell({
     const loadChatHistory = async () => {
       if (hasLoadedHistoryRef.current) return; // 이미 로드했으면 스킵
 
-      // 이전 요청이 진행 중이면 취소 (모드 전환 레이스 컨디션 방지)
-      abortControllerRef.current?.abort();
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
-      // 5초 타임아웃
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-      // AbortError 여부 추적 (finally에서 조건부 처리를 위해)
-      let isAborted = false;
-
       try {
         setIsLoading(true);
         // test 모드 확인
         const testModeInfo = await checkTestModeClient();
-        // checkTestModeClient 완료 후 abort 여부 확인 (모드 전환 시 이후 fetch 방지)
-        if (controller.signal.aborted) {
-          isAborted = true;
-          return;
-        }
         const testSuffix = testModeInfo.isTestMode ? '_test' : '';
 
         // 모드별로 다른 sessionId 사용 (탭별 히스토리 분리 + test 모드 구분)
@@ -106,9 +124,7 @@ export default function ChatClientShell({
 
         const response = await fetch(`/api/chat/history?sessionId=${sessionId}`, {
           credentials: 'include',
-          signal: controller.signal,
         });
-        clearTimeout(timeoutId);
 
         if (response.ok) {
           const data = await response.json();
@@ -130,31 +146,15 @@ export default function ChatClientShell({
           }
         }
       } catch (error) {
-        clearTimeout(timeoutId);
-        // AbortError는 정상 취소(모드 전환 또는 타임아웃)이므로 UI 에러 없이 조용히 종료
-        if (error instanceof Error && error.name === 'AbortError') {
-          isAborted = true;
-          return;
-        }
         logger.error('[ChatClientShell] 히스토리 로드 실패:', error);
       } finally {
         setIsLoading(false);
-        // abort된 경우(타임아웃/모드 전환)에는 true로 세팅하지 않음 → 재로드 가능하도록 유지
-        if (!isAborted) {
-          hasLoadedHistoryRef.current = true;
-        }
+        hasLoadedHistoryRef.current = true;
       }
     };
 
     // 모든 모드에서 히스토리 로드 (탭별로 분리)
     loadChatHistory();
-
-    return () => {
-      // 모드 변경 또는 언마운트 시 진행 중인 fetch 취소
-      abortControllerRef.current?.abort();
-      // cleanup 시점에 리셋 → Effect 재실행 시 hasLoadedHistoryRef === false 보장
-      hasLoadedHistoryRef.current = false;
-    };
   }, [mode]);
 
   // 모드가 변경될 때마다 메시지 초기화 (새로운 대화 시작)
@@ -164,9 +164,8 @@ export default function ChatClientShell({
       if (process.env.NODE_ENV === 'development') {
         logger.log('[ChatClientShell] Mode changed from', prevModeRef.current, 'to', mode, '- Clearing messages');
       }
-      // 모드 변경 시 진행 중인 스트리밍 취소
-      streamAbortControllerRef.current?.abort();
       // 빈 상태 UI는 ChatWindow에서 처리하므로 메시지는 비워둠
+      streamAbortRef.current?.abort(); // 진행 중인 스트리밍 취소
       setMessages([]);
       setIsSending(false);
       hasLoadedHistoryRef.current = false; // 모드 변경 시 히스토리 다시 로드 가능하도록
@@ -178,9 +177,8 @@ export default function ChatClientShell({
   const saveChatHistory = async (messagesToSave: ChatMessage[]) => {
     if (!ENABLE_CHAT_HISTORY) return;
     try {
-      // test 모드 확인
-      const testModeInfo = await checkTestModeClient();
-      const testSuffix = testModeInfo.isTestMode ? '_test' : '';
+      // isTestMode state 직접 사용 (checkTestModeClient 불필요한 재호출 방지)
+      const testSuffix = isTestMode ? '_test' : '';
 
       // 모드별로 다른 sessionId 사용 (탭별 히스토리 분리 + test 모드 구분)
       const sessionId = (mode === 'general' ? 'general' :
@@ -188,8 +186,8 @@ export default function ChatClientShell({
           mode === 'show' ? 'show' :
             mode === 'translate' ? 'translate' : 'default') + testSuffix;
 
-      // ChatMessage 형식을 API 형식으로 변환
-      const apiMessages = messagesToSave.map(msg => {
+      // ChatMessage 형식을 API 형식으로 변환 (최대 200개로 제한 — DB 비대화 방지)
+      const apiMessages = messagesToSave.slice(-200).map(msg => {
         const base = {
           id: msg.id,
           role: msg.role,
@@ -213,9 +211,10 @@ export default function ChatClientShell({
         return base;
       });
 
-      await csrfFetch('/api/chat/history', {
+      await fetch('/api/chat/history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           messages: apiMessages,
           sessionId, // 모드별 세션 ID
@@ -226,7 +225,13 @@ export default function ChatClientShell({
     }
   };
 
-  const onSend = async (payload: ChatInputPayload) => {
+  const onSend = useCallback(async (payload: ChatInputPayload) => {
+    // 오프라인 상태 차단
+    if (!navigator.onLine) {
+      showError('인터넷 연결이 없습니다. 연결 후 다시 시도해주세요.');
+      return;
+    }
+
     // 사용자 메시지 추가
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -254,6 +259,11 @@ export default function ChatClientShell({
 
         setMessages((prevMessages) => [...prevMessages, streamingMessage]);
 
+        // 이전 스트리밍 취소 후 새 AbortController 생성
+        streamAbortRef.current?.abort();
+        const abortCtrl = new AbortController();
+        streamAbortRef.current = abortCtrl;
+
         // 스트리밍 API 호출
         const requestBody = {
           messages: [
@@ -273,18 +283,17 @@ export default function ChatClientShell({
           });
         }
 
-        // 이전 스트리밍 취소, 새 AbortController 생성
-        streamAbortControllerRef.current?.abort();
-        const streamController = new AbortController();
-        streamAbortControllerRef.current = streamController;
-
+        // WO-MOB-16: 클라이언트 타임아웃 (해상 WiFi 끊김 무한 대기 방지)
+        const connectTimeoutId = setTimeout(() => abortCtrl.abort(), 35000);
+        try {
         const response = await fetch('/api/chat/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
+          signal: abortCtrl.signal,
           body: JSON.stringify(requestBody),
-          signal: streamController.signal,
         });
+        clearTimeout(connectTimeoutId); // 응답 도착 시 타임아웃 해제
 
         // 개발 환경에서만 디버그 로그
         if (process.env.NODE_ENV === 'development') {
@@ -302,6 +311,7 @@ export default function ChatClientShell({
         }
 
         if (!response.ok) {
+          clearTimeout(connectTimeoutId);
           // 에러 응답 처리
           let errorMessage = '응답을 받지 못했습니다';
           try {
@@ -334,6 +344,7 @@ export default function ChatClientShell({
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let accumulatedText = '';
+        let clientBuffer = '';
 
         const isDev = process.env.NODE_ENV === 'development';
         if (isDev) {
@@ -341,138 +352,133 @@ export default function ChatClientShell({
         }
 
         let readCount = 0;
-        try {
-          while (true) {
-            if (streamController.signal.aborted) break;
-            const { done, value } = await reader.read();
-            readCount++;
+        while (true) {
+          if (abortCtrl.signal.aborted) break; // 언마운트/탭전환 시 루프 종료
+          const { done, value } = await reader.read();
+          readCount++;
+          if (isDev) {
+            logger.log('[ChatClientShell] Read #' + readCount + ', done:', done, 'hasValue:', !!value);
+          }
+
+          if (done) {
             if (isDev) {
-              logger.log('[ChatClientShell] Read #' + readCount + ', done:', done, 'hasValue:', !!value);
+              logger.log('[ChatClientShell] Stream done, total reads:', readCount, 'accumulated:', accumulatedText.substring(0, 100));
             }
-
-            if (done) {
-              if (isDev) {
-                logger.log('[ChatClientShell] Stream done, total reads:', readCount, 'accumulated:', accumulatedText.substring(0, 100));
-              }
-              if (accumulatedText.length === 0) {
-                logger.warn('[ChatClientShell] No text accumulated! This might indicate a server-side issue.');
-                // 사용자에게 에러 메시지 표시
-                setMessages((prevMessages) =>
-                  prevMessages.map((msg) =>
-                    msg.id === streamingMessageId
-                      ? { ...msg, text: '죄송합니다. 응답을 받지 못했습니다. 잠시 후 다시 시도해주세요.' }
-                      : msg
-                  )
-                );
-              }
-              break;
+            if (accumulatedText.length === 0) {
+              // 에러는 항상 로깅
+              logger.warn('[ChatClientShell] No text accumulated! This might indicate a server-side issue.');
+              // 사용자에게 에러 메시지 표시
+              setMessages((prevMessages) =>
+                prevMessages.map((msg) =>
+                  msg.id === streamingMessageId
+                    ? { ...msg, text: '죄송합니다. 응답을 받지 못했습니다. 잠시 후 다시 시도해주세요.' }
+                    : msg
+                )
+              );
             }
+            break;
+          }
 
-            if (!value) {
-              if (isDev) {
-                logger.warn('[ChatClientShell] No value in chunk, continuing...');
-              }
-              continue;
-            }
-
-            const chunk = decoder.decode(value, { stream: true });
+          if (!value) {
             if (isDev) {
-              logger.log('[ChatClientShell] Received chunk #' + readCount + ', length:', chunk.length, 'content:', chunk.substring(0, 200));
+              logger.warn('[ChatClientShell] No value in chunk, continuing...');
             }
-            const lines = chunk.split('\n');
-            if (isDev) {
-              logger.log('[ChatClientShell] Split into', lines.length, 'lines');
-            }
+            continue;
+          }
 
-            for (const line of lines) {
-              if (line.startsWith('0:')) {
-                // 텍스트 데이터 추출
-                try {
-                  const jsonStr = line.substring(2);
-                  const parsed = JSON.parse(jsonStr);
-                  if (isDev) {
-                    logger.log('[ChatClientShell] Parsed text:', typeof parsed, parsed?.substring?.(0, 50));
-                  }
+          const chunk = decoder.decode(value, { stream: true });
+          if (isDev) {
+            logger.log('[ChatClientShell] Received chunk #' + readCount + ', length:', chunk.length, 'content:', chunk.substring(0, 200));
+          }
+          clientBuffer += chunk;
+          const lines = clientBuffer.split('\n');
+          clientBuffer = lines.pop() || ''; // 불완전 마지막 라인은 다음 청크로
+          if (isDev) {
+            logger.log('[ChatClientShell] Split into', lines.length, 'lines');
+          }
 
-                  if (parsed && typeof parsed === 'string') {
-                    accumulatedText += parsed;
-
-                    // 메시지 업데이트
-                    setMessages((prevMessages) =>
-                      prevMessages.map((msg) =>
-                        msg.id === streamingMessageId
-                          ? { ...msg, text: accumulatedText }
-                          : msg
-                      )
-                    );
-                  } else {
-                    if (isDev) {
-                      logger.warn('[ChatClientShell] Parsed value is not a string:', typeof parsed, parsed);
-                    }
-                  }
-                } catch (e) {
-                  logger.error('[ChatClientShell] JSON parse error:', e, 'line:', line.substring(0, 100));
+          for (const line of lines) {
+            if (line.startsWith('0:')) {
+              // 텍스트 데이터 추출
+              try {
+                const jsonStr = line.substring(2).trim();
+                const parsed = JSON.parse(jsonStr);
+                if (isDev) {
+                  logger.log('[ChatClientShell] Parsed text:', typeof parsed, parsed?.substring?.(0, 50));
                 }
-              } else if (line.trim() && isDev) {
-                logger.log('[ChatClientShell] Non-matching line:', line.substring(0, 100));
+
+                if (parsed && typeof parsed === 'string') {
+                  accumulatedText += parsed;
+
+                  // 메시지 업데이트
+                  setMessages((prevMessages) =>
+                    prevMessages.map((msg) =>
+                      msg.id === streamingMessageId
+                        ? { ...msg, text: accumulatedText }
+                        : msg
+                    )
+                  );
+                } else {
+                  if (isDev) {
+                    logger.warn('[ChatClientShell] Parsed value is not a string:', typeof parsed, parsed);
+                  }
+                }
+              } catch (e) {
+                // 에러는 항상 로깅
+                logger.error('[ChatClientShell] JSON parse error:', e, 'line:', line.substring(0, 100));
               }
+            } else if (line.trim() && isDev) {
+              logger.log('[ChatClientShell] Non-matching line:', line.substring(0, 100));
             }
           }
-        } finally {
-          reader.cancel();
         }
 
-        // abort된 경우(모드 변경/언마운트) 완료 처리 스킵
-        if (!streamController.signal.aborted) {
-          // 스트리밍 완료 후 최종 메시지 ID 업데이트 및 히스토리 저장
+        // 스트리밍 완료 후 최종 메시지 ID 업데이트 및 히스토리 저장 (언마운트 시 스킵)
+        if (!abortCtrl.signal.aborted) {
+          const finalId = Date.now().toString();
           setMessages((prevMessages) => {
             const updated = prevMessages.map((msg) =>
               msg.id === streamingMessageId
-                ? { ...msg, id: Date.now().toString() }
+                ? { ...msg, id: finalId }
                 : msg
             );
-
-            // 히스토리 저장 (debounce)
-            if (ENABLE_CHAT_HISTORY && saveTimeoutRef.current) {
-              clearTimeout(saveTimeoutRef.current);
-            }
-            if (ENABLE_CHAT_HISTORY) {
-              saveTimeoutRef.current = setTimeout(() => {
-                saveChatHistory(updated);
-              }, 1000); // 1초 후 저장
-            }
-
             return updated;
           });
 
-          // TTS: 스트리밍 완료 후 AI 응답을 음성으로 읽기 (사용자 설정 확인)
-          if (accumulatedText && tts.getEnabled()) {
-            const plainText = extractPlainText(accumulatedText);
-            tts.speak(plainText);
-          }
+          // 히스토리 저장은 useEffect([messages]) debounce가 자동 처리
+        }
+
+        // TTS: 스트리밍 완료 후 AI 응답을 음성으로 읽기 (언마운트/탭전환 시 차단)
+        if (!abortCtrl.signal.aborted && accumulatedText && tts.getEnabled()) {
+          const plainText = extractPlainText(accumulatedText);
+          tts.speak(plainText);
+        }
+        } finally {
+          clearTimeout(connectTimeoutId); // throw 경로 포함 모든 경로에서 타임아웃 해제
         }
       } else {
         // 다른 모드는 기존 API 사용 (구조화된 응답)
-        // 이전 요청 취소 후 새 AbortController 생성
-        streamAbortControllerRef.current?.abort();
-        const nonStreamController = new AbortController();
-        streamAbortControllerRef.current = nonStreamController;
-
+        streamAbortRef.current?.abort();
+        const abortCtrl = new AbortController();
+        streamAbortRef.current = abortCtrl;
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
+          signal: abortCtrl.signal,
           body: JSON.stringify({
             text: payload.text,
             mode: currentMode,
             from: payload.from,
             to: payload.to,
           }),
-          signal: nonStreamController.signal,
         });
 
         if (!response.ok) {
-          throw new Error('Failed to get response from server');
+          if (response.status === 401) {
+            throw new Error('Unauthorized');
+          }
+          throw new Error(`Server error: ${response.status}`);
         }
 
         const data = await response.json();
@@ -504,21 +510,7 @@ export default function ChatClientShell({
         }
 
         if (data.ok && Array.isArray(data.messages)) {
-          setMessages((prevMessages) => {
-            const updated = [...prevMessages, ...data.messages];
-
-            // 히스토리 저장 (debounce)
-            if (ENABLE_CHAT_HISTORY && saveTimeoutRef.current) {
-              clearTimeout(saveTimeoutRef.current);
-            }
-            if (ENABLE_CHAT_HISTORY) {
-              saveTimeoutRef.current = setTimeout(() => {
-                saveChatHistory(updated);
-              }, 1000); // 1초 후 저장
-            }
-
-            return updated;
-          });
+          setMessages((prevMessages) => [...prevMessages, ...data.messages]);
 
           // TTS: AI 응답 음성 재생 (텍스트 타입 메시지만, 사용자 설정 확인)
           if (tts.getEnabled()) {
@@ -542,7 +534,37 @@ export default function ChatClientShell({
         }
       }
     } catch (error) {
+      // AbortError: 사용자가 취소하거나 새 요청이 시작된 경우 - 에러 표시 안 함
+      if (error instanceof Error && error.name === 'AbortError') {
+        setMessages((prevMessages) => {
+          const hasStreaming = prevMessages.some(msg => msg.id.startsWith('streaming-'));
+          if (!hasStreaming) return prevMessages;
+          return prevMessages.map(msg =>
+            msg.id.startsWith('streaming-')
+              ? { ...msg, text: '⏱️ 응답 시간이 초과되었습니다. 다시 시도해주세요.' }
+              : msg
+          );
+        });
+        setIsSending(false);
+        return;
+      }
+
       logger.error('[ChatClientShell] Error sending message:', error);
+
+      // 오프라인 상태면 간결한 메시지
+      if (!navigator.onLine) {
+        setMessages((prevMessages) => {
+          const hasStreamingMessage = prevMessages.some(msg => msg.id.startsWith('streaming-'));
+          if (hasStreamingMessage) {
+            return prevMessages.map(msg =>
+              msg.id.startsWith('streaming-') ? { ...msg, text: '📡 오프라인 상태입니다. 연결 후 다시 시도해주세요.' } : msg
+            );
+          }
+          return [...prevMessages, { id: Date.now().toString(), role: 'assistant' as const, type: 'text' as const, text: '📡 오프라인 상태입니다. 연결 후 다시 시도해주세요.' }];
+        });
+        setIsSending(false);
+        return;
+      }
 
       // 에러 타입에 따라 다른 메시지 표시
       let errorText = '네트워크 오류가 발생했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.';
@@ -581,24 +603,29 @@ export default function ChatClientShell({
     } finally {
       setIsSending(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, messages, isTestMode, isSending]);
 
   // 채팅 기록 삭제 함수
   const handleDeleteChatHistory = async () => {
     setIsDeleting(true);
 
     try {
-      const response = await csrfFetch('/api/chat/history', {
+      // 현재 탭의 sessionId 계산 (isTestMode state 사용)
+      const testSuffix = isTestMode ? '_test' : '';
+      const sessionId = (mode === 'general' ? 'general' :
+        mode === 'go' ? 'go' :
+          mode === 'show' ? 'show' :
+            mode === 'translate' ? 'translate' : 'default') + testSuffix;
+
+      const response = await fetch(`/api/chat/history?sessionId=${encodeURIComponent(sessionId)}`, {
         method: 'DELETE',
         credentials: 'include',
       });
 
       if (response.ok) {
-        // 성공적으로 삭제되면 메시지 상태 초기화
         setMessages([]);
         setIsDeleteModalOpen(false);
-
-        // 성공 메시지 표시 (선택사항)
         if (process.env.NODE_ENV === 'development') {
           logger.log('채팅 기록이 삭제되었습니다.');
         }
@@ -645,20 +672,46 @@ export default function ChatClientShell({
   //   loadChatHistory();
   // }, []); // 빈 의존성 배열: 컴포넌트 마운트 시 한 번만 실행
 
-  // 클린업: unmount 시 saveTimeout 및 스트리밍 취소
+  // 채팅 기록 저장하기 (messages 변경 시 자동 저장, debounce 적용)
   useEffect(() => {
+    // 로딩 중이거나 메시지가 비어있으면 저장하지 않음
+    if (isLoading || messages.length === 0) return;
+
+    // 이전 타이머가 있으면 취소
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // 1초 후에 저장 (debounce) — saveChatHistory 재사용으로 sessionId 자동 포함
+    saveTimeoutRef.current = setTimeout(() => {
+      saveChatHistory(messages);
+    }, 1000); // 1초 debounce
+
+    // 클린업: 컴포넌트 언마운트 시 타이머 정리
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
-      streamAbortControllerRef.current?.abort();
+    };
+  }, [messages, isLoading, mode]); // messages나 mode가 변경될 때마다 실행
+
+  // 언마운트 시 진행 중인 스트리밍 취소
+  useEffect(() => {
+    return () => {
+      streamAbortRef.current?.abort();
     };
   }, []);
 
   return (
     <div className="flex flex-col h-full">
+      {/* 오프라인 배너 */}
+      {!isOnline && (
+        <div className="fixed top-12 left-0 right-0 z-40 bg-yellow-500 text-white text-center text-sm py-2 px-4 font-semibold">
+          📡 인터넷 연결이 끊겼습니다. 연결 후 자동으로 복구됩니다.
+        </div>
+      )}
       {isLoading ? (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex items-center justify-center" style={{ minHeight: '60dvh' }}>
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
             <p className="text-gray-600">대화 내역을 불러오는 중...</p>
@@ -703,12 +756,12 @@ export default function ChatClientShell({
             if (!latestShowMeMessage) return null;
 
             return (
-              <div className="shrink-0 px-3 pt-3 pb-2 bg-gray-50 border-t border-gray-200">
+              <div className="px-3 pt-3 pb-2 bg-gray-50 border-t border-gray-200">
                 <div className="flex items-center gap-2 text-base font-bold mb-2">
                   <span>📁</span>
                   <span>하위 폴더에서 더 찾아보기</span>
                 </div>
-                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide snap-x snap-mandatory scroll-smooth mb-2">
+                <div className="grid grid-cols-3 md:grid-cols-5 gap-2 mb-2">
                   {latestShowMeMessage.subfolders!.slice(0, 10).map((subfolder, idx) => (
                     <button
                       key={idx}
@@ -724,17 +777,16 @@ export default function ChatClientShell({
                         await onSend(payload);
                       }}
                       className="
-                        flex-shrink-0 snap-start
                         flex flex-col items-center justify-center gap-1
-                        min-w-[72px] h-16
-                        px-2 py-2
+                        px-3 py-3
                         bg-white
                         border-2 border-[#051C2C]/20
-                        rounded-xl
+                        rounded-lg
                         shadow-sm
                         hover:shadow-lg
                         hover:border-[#FDB931]
-                        text-xs font-bold
+                        text-sm font-bold
+                        min-h-[80px]
                         active:scale-95
                         transition-all
                       "
@@ -751,7 +803,7 @@ export default function ChatClientShell({
             );
           })()}
 
-          <div className="shrink-0 px-3 pt-2 bg-white border-t" style={{ paddingBottom: scrollable ? 'env(safe-area-inset-bottom, 0px)' : 'calc(5rem + env(safe-area-inset-bottom))' }}>
+          <div className="px-3 pt-2 bg-white border-t" style={{ paddingBottom: `calc(0.75rem + env(safe-area-inset-bottom) + ${keyboardPadding}px)` }}>
             <InputBar mode={mode} onSend={onSend} disabled={isSending} />
             {isSending && (
               <div className="text-center text-sm text-gray-500 mt-2">

@@ -1,6 +1,17 @@
 // lib/test-mode-client.ts
 // 클라이언트 사이드에서 사용할 테스트 모드 유틸리티
 
+// 테스트 경로 목록 (정확한 경계 조건 매칭용)
+const TEST_PATH_PREFIXES = [
+  '/chat-test',
+  '/checklist-test',
+  '/translator-test',
+  '/profile-test',
+  '/wallet-test',
+  '/tools-test',
+  '/map-test',
+];
+
 export interface TestModeInfo {
   isTestMode: boolean;
   testModeStartedAt: Date | null;
@@ -8,51 +19,35 @@ export interface TestModeInfo {
   testModeEndAt: Date | null;
 }
 
-const TEST_MODE_CACHE_KEY = 'app-test-mode-cache';
-const TEST_MODE_CACHE_TTL = 5 * 60 * 1000; // 5분
-
-const TEST_MODE_DEFAULT: TestModeInfo = {
-  isTestMode: false,
-  testModeStartedAt: null,
-  remainingHours: null,
-  testModeEndAt: null,
-};
-
 /**
- * 클라이언트 사이드에서 테스트 모드 확인 (API 호출, sessionStorage 5분 캐싱)
+ * 클라이언트 사이드에서 테스트 모드 확인 (API 호출)
  */
 export async function checkTestModeClient(): Promise<TestModeInfo> {
-  // sessionStorage 캐시 확인 (마운트당 3회 → 1회)
-  try {
-    const cached = sessionStorage.getItem(TEST_MODE_CACHE_KEY);
-    if (cached) {
-      const { data, ts } = JSON.parse(cached);
-      if (Date.now() - ts < TEST_MODE_CACHE_TTL) {
-        // 체험 기간이 만료된 경우 캐시 무시하고 재확인
-        if (data.isTestMode && data.testModeEndAt && new Date(data.testModeEndAt) < new Date()) {
-          // fall through — trial expired, need fresh check
-        } else {
-          return data;
-        }
-      }
-    }
-  } catch { }
-
   try {
     const response = await fetch('/api/user/test-mode', {
       credentials: 'include',
       cache: 'no-store',
     });
 
-    if (!response.ok) return TEST_MODE_DEFAULT;
+    if (!response.ok) {
+      return {
+        isTestMode: false,
+        testModeStartedAt: null,
+        remainingHours: null,
+        testModeEndAt: null,
+      };
+    }
 
     const data = await response.json();
-    try {
-      sessionStorage.setItem(TEST_MODE_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
-    } catch { }
     return data;
   } catch {
-    return TEST_MODE_DEFAULT;
+    // 클라이언트 컴포넌트이므로 logger 미사용, 에러 조용히 처리
+    return {
+      isTestMode: false,
+      testModeStartedAt: null,
+      remainingHours: null,
+      testModeEndAt: null,
+    };
   }
 }
 
@@ -61,7 +56,9 @@ export async function checkTestModeClient(): Promise<TestModeInfo> {
  */
 export function isTestModePath(pathname: string): boolean {
   if (!pathname) return false;
-  return pathname.includes('-test') || pathname.startsWith('/chat-test');
+  return TEST_PATH_PREFIXES.some(prefix =>
+    pathname === prefix || pathname.startsWith(prefix + '/')
+  );
 }
 
 /**

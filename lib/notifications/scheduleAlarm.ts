@@ -268,19 +268,19 @@ function triggerAlarm(alarm: AlarmSchedule): void {
 /**
  * 페이지 로드 시 알림 체커 시작
  */
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && typeof Notification !== 'undefined') {
   // 페이지 로드 시 기존 알림 체크 시작
   if (Notification.permission === 'granted') {
     startAlarmChecker();
   }
-  
+
   // 페이지가 보일 때마다 알림 체크 (백그라운드에서 돌아올 때)
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && Notification.permission === 'granted') {
       checkAndTriggerAlarms();
     }
   });
-  
+
   // 포커스 시 알림 체크
   window.addEventListener('focus', () => {
     if (Notification.permission === 'granted') {

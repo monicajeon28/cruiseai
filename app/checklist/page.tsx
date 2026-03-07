@@ -8,6 +8,7 @@ import { hapticClick, hapticSuccess, hapticImpact } from '@/lib/haptic';
 import { useKeyboardHandler, useViewportHeight } from '@/lib/keyboard-handler';
 import { trackFeature } from '@/lib/analytics';
 import { checkTestModeClient, getCorrectPath } from '@/lib/test-mode-client';
+import { showError } from '@/components/ui/Toast';
 
 // 체크리스트 아이템 타입 정의 (API 응답 형식에 맞춤)
 type ChecklistItem = {
@@ -32,6 +33,7 @@ export default function ChecklistPage() {
   const [speakingCategory, setSpeakingCategory] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const hasCreatedDefaultsRef = useRef(false); // 기본 항목 생성 플래그
 
@@ -51,7 +53,7 @@ export default function ChecklistPage() {
 
   const startSpeaking = (text: string, category: string) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      alert('이 브라우저는 음성 읽기 기능을 지원하지 않습니다.');
+      showError('이 브라우저는 음성 읽기 기능을 지원하지 않습니다.');
       return;
     }
 
@@ -83,7 +85,7 @@ export default function ChecklistPage() {
       setIsPaused(false);
       // pause/resume 관련 오류는 사용자에게 알리지 않음
       if (event.error !== 'interrupted' && event.error !== 'canceled') {
-        alert('음성 읽기 중 오류가 발생했습니다.');
+        showError('음성 읽기 중 오류가 발생했습니다.');
       }
     };
 
@@ -95,13 +97,13 @@ export default function ChecklistPage() {
       utteranceRef.current = null;
       setSpeakingCategory(null);
       setIsPaused(false);
-      alert('음성 읽기를 시작할 수 없습니다.');
+      showError('음성 읽기를 시작할 수 없습니다.');
     }
   };
 
   const handleSpeechToggle = (category: string, text: string) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      alert('이 브라우저는 음성 읽기 기능을 지원하지 않습니다.');
+      showError('이 브라우저는 음성 읽기 기능을 지원하지 않습니다.');
       return;
     }
 
@@ -283,9 +285,9 @@ export default function ChecklistPage() {
   useEffect(() => {
     loadItems();
     // iOS 키보드 가림 방지용 safest area 여백
-    document.body.classList.add('pb-24', 'sm:pb-0');
+    document.body.classList.add('has-checklist-open');
     return () => {
-      document.body.classList.remove('pb-24', 'sm:pb-0');
+      document.body.classList.remove('has-checklist-open');
       // 컴포넌트 언마운트 시 음성 읽기 중지
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         try {
@@ -485,12 +487,8 @@ export default function ChecklistPage() {
     setEditingText('');
   };
 
-  // 체크리스트 초기화 (리셋) - API 전용
-  const handleReset = async () => {
-    if (!window.confirm('체크리스트를 초기 상태로 리셋하시겠습니까?\n모든 항목과 체크 상태가 삭제되고 기본 항목으로 다시 시작됩니다.')) {
-      return;
-    }
-
+  // 체크리스트 초기화 실행 (확인 모달에서 호출)
+  const resetChecklist = async () => {
     setIsLoading(true);
     setError(null);
 
@@ -541,6 +539,11 @@ export default function ChecklistPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // 리셋 버튼 클릭 → 확인 모달 표시
+  const handleReset = () => {
+    setShowResetConfirm(true);
   };
 
   // 삭제 (API 전용)
@@ -680,7 +683,7 @@ export default function ChecklistPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F5F7FA]">
+    <main className="min-h-[100dvh] bg-[#F5F7FA]">
       {/* 상단 고정 헤더 */}
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b">
         <div className="mx-auto max-w-3xl px-4 pt-3 pb-2 flex items-center justify-between">
@@ -761,7 +764,7 @@ export default function ChecklistPage() {
             <button
               onClick={handleReset}
               disabled={isLoading}
-              className="ml-auto px-4 md:px-5 py-2 md:py-2.5 text-base md:text-lg font-semibold bg-red-600 text-white rounded-xl hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+              className="ml-auto px-4 md:px-5 py-2 md:py-2.5 text-base md:text-lg font-semibold bg-red-600 text-white rounded-xl hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg touch-manipulation"
               aria-label="체크리스트 초기화"
             >
               🔄 리셋
@@ -811,7 +814,7 @@ export default function ChecklistPage() {
                         const flightText = `${prohibitedItems.flight.title}. ${prohibitedItems.flight.items.join(', ')}. ${prohibitedItems.flight.specialItems?.[0]?.title || ''}. ${prohibitedItems.flight.specialItems?.[0]?.details.join('. ') || ''}`;
                         handleSpeechToggle('flight', flightText);
                       }}
-                      className={`flex items-center justify-center w-16 h-16 rounded-full transition-all shadow-lg border-4 ${speakingCategory === 'flight'
+                      className={`flex items-center justify-center w-16 h-16 rounded-full transition-all shadow-lg border-4 touch-manipulation ${speakingCategory === 'flight'
                         ? (isPaused ? 'bg-yellow-500 border-yellow-600 text-white' : 'bg-red-600 border-red-700 text-white animate-pulse')
                         : 'bg-yellow-400 border-yellow-500 hover:bg-yellow-500 text-white shadow-xl'
                         }`}
@@ -843,7 +846,7 @@ export default function ChecklistPage() {
                             const batteryText = `${special.title}. ${special.details.join('. ')}`;
                             handleSpeechToggle('flight-battery', batteryText);
                           }}
-                          className={`flex items-center justify-center w-16 h-16 rounded-full transition-all shadow-lg border-4 ${speakingCategory === 'flight-battery'
+                          className={`flex items-center justify-center w-16 h-16 rounded-full transition-all shadow-lg border-4 touch-manipulation ${speakingCategory === 'flight-battery'
                             ? (isPaused ? 'bg-yellow-500 border-yellow-600 text-white' : 'bg-blue-600 border-blue-700 text-white animate-pulse')
                             : 'bg-blue-500 border-blue-600 hover:bg-blue-600 text-white shadow-xl'
                             }`}
@@ -878,7 +881,7 @@ export default function ChecklistPage() {
                         const cruiseText = `${prohibitedItems.cruise.title}. ${prohibitedItems.cruise.items.join(', ')}. ${prohibitedItems.cruise.specialItems?.[0]?.title || ''}. ${prohibitedItems.cruise.specialItems?.[0]?.details.join('. ') || ''}`;
                         handleSpeechToggle('cruise', cruiseText);
                       }}
-                      className={`flex items-center justify-center w-16 h-16 rounded-full transition-all shadow-lg border-4 ${speakingCategory === 'cruise'
+                      className={`flex items-center justify-center w-16 h-16 rounded-full transition-all shadow-lg border-4 touch-manipulation ${speakingCategory === 'cruise'
                         ? (isPaused ? 'bg-yellow-500 border-yellow-600 text-white' : 'bg-red-600 border-red-700 text-white animate-pulse')
                         : 'bg-yellow-400 border-yellow-500 hover:bg-yellow-500 text-white shadow-xl'
                         }`}
@@ -910,7 +913,7 @@ export default function ChecklistPage() {
                             const batteryText = `${special.title}. ${special.details.join('. ')}`;
                             handleSpeechToggle('cruise-battery', batteryText);
                           }}
-                          className={`flex items-center justify-center w-16 h-16 rounded-full transition-all shadow-lg border-4 ${speakingCategory === 'cruise-battery'
+                          className={`flex items-center justify-center w-16 h-16 rounded-full transition-all shadow-lg border-4 touch-manipulation ${speakingCategory === 'cruise-battery'
                             ? (isPaused ? 'bg-yellow-500 border-yellow-600 text-white' : 'bg-blue-600 border-blue-700 text-white animate-pulse')
                             : 'bg-blue-500 border-blue-600 hover:bg-blue-600 text-white shadow-xl'
                             }`}
@@ -945,7 +948,7 @@ export default function ChecklistPage() {
                         const countriesText = `${prohibitedItems.countries.title}. ${prohibitedItems.countries.items.join('. ')}`;
                         handleSpeechToggle('countries', countriesText);
                       }}
-                      className={`flex items-center justify-center w-16 h-16 rounded-full transition-all shadow-lg border-4 ${speakingCategory === 'countries'
+                      className={`flex items-center justify-center w-16 h-16 rounded-full transition-all shadow-lg border-4 touch-manipulation ${speakingCategory === 'countries'
                         ? (isPaused ? 'bg-yellow-500 border-yellow-600 text-white' : 'bg-red-600 border-red-700 text-white animate-pulse')
                         : 'bg-yellow-400 border-yellow-500 hover:bg-yellow-500 text-white shadow-xl'
                         }`}
@@ -1008,7 +1011,7 @@ export default function ChecklistPage() {
                       handleToggle(item.id);
                     }
                   }}
-                  className={`flex-shrink-0 inline-flex h-11 w-11 items-center justify-center rounded-full border
+                  className={`flex-shrink-0 inline-flex h-11 w-11 items-center justify-center rounded-full border touch-manipulation
                             ${item.completed ? 'bg-green-50 border-green-300' : 'bg-white'}
                             ${editingItemId === item.id ? 'bg-blue-50 border-blue-300' : ''}
                             active:scale-[0.98] transition-transform`}
@@ -1097,6 +1100,30 @@ export default function ChecklistPage() {
         </div>
       </div>
 
+      {/* 초기화 확인 모달 */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl p-6 mx-4 shadow-xl max-w-sm w-full">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">체크리스트 초기화</h3>
+            <p className="text-gray-600 mb-6">모든 항목을 초기화하시겠습니까?</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 py-3 rounded-lg border-2 border-gray-300 text-gray-700 font-semibold"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => { setShowResetConfirm(false); resetChecklist(); }}
+                className="flex-1 py-3 rounded-lg bg-red-600 text-white font-semibold"
+              >
+                초기화
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 진행률 상세 모달 */}
       {showProgressModal && (
         <div
@@ -1124,7 +1151,7 @@ export default function ChecklistPage() {
             </p>
             <button
               onClick={() => setShowProgressModal(false)}
-              className="mt-5 w-full py-2.5 min-h-0 rounded-xl bg-gray-100 text-gray-700 font-semibold active:bg-gray-200"
+              className="mt-5 w-full py-2.5 min-h-0 rounded-xl bg-gray-100 text-gray-700 font-semibold active:bg-gray-200 touch-manipulation"
             >
               닫기
             </button>

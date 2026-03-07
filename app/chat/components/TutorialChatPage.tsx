@@ -5,40 +5,43 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { logger } from '@/lib/logger';
+import { useRouter } from 'next/navigation';
 import { TestModeInfo } from '@/lib/test-mode-client';
 import TestChatInteractiveUI from './TestChatInteractiveUI'; // 테스트 고객 전용 컴포넌트
 import TutorialWelcomePopup from './TutorialWelcomePopup';
 import TutorialCountdown from './TutorialCountdown';
+import TutorialFeatureGuide from './TutorialFeatureGuide';
 import { clearAllLocalStorage } from '@/lib/csrf-client';
 import { showError } from '@/components/ui/Toast';
+import { logger } from '@/lib/logger';
 import PWAInstallButtonMall from '@/components/PWAInstallButtonMall';
-
-// 컴포넌트 외부 상수 — 렌더마다 재생성 방지
-const CHAT_FEATURES = [
-  {
-    title: '크루즈닷 가자',
-    description: '클릭만 해도 원하는 관광지, 맛집을 찾아드려요',
-    example: '클릭만 하면 바로 추천!',
-  },
-  {
-    title: '크루즈닷 보여줘',
-    description: '"오키나와 보여줘"라고만 입력해도 오키나와를 다 보여줘요',
-    example: '예: "오키나와 보여줘"',
-    bonus: '보너스! 크루즈닷 만의 실제 여행 후 경험 컨텐츠도 보여드려요',
-  },
-  {
-    title: '일반',
-    description: '정확한 크루즈 정보를 알려드려요',
-    example: '예: "코스타세레나는 몇 톤이야?"',
-  },
-];
 
 interface TutorialChatPageProps {
   testModeInfo: TestModeInfo;
 }
 
+// 3가지 대화 기능 메시지 (모듈 레벨 상수 — 렌더마다 재생성 방지)
+const CHAT_FEATURES = [
+    {
+      title: '크루즈닷 가자',
+      description: '클릭만 해도 원하는 관광지, 맛집을 찾아드려요',
+      example: '클릭만 하면 바로 추천!',
+    },
+    {
+      title: '크루즈닷 보여줘',
+      description: '"오키나와 보여줘"라고만 입력해도 오키나와를 다 보여줘요',
+      example: '예: "오키나와 보여줘"',
+      bonus: '보너스! 크루즈닷 만의 실제 여행 후 경험 컨텐츠도 보여드려요',
+    },
+    {
+      title: '일반',
+      description: '정확한 크루즈 정보를 알려드려요',
+      example: '예: "코스타세레나는 몇 톤이야?"',
+    },
+];
+
 export default function TutorialChatPage({ testModeInfo }: TutorialChatPageProps) {
+  const router = useRouter();
   const [showWelcome, setShowWelcome] = useState(false);
   const [currentFeatureIndex, setCurrentFeatureIndex] = useState(0);
 
@@ -66,28 +69,24 @@ export default function TutorialChatPage({ testModeInfo }: TutorialChatPageProps
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
+      const { csrfFetch } = await import('@/lib/csrf-client');
+      const response = await csrfFetch('/api/auth/logout', { method: 'POST' });
 
       if (response.ok) {
-        // 사용자 관련 모든 localStorage 데이터 정리
         clearAllLocalStorage();
-        // 로그아웃 후 로그인 페이지로 이동
         window.location.href = '/login-test';
       } else {
-        logger.error('로그아웃 실패');
+        logger.error('[TutorialChat] 로그아웃 실패');
         showError('로그아웃에 실패했습니다. 다시 시도해주세요.');
       }
     } catch (error) {
-      logger.error('로그아웃 요청 중 오류 발생:', error);
+      logger.error('[TutorialChat] 로그아웃 요청 중 오류 발생:', error);
       showError('로그아웃 중 오류가 발생했습니다.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
       {/* 72시간 카운트다운 배너 (상단 고정) - 로그아웃 버튼 포함 */}
       <TutorialCountdown testModeInfo={testModeInfo} onLogout={handleLogout} />
 
@@ -98,6 +97,17 @@ export default function TutorialChatPage({ testModeInfo }: TutorialChatPageProps
           remainingHours={testModeInfo.remainingHours || 72}
         />
       )}
+
+      {/* 기능 안내 팝업 - 비활성화됨 */}
+      {/* {showFeatureGuide && (
+        <TutorialFeatureGuide
+          currentStep={currentGuideStep}
+          onNext={() => setCurrentGuideStep(prev => prev + 1)}
+          onPrev={() => setCurrentGuideStep(prev => prev - 1)}
+          onClose={() => setShowFeatureGuide(false)}
+          totalSteps={5}
+        />
+      )} */}
 
       {/* 튜토리얼 버전 메인 콘텐츠 */}
       <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -111,7 +121,34 @@ export default function TutorialChatPage({ testModeInfo }: TutorialChatPageProps
           </p>
         </div>
 
-        {/* 실제 채팅 인터페이스 - TestChatInteractiveUI 사용 (테스트 고객 전용, 완전 분리) — 헤더 바로 아래 */}
+        {/* 마케팅 카드들 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 mb-8 px-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border-2 border-purple-200 transform hover:scale-105 transition-all">
+            <div className="text-5xl md:text-6xl mb-4">💬</div>
+            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 leading-tight">AI 채팅 상담</h3>
+            <p className="text-base md:text-lg text-gray-600 leading-relaxed">
+              크루즈 여행에 대한 모든 질문을 AI 크루즈닷에게 물어보세요! 실시간으로 답변해드립니다.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border-2 border-blue-200 transform hover:scale-105 transition-all">
+            <div className="text-5xl md:text-6xl mb-4">✅</div>
+            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 leading-tight">스마트 체크리스트</h3>
+            <p className="text-base md:text-lg text-gray-600 leading-relaxed">
+              여행 준비물을 놓치지 않도록 체크리스트로 관리하세요. 알림 기능까지 제공됩니다!
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border-2 border-green-200 transform hover:scale-105 transition-all">
+            <div className="text-5xl md:text-6xl mb-4">🗺️</div>
+            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 leading-tight">실시간 여행 지도</h3>
+            <p className="text-base md:text-lg text-gray-600 leading-relaxed">
+              크루즈 경로와 방문지 정보를 지도에서 한눈에 확인하세요. GPS 기반 안내도 제공됩니다!
+            </p>
+          </div>
+        </div>
+
+        {/* 실제 채팅 인터페이스 - TestChatInteractiveUI 사용 (테스트 고객 전용, 완전 분리) */}
         <div className="bg-white rounded-3xl shadow-2xl p-5 md:p-6 border-4 border-purple-300 mx-4">
           <div className="text-center mb-6">
             <div className="inline-block bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 rounded-full font-bold text-lg md:text-xl mb-4">
@@ -154,7 +191,10 @@ export default function TutorialChatPage({ testModeInfo }: TutorialChatPageProps
           </div>
 
           {/* TestChatInteractiveUI 사용 - 테스트 고객 전용 (완전 분리) */}
-          <TestChatInteractiveUI />
+          {/* flex flex-col min-h-[640px]: ChatClientShell의 flex-1이 동작하려면 부모에 height 컨텍스트 필요 */}
+          <div className="flex flex-col min-h-[640px]">
+            <TestChatInteractiveUI />
+          </div>
           
           {/* 크루즈몰 바탕화면 추가하기 (카카오톡 채널 버튼 아래) */}
           <div className="mt-4 pt-4 border-t border-gray-200">
@@ -166,33 +206,6 @@ export default function TutorialChatPage({ testModeInfo }: TutorialChatPageProps
                 <PWAInstallButtonMall />
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* 마케팅 카드들 - 채팅 아래로 이동 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 mt-8 mb-0 px-4">
-          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border-2 border-purple-200 transform hover:scale-105 transition-all">
-            <div className="text-5xl md:text-6xl mb-4">💬</div>
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 leading-tight">AI 채팅 상담</h3>
-            <p className="text-base md:text-lg text-gray-600 leading-relaxed">
-              크루즈 여행에 대한 모든 질문을 AI 크루즈닷에게 물어보세요! 실시간으로 답변해드립니다.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border-2 border-blue-200 transform hover:scale-105 transition-all">
-            <div className="text-5xl md:text-6xl mb-4">✅</div>
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 leading-tight">스마트 체크리스트</h3>
-            <p className="text-base md:text-lg text-gray-600 leading-relaxed">
-              여행 준비물을 놓치지 않도록 체크리스트로 관리하세요. 알림 기능까지 제공됩니다!
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border-2 border-green-200 transform hover:scale-105 transition-all">
-            <div className="text-5xl md:text-6xl mb-4">🗺️</div>
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 leading-tight">실시간 여행 지도</h3>
-            <p className="text-base md:text-lg text-gray-600 leading-relaxed">
-              크루즈 경로와 방문지 정보를 지도에서 한눈에 확인하세요. GPS 기반 안내도 제공됩니다!
-            </p>
           </div>
         </div>
 

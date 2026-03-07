@@ -6,13 +6,13 @@ import prisma from '@/lib/prisma';                // ✅ default import (중요)
 import { cookies, headers } from 'next/headers';
 import { randomBytes } from 'crypto';
 import { generateCsrfToken } from '@/lib/csrf';
+import { hashPassword, verifyPassword, isBcryptHash, SYSTEM_PASSWORDS, PARTNER_DEFAULT_PASSWORDS } from '@/lib/password';
 import { checkRateLimit, RateLimitPolicies } from '@/lib/rate-limiter';
 import { getClientIpFromRequest } from '@/lib/ip-utils';
 import { authLogger, securityLogger, logger } from '@/lib/logger';
 import { reactivateUser, updateLastActive } from '@/lib/scheduler/lifecycleManager';
 import { normalizeItineraryPattern, extractVisitedCountriesFromItineraryPattern, extractDestinationsFromItineraryPattern } from '@/lib/utils/itineraryPattern';
-
-const SESSION_COOKIE = 'cg.sid.v2';
+import { SESSION_COOKIE } from '@/lib/session'; // 단일 출처 원칙: lib/session.ts에서만 관리
 const TEST_MODE_PASSWORDS = ['1101']; // 테스트 모드는 1101만 허용
 
 export async function POST(req: Request) {
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     const clientIp = getClientIpFromRequest(req, headersList);
     const rateLimitKey = `login:${clientIp}`;
 
-    const { limited, resetTime } = checkRateLimit(rateLimitKey, RateLimitPolicies.LOGIN);
+    const { limited, resetTime } = await checkRateLimit(rateLimitKey, RateLimitPolicies.LOGIN);
 
     if (limited) {
       securityLogger.rateLimitExceeded(clientIp, '/api/auth/login', RateLimitPolicies.LOGIN.limit);
@@ -51,9 +51,9 @@ export async function POST(req: Request) {
 
     logger.log('[Login API] 요청 받음:', { phone: phone ? `${phone.substring(0, 3)}***` : 'empty', password: password ? '***' : 'empty', name: name ? `${name.substring(0, 1)}***` : 'empty', mode });
 
-    const isPartnerLogin = mode === 'partner' || password === 'qwe1';
+    const isPartnerLogin = mode === 'partner';
 
-    logger.log('[Login API] 파트너 로그인 여부:', { isPartnerLogin, mode, passwordIsQwe1: password === 'qwe1' });
+    logger.log('[Login API] 파트너 로그인 여부:', { isPartnerLogin, mode });
 
     if (isPartnerLogin) {
       const identifier = phone?.trim() || '';
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
       const identifierLower = identifier.toLowerCase();
       const digitsOnly = identifier.replace(/[^0-9]/g, '');
 
-      logger.log('[Partner Login] 로그인 시도:', { identifier, identifierLower, password: '***', mode });
+      logger.info('[Partner Login] 로그인 시도:', { mode });
 
       // 파트너 로그인: 속도 최적화 - 정확한 일치 먼저 시도, 없으면 확장 검색
       // AffiliateProfile도 함께 조회하여 추가 쿼리 제거
@@ -82,6 +82,7 @@ export async function POST(req: Request) {
         },
         select: {
           id: true,
+          name: true,
           mallUserId: true,
           mallNickname: true,
           phone: true,
@@ -103,7 +104,14 @@ export async function POST(req: Request) {
       } : '사용자를 찾을 수 없음');
 
       // 계정이 없고 기본 비밀번호(1101, qwe1, zxc1)를 사용하는 경우 자동 생성
-      if (!affiliateUser && (password === '1101' || password === 'qwe1' || password === 'zxc1')) {
+      if (!affiliateUser && (PARTNER_DEFAULT_PASSWORDS as readonly string[]).includes(password)) {
+        const isAllowedPattern = identifierLower.startsWith('boss') || identifierLower.startsWith('gest');
+        if (!isAllowedPattern) {
+          return NextResponse.json(
+            { ok: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' },
+            { status: 401 },
+          );
+        }
         logger.log('[Partner Login] 파트너 계정 자동 생성:', { identifier, identifierLower });
         const isBoss = identifierLower.startsWith('boss');
         const isGest = identifierLower.startsWith('gest'); // gest 계정 여부 확인
@@ -116,7 +124,7 @@ export async function POST(req: Request) {
             data: {
               mallUserId: newMallUserId,
               phone: newMallUserId,
-              password: password,
+              password: await hashPassword(password),
               name: isGest ? '정액제 판매원' : (isBoss ? '대리점장' : '판매원'),
               role: 'user',
               loginCount: 1,
@@ -126,6 +134,7 @@ export async function POST(req: Request) {
             },
             select: {
               id: true,
+              name: true,
               mallUserId: true,
               mallNickname: true,
               phone: true,
@@ -151,6 +160,7 @@ export async function POST(req: Request) {
               },
               select: {
                 id: true,
+                name: true,
                 mallUserId: true,
                 mallNickname: true,
                 phone: true,
@@ -162,7 +172,7 @@ export async function POST(req: Request) {
                 },
               },
             });
-            logger.log('[Partner Login] 중복 계정 발견, 재조회 완료:', { userId: affiliateUser?.id, mallUserId: affiliateUser?.mallUserId });
+            logger.info('[Partner Login] 중복 계정 발견, 재조회 완료:', { userId: affiliateUser?.id, mallUserId: affiliateUser?.mallUserId });
           } else {
             throw createError;
           }
@@ -179,26 +189,40 @@ export async function POST(req: Request) {
       const storedPassword = affiliateUser.password ?? '';
       let isPasswordValid = false;
 
-      // 파트너 기본 비밀번호 우선 체크 (1101, qwe1, zxc1)
-      // 파트너 로그인일 때는 기본 비밀번호를 무조건 허용
-      if (password === '1101' || password === 'qwe1' || password === 'zxc1') {
-        // 파트너 기본 비밀번호는 무조건 허용
-        isPasswordValid = true;
-        logger.log('[Partner Login] 파트너 기본 비밀번호 허용:', { phone: identifier, password });
-      } else {
-        // 일반 비밀번호 검증
-        if (storedPassword.startsWith('$2')) {
-          try {
-            const bcrypt = await import('bcryptjs');
-            isPasswordValid = await bcrypt.default.compare(password, storedPassword);
-            logger.log('[Partner Login] bcrypt 비교 결과:', { phone: identifier, isValid: isPasswordValid });
-          } catch (compareError) {
-            logger.warn('[Partner Login] bcrypt 비교 중 오류:', compareError);
-            isPasswordValid = false;
+      // 파트너 기본 비밀번호 우선 체크 (1101, qwe1, zxc1) — DB 저장값과 대조 (개인 비밀번호 변경 후 공유 비밀번호 재진입 차단)
+      if ((PARTNER_DEFAULT_PASSWORDS as readonly string[]).includes(password)) {
+        if (isBcryptHash(storedPassword)) {
+          const { valid } = await verifyPassword(password, storedPassword);
+          isPasswordValid = valid;
+        } else {
+          // 평문 비교 — timingSafeEqual 기반 verifyPassword() 사용 (타이밍 공격 방지)
+          const { valid: plainValid } = await verifyPassword(password, storedPassword);
+          isPasswordValid = plainValid; // Lazy Migration 중인 계정
+          // 평문 매칭 → 즉시 재해시 (Lazy Migration)
+          if (isPasswordValid && affiliateUser) {
+            try {
+              await prisma.user.update({
+                where: { id: affiliateUser.id },
+                data: { password: await hashPassword(password) },
+              });
+            } catch { /* 재해시 실패 시 무시 — 다음 로그인에서 재시도 */ }
           }
-        } else if (storedPassword.length > 0) {
-          isPasswordValid = storedPassword === password;
-          logger.log('[Partner Login] 평문 비밀번호 비교 결과:', { phone: identifier, isValid: isPasswordValid });
+        }
+      } else {
+        // 일반 비밀번호 검증 (bcrypt Lazy Migration 지원)
+        const result = await verifyPassword(password, storedPassword);
+        isPasswordValid = result.valid;
+
+        // 평문 매칭 → 즉시 재해시 (Lazy Migration)
+        if (result.valid && result.needsRehash) {
+          try {
+            await prisma.user.update({
+              where: { id: affiliateUser.id },
+              data: { password: await hashPassword(password) },
+            });
+          } catch {
+            // 재해시 실패는 치명적이지 않음 - 다음 로그인 시 재시도
+          }
         }
       }
 
@@ -235,7 +259,7 @@ export async function POST(req: Request) {
           .toString('hex')
           .toUpperCase()}`;
 
-        logger.log('[Partner Login] AffiliateProfile 생성 시도:', {
+        logger.info('[Partner Login] AffiliateProfile 생성 시도:', {
           userId: affiliateUser.id,
           mallUserId: affiliateUser.mallUserId,
           phone: affiliateUser.phone,
@@ -262,7 +286,7 @@ export async function POST(req: Request) {
             },
             select: { id: true },
           });
-          logger.log('[Partner Login] AffiliateProfile 생성 완료:', { profileId: affiliateProfile.id });
+          logger.info('[Partner Login] AffiliateProfile 생성 완료:', { profileId: affiliateProfile.id });
 
           // gest 계정인 경우 정액제 계약서 자동 생성 (7일 무료 체험)
           if (isGest && affiliateUser) {
@@ -293,7 +317,7 @@ export async function POST(req: Request) {
                   updatedAt: now,
                 },
               });
-              logger.log('[Partner Login] Gest 계정 정액제 계약서 자동 생성 완료:', { userId: affiliateUser.id });
+              logger.info('[Partner Login] Gest 계정 정액제 계약서 자동 생성 완료:', { userId: affiliateUser.id });
             } catch (contractError: any) {
               logger.error('[Partner Login] Gest 계정 정액제 계약서 생성 실패:', contractError);
               // 계약서 생성 실패해도 로그인은 계속 진행
@@ -307,12 +331,12 @@ export async function POST(req: Request) {
               where: { userId: affiliateUser.id },
               select: { id: true },
             });
-            logger.log('[Partner Login] 중복 AffiliateProfile 발견, 재조회 완료:', { profileId: affiliateProfile?.id });
+            logger.info('[Partner Login] 중복 AffiliateProfile 발견, 재조회 완료:', { profileId: affiliateProfile?.id });
           } else {
             // AffiliateProfile 생성 실패 시 로그인도 실패
             logger.error('[Partner Login] AffiliateProfile 생성 실패로 로그인 중단:', profileError);
             return NextResponse.json(
-              { ok: false, error: '파트너 프로필 생성에 실패했습니다. 관리자에게 문의해주세요.', details: profileError?.message },
+              { ok: false, error: '파트너 프로필 생성에 실패했습니다. 관리자에게 문의해주세요.' },
               { status: 500 }
             );
           }
@@ -371,7 +395,7 @@ export async function POST(req: Request) {
                   updatedAt: now,
                 },
               });
-              logger.log('[Partner Login] Gest1 계정 무료 체험 리셋 완료:', { userId: affiliateUser.id, contractId: existingContract.id });
+              logger.info('[Partner Login] Gest1 계정 무료 체험 리셋 완료:', { userId: affiliateUser.id, contractId: existingContract.id });
             } else if (!existingContract) {
               // 정액제 계약서가 없으면 생성
               const trialEndDate = new Date();
@@ -400,7 +424,7 @@ export async function POST(req: Request) {
                   updatedAt: now,
                 },
               });
-              logger.log('[Partner Login] 기존 Gest 계정 정액제 계약서 자동 생성 완료:', { userId: affiliateUser.id });
+              logger.info('[Partner Login] 기존 Gest 계정 정액제 계약서 자동 생성 완료:', { userId: affiliateUser.id });
             }
           } catch (contractError: any) {
             logger.error('[Partner Login] Gest 계정 정액제 계약서 확인/생성 실패:', contractError);
@@ -415,7 +439,7 @@ export async function POST(req: Request) {
         const deletedSessions = await prisma.session.deleteMany({
           where: { userId: affiliateUser.id },
         });
-        logger.log('[Partner Login] 기존 세션 정리 완료:', { deletedCount: deletedSessions.count, userId: affiliateUser.id });
+        logger.info('[Partner Login] 기존 세션 정리 완료:', { deletedCount: deletedSessions.count, userId: affiliateUser.id });
       } catch (cleanupError) {
         logger.warn('[Partner Login] 기존 세션 정리 실패 (무시하고 계속):', cleanupError);
       }
@@ -426,7 +450,7 @@ export async function POST(req: Request) {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
 
-      logger.log('[Partner Login] 세션 생성 시도:', { userId: affiliateUser.id, mallUserId: affiliateUser.mallUserId });
+      logger.info('[Partner Login] 세션 생성 시도:', { userId: affiliateUser.id, mallUserId: affiliateUser.mallUserId });
 
       let session: { id: string; csrfToken: string };
       try {
@@ -439,7 +463,7 @@ export async function POST(req: Request) {
           },
           select: { id: true, csrfToken: true },
         });
-        logger.log('[Partner Login] 세션 생성 완료:', { sessionId: session.id });
+        logger.info('[Partner Login] 세션 생성 완료:', { sessionId: session.id });
       } catch (sessionError: any) {
         logger.error('[Partner Login] 세션 생성 실패:', sessionError);
         return NextResponse.json(
@@ -461,7 +485,7 @@ export async function POST(req: Request) {
       // 로그인 성공 후 후속 작업들을 병렬로 실행 (속도 개선)
       // 응답은 즉시 반환하고, 후속 작업은 백그라운드에서 실행
       const redirectPath = `/partner/${affiliateUser.mallUserId || identifierLower}/dashboard`;
-      logger.log('[Partner Login] 로그인 성공, 리다이렉트:', { redirectPath, mallUserId: affiliateUser.mallUserId });
+      logger.info('[Partner Login] 로그인 성공, 리다이렉트:', { redirectPath, mallUserId: affiliateUser.mallUserId });
 
       // 후속 작업들을 백그라운드에서 병렬 실행 (Promise.allSettled로 에러 무시)
       Promise.allSettled([
@@ -494,7 +518,7 @@ export async function POST(req: Request) {
     const isNotCruiseMallUser = !phone || !/^user(1[0]|[1-9])$/i.test(phone.trim());
     if (mode !== 'admin' && isTestModePassword && isNotCruiseMallUser) {
       const normalizedTestPassword = '1101';
-      logger.log('[Login] 테스트 모드 로그인 시도 (3일 체험):', { name: name || '없음', phone: phone || '없음', password: '***' });
+      logger.info('[Login] 테스트 모드 로그인 시도 (3일 체험)');
 
       // 3일 체험 로그인: 이름/전화번호는 선택사항, 비밀번호 1101만 맞으면 무조건 로그인 가능
 
@@ -522,7 +546,7 @@ export async function POST(req: Request) {
             (testUser.AffiliateProfile);
 
           if (isPrivileged) {
-            logger.log('[Login] 테스트 모드 로그인 차단: 이미 존재하는 파트너/관리자 계정입니다.', { userId: testUser.id, role: testUser.role });
+            logger.info('[Login] 테스트 모드 로그인 차단: 이미 존재하는 파트너/관리자 계정입니다.', { userId: testUser.id, role: testUser.role });
             return NextResponse.json(
               { ok: false, error: '이미 파트너 또는 관리자로 등록된 계정입니다. 해당 권한으로 로그인해주세요.' },
               { status: 400 }
@@ -533,7 +557,7 @@ export async function POST(req: Request) {
           const isPayingCustomer = testUser.customerStatus === 'active' || testUser.customerStatus === null;
           const isNotTestSource = testUser.customerSource !== 'test-guide' && testUser.customerSource !== 'trial-invite-link';
           if (isPayingCustomer && isNotTestSource) {
-            logger.warn('[Login] 테스트 모드 로그인 차단: 유료 고객 계정 보호', { userId: testUser.id });
+            logger.info('[Login] 테스트 모드 로그인 차단: 유료 고객 계정 보호', { userId: testUser.id, customerStatus: testUser.customerStatus });
             return NextResponse.json(
               { ok: false, error: '이미 정식 서비스를 이용 중인 계정입니다. 상담 매니저가 안내드린 비밀번호로 로그인해주세요.' },
               { status: 400 }
@@ -549,18 +573,18 @@ export async function POST(req: Request) {
           );
         }
 
-        logger.log('[Login] 테스트 모드 사용자 조회 결과:', { found: !!testUser, userId: testUser?.id, customerStatus: testUser?.customerStatus, customerSource: testUser?.customerSource });
+        logger.info('[Login] 테스트 모드 사용자 조회 결과:', { found: !!testUser, userId: testUser?.id, customerStatus: testUser?.customerStatus, customerSource: testUser?.customerSource });
 
         // 사용자가 없으면 자동 생성 (테스트 모드)
         if (!testUser) {
-          logger.log('[Login] 테스트 모드 신규 사용자 생성 시작');
+          logger.info('[Login] 테스트 모드 신규 사용자 생성 시작');
           const now = new Date();
           try {
             const newUser = await prisma.user.create({
               data: {
                 name: name || '3일체험고객', // 이름이 없으면 기본값
                 phone: phone!.trim(), // C-1: 위에서 검증된 유효한 전화번호만 사용
-                password: normalizedTestPassword,
+                password: await hashPassword(normalizedTestPassword),
                 onboarded: false,
                 loginCount: 1,
                 role: 'user',
@@ -585,7 +609,7 @@ export async function POST(req: Request) {
           } catch (createError: any) {
             // 전화번호 중복 에러인 경우 (P2002)
             if (createError?.code === 'P2002') {
-              logger.log('[Login] 전화번호 중복, 기존 사용자 재조회 및 업데이트');
+              logger.info('[Login] 전화번호 중복, 기존 사용자 재조회 및 업데이트');
               // 전화번호로 다시 조회
               testUser = await prisma.user.findFirst({
                 where: {
@@ -611,15 +635,15 @@ export async function POST(req: Request) {
                 await prisma.user.update({
                   where: { id: testUser.id },
                   data: {
-                    name: name || testUser.name,
+                    name: testUser.name || name,
                     phone: phone || testUser.phone,
-                    password: normalizedTestPassword, // 비밀번호를 1101로 업데이트
+                    password: await hashPassword(normalizedTestPassword), // 비밀번호를 1101로 업데이트
                   },
                 });
-                testUser.name = name || testUser.name;
+                testUser.name = testUser.name || name;
                 testUser.phone = phone || testUser.phone;
                 testUser.password = normalizedTestPassword;
-                logger.log('[Login] 기존 사용자 업데이트 완료 (중복 처리)');
+                logger.info('[Login] 기존 사용자 업데이트 완료 (중복 처리)');
               } else {
                 throw createError; // 다른 에러면 그대로 throw
               }
@@ -641,9 +665,9 @@ export async function POST(req: Request) {
           await prisma.user.update({
             where: { id: testUser.id },
             data: {
-              name: name || testUser.name,
+              name: testUser.name || name,
               phone: phone || testUser.phone,
-              password: normalizedTestPassword,
+              password: await hashPassword(normalizedTestPassword),
               customerSource: 'test-guide',
               // 만료된 경우 체험기간 리셋 (1101 비밀번호 = 무조건 재시작 가능)
               ...(isAlreadyExpired ? {
@@ -692,7 +716,7 @@ export async function POST(req: Request) {
           // customerStatus 업데이트 반영
           testUser.customerStatus = 'test-locked';
 
-          logger.log('[Login] 테스트 모드 72시간 경과 - 완료 안내 표시를 위해 로그인 허용:', {
+          logger.info('[Login] 테스트 모드 72시간 경과 - 완료 안내 표시를 위해 로그인 허용:', {
             userId: testUser.id,
             testModeStartedAt,
             testModeEndAt,
@@ -723,7 +747,7 @@ export async function POST(req: Request) {
             managerProfileId = trialLink.managerId;
             agentProfileId = trialLink.agentId;
             linkId = trialLink.id; // linkId 저장
-            logger.log('[Login] 3일 체험 초대 링크 확인:', {
+            logger.info('[Login] 3일 체험 초대 링크 확인:', {
               trialCode,
               linkId: linkId,
               managerId: managerProfileId,
@@ -792,7 +816,7 @@ export async function POST(req: Request) {
               },
             });
           }
-          logger.log('[Login] AffiliateLead 생성/업데이트 완료 (잠재고객):', {
+          logger.info('[Login] AffiliateLead 생성/업데이트 완료 (잠재고객):', {
             linkId: linkId,
             managerId: managerProfileId,
             agentId: agentProfileId,
@@ -803,7 +827,8 @@ export async function POST(req: Request) {
         // 테스트 모드 활성화
         // 72시간 경과 시 'test-locked'로 이미 설정되었으므로 덮어쓰지 않음
         // [H-5] 유료 고객 보호: 이미 위의 isPrivileged/isPayingCustomer 체크에서 차단됨
-        const shouldSetTestStatus = !isExpired;
+        // 이 시점에 도달한 사용자는 test/test-locked/신규 사용자만 해당됨
+        const shouldSetTestStatus = !isExpired; // 72시간 경과가 아니면 무조건 'test'로 설정
         await prisma.user.update({
           where: { id: testUser.id },
           data: {
@@ -813,7 +838,7 @@ export async function POST(req: Request) {
             isHibernated: false,
             loginCount: { increment: 1 },
             customerSource: trialCode ? 'trial-invite-link' : 'test-guide',
-            password: normalizedTestPassword, // 비밀번호는 항상 1101로 업데이트
+            password: await hashPassword(normalizedTestPassword), // 비밀번호는 항상 1101로 업데이트 (bcrypt 해시 저장)
           },
         });
 
@@ -824,14 +849,14 @@ export async function POST(req: Request) {
           select: { id: true, productId: true, endDate: true },
         });
 
-        logger.log('[Auth Login] 테스트 모드: UserTrip 존재 여부 확인 시작:', {
+        logger.info('[Auth Login] 테스트 모드: UserTrip 존재 여부 확인 시작:', {
           userId: testUser.id,
           hasTrip: !!existingTrip,
           tripId: existingTrip?.id,
           productId: existingTrip?.productId
         });
 
-        logger.log('[Auth Login] 테스트 모드: Trip 존재 여부 확인 결과:', {
+        logger.info('[Auth Login] 테스트 모드: Trip 존재 여부 확인 결과:', {
           userId: testUser.id,
           hasTrip: !!existingTrip,
           tripId: existingTrip?.id,
@@ -839,20 +864,20 @@ export async function POST(req: Request) {
         });
 
         // SAMPLE-MED-001 상품 조회, 없으면 TEST-001로 fallback
-        logger.log('[Auth Login] 테스트 모드: 테스트 상품 조회 시작');
+        logger.info('[Auth Login] 테스트 모드: 테스트 상품 조회 시작');
         let product = await prisma.cruiseProduct.findUnique({
           where: { productCode: 'SAMPLE-MED-001' },
         });
 
         // SAMPLE-MED-001이 없으면 TEST-001로 fallback
         if (!product) {
-          logger.log('[Auth Login] 테스트 모드: SAMPLE-MED-001 없음, TEST-001로 fallback');
+          logger.info('[Auth Login] 테스트 모드: SAMPLE-MED-001 없음, TEST-001로 fallback');
           product = await prisma.cruiseProduct.findUnique({
             where: { productCode: 'TEST-001' },
           });
         }
 
-        logger.log('[Auth Login] 테스트 모드: 테스트 상품 조회 결과:', {
+        logger.info('[Auth Login] 테스트 모드: 테스트 상품 조회 결과:', {
           found: !!product,
           productId: product?.id,
           productCode: product?.productCode,
@@ -864,14 +889,13 @@ export async function POST(req: Request) {
         });
 
         // 기존 UserTrip 삭제 조건: 상품이 다르거나, endDate가 과거(만료된 여행) → 재생성
-        // ※ 첫 로그인에 D-3으로 생성 후 자연스럽게 D-2→D-1→D-DAY 진행 (재로그인해도 유지)
         const isTripExpired = existingTrip?.endDate
           ? new Date() > new Date(existingTrip.endDate)
           : false;
         const isTripWrongProduct = existingTrip && product && existingTrip.productId !== product.id;
 
         if (existingTrip && (isTripWrongProduct || isTripExpired)) {
-          logger.log('[Auth Login] 테스트 모드: 기존 UserTrip 삭제 후 재생성:', {
+          logger.info('[Auth Login] 테스트 모드: 기존 UserTrip 삭제 후 재생성:', {
             userId: testUser.id,
             reason: isTripWrongProduct ? 'wrong_product' : 'trip_expired',
             existingTripId: existingTrip.id,
@@ -887,20 +911,19 @@ export async function POST(req: Request) {
             where: { id: existingTrip.id },
           });
 
-          logger.log('[Auth Login] 테스트 모드: ✅ 기존 UserTrip 삭제 완료');
+          logger.info('[Auth Login] 테스트 모드: ✅ 기존 UserTrip 삭제 완료');
         }
 
         // UserTrip이 없거나 삭제된 경우 새로 생성
         if ((!existingTrip || isTripWrongProduct || isTripExpired) && product) {
-          logger.log('[Auth Login] 테스트 모드: UserTrip 생성 시작');
-          logger.log('[Auth Login] 테스트 모드: 현재 시간:', now.toISOString());
+          logger.info('[Auth Login] 테스트 모드: UserTrip 생성 시작');
+          logger.info('[Auth Login] 테스트 모드: 현재 시간:', now.toISOString());
 
           try {
-            logger.log('[Auth Login] 테스트 모드: ✅ SAMPLE-MED-001 상품 찾음, UserTrip 생성 시작');
+            logger.info('[Auth Login] 테스트 모드: ✅ SAMPLE-MED-001 상품 찾음, UserTrip 생성 시작');
 
-            // 출발일: 로그인 날짜 + 3일 (D-3 모달 체험 제공, 출발 전 설렘 경험)
+            // 출발일: 로그인 당일 (브리핑 API가 오늘 날짜로 Itinerary 조회하므로 당일 시작)
             const startDate = new Date(now);
-            startDate.setDate(startDate.getDate() + 3);
             startDate.setHours(0, 0, 0, 0);
 
             // 종료 날짜 계산 (출발일 + (days - 1)일)
@@ -909,7 +932,7 @@ export async function POST(req: Request) {
             endDate.setDate(endDate.getDate() + product.days - 1);
             endDate.setHours(23, 59, 59, 999);
 
-            logger.log('[Auth Login] 테스트 모드: 날짜 계산 완료:', {
+            logger.info('[Auth Login] 테스트 모드: 날짜 계산 완료:', {
               loginDate: now.toISOString().split('T')[0],
               startDate: startDate.toISOString().split('T')[0],
               endDate: endDate.toISOString().split('T')[0],
@@ -927,7 +950,7 @@ export async function POST(req: Request) {
             const randomStr = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
             const reservationCode = `CRD-${dateStr}-${randomStr}`;
 
-            logger.log('[Auth Login] 테스트 모드: UserTrip 생성 데이터 준비 완료:', {
+            logger.info('[Auth Login] 테스트 모드: UserTrip 생성 데이터 준비 완료:', {
               userId: testUser.id,
               productId: product.id,
               reservationCode,
@@ -941,7 +964,7 @@ export async function POST(req: Request) {
             });
 
             // UserTrip 생성
-            logger.log('[Auth Login] 테스트 모드: UserTrip 생성 시작 (DB insert)');
+            logger.info('[Auth Login] 테스트 모드: UserTrip 생성 시작 (DB insert)');
             const trip = await prisma.userTrip.create({
               data: {
                 userId: testUser.id,
@@ -960,7 +983,7 @@ export async function POST(req: Request) {
               },
             });
 
-            logger.log('[Auth Login] 테스트 모드: ✅ UserTrip 생성 성공:', {
+            logger.info('[Auth Login] 테스트 모드: ✅ UserTrip 생성 성공:', {
               tripId: trip.id,
               userId: testUser.id,
               cruiseName: `${product.cruiseLine} ${product.shipName}`,
@@ -971,7 +994,7 @@ export async function POST(req: Request) {
             });
 
             // Itinerary 레코드들 자동 생성
-            logger.log('[Auth Login] 테스트 모드: Itinerary 생성 시작:', {
+            logger.info('[Auth Login] 테스트 모드: Itinerary 생성 시작:', {
               itineraryPatternLength: itineraryPattern.length,
               tripId: trip.id,
             });
@@ -997,7 +1020,7 @@ export async function POST(req: Request) {
               });
             }
 
-            logger.log('[Auth Login] 테스트 모드: Itinerary 데이터 준비 완료:', {
+            logger.info('[Auth Login] 테스트 모드: Itinerary 데이터 준비 완료:', {
               count: itineraries.length,
               tripId: trip.id,
             });
@@ -1006,7 +1029,7 @@ export async function POST(req: Request) {
               data: itineraries,
             });
 
-            logger.log('[Auth Login] 테스트 모드: ✅ Itinerary 생성 완료:', {
+            logger.info('[Auth Login] 테스트 모드: ✅ Itinerary 생성 완료:', {
               count: itineraries.length,
               tripId: trip.id,
             });
@@ -1035,7 +1058,7 @@ export async function POST(req: Request) {
             }
 
             // 온보딩 완료 상태로 설정
-            logger.log('[Auth Login] 테스트 모드: 온보딩 완료 상태 설정 시작:', {
+            logger.info('[Auth Login] 테스트 모드: 온보딩 완료 상태 설정 시작:', {
               userId: testUser.id,
             });
 
@@ -1047,12 +1070,12 @@ export async function POST(req: Request) {
               },
             });
 
-            logger.log('[Auth Login] 테스트 모드: ✅ 온보딩 완료 상태 설정 완료:', {
+            logger.info('[Auth Login] 테스트 모드: ✅ 온보딩 완료 상태 설정 완료:', {
               userId: testUser.id,
               onboarded: true,
             });
 
-            logger.log('[Auth Login] Test mode: Auto-created trip for user', testUser.id, 'with product SAMPLE-MED-001', {
+            logger.info('[Auth Login] Test mode: Auto-created trip for user', testUser.id, 'with product SAMPLE-MED-001', {
               startDate: startDate.toISOString().split('T')[0],
               endDate: endDate.toISOString().split('T')[0],
               nights: product.nights,
@@ -1074,7 +1097,7 @@ export async function POST(req: Request) {
             // 나중에 관리자가 확인할 수 있도록
           }
         } else if (existingTrip && product && existingTrip.productId === product.id) {
-          logger.log('[Auth Login] 테스트 모드: 기존 UserTrip 유지 (D-3→D-2→D-1→D-DAY 진행 중):', {
+          logger.info('[Auth Login] 테스트 모드: 기존 UserTrip이 SAMPLE-MED-001임, UserTrip 생성 건너뜀:', {
             userId: testUser.id,
             tripId: existingTrip.id,
             productId: existingTrip.productId,
@@ -1089,7 +1112,7 @@ export async function POST(req: Request) {
           where: { userId: testUser.id },
           select: { id: true, cruiseName: true, startDate: true },
         });
-        logger.log('[Auth Login] 테스트 모드: 세션 생성 전 최종 UserTrip 확인 (DB 조회):', {
+        logger.info('[Auth Login] 테스트 모드: 세션 생성 전 최종 UserTrip 확인 (DB 조회):', {
           userId: testUser.id,
           hasTrip: !!finalTripCheck,
           tripId: finalTripCheck?.id,
@@ -1114,7 +1137,7 @@ export async function POST(req: Request) {
           const deletedSessions = await prisma.session.deleteMany({
             where: { userId },
           });
-          logger.log('[Login] 테스트 모드 기존 세션 정리 완료:', { deletedCount: deletedSessions.count, userId });
+          logger.info('[Login] 테스트 모드 기존 세션 정리 완료:', { deletedCount: deletedSessions.count, userId });
         } catch (cleanupError) {
           logger.warn('[Login] 테스트 모드 기존 세션 정리 실패 (무시하고 계속):', cleanupError);
         }
@@ -1145,10 +1168,8 @@ export async function POST(req: Request) {
           domain: process.env.NODE_ENV === 'production' ? '.cruiseai.co.kr' : undefined,
         });
         // 3일 체험 유저 표시 쿠키 (middleware에서 -test 경로 강제 리다이렉트에 사용)
-        // 먼저 구 쿠키(domain 없는) 만료 처리 - 기존 사용자 마이그레이션
-        cookieStore.set('cg.mode', '', { path: '/', maxAge: 0 });
         cookieStore.set('cg.mode', 'test', {
-          httpOnly: false,
+          httpOnly: true,
           sameSite: 'lax',
           path: '/',
           maxAge: 60 * 60 * 24 * 30,
@@ -1157,8 +1178,8 @@ export async function POST(req: Request) {
         });
 
         authLogger.loginSuccess(userId, clientIp);
-        reactivateUser(userId).catch(() => {});
-        updateLastActive(userId).catch(() => {});
+        await reactivateUser(userId);
+        await updateLastActive(userId);
 
         // 남은 시간 계산 (음수면 0으로 표시)
         const remainingMs = testModeEndAt.getTime() - now.getTime();
@@ -1241,7 +1262,7 @@ export async function POST(req: Request) {
         });
 
         if (!communityUser) {
-          logger.log('[Auth Login] Community user not found:', { username: trimmedUsername });
+          logger.info('[Auth Login] Community user not found:', { username: trimmedUsername });
           return NextResponse.json({
             ok: false,
             error: '아이디 또는 비밀번호가 올바르지 않습니다.'
@@ -1250,7 +1271,7 @@ export async function POST(req: Request) {
 
         // 레거시 사용자 마이그레이션: phone 필드에 아이디가 저장된 경우 mallUserId로 마이그레이션
         if (!communityUser.mallUserId && communityUser.phone === trimmedUsername) {
-          logger.log('[Auth Login] 레거시 사용자 마이그레이션:', { userId: communityUser.id, phone: communityUser.phone });
+          logger.info('[Auth Login] 레거시 사용자 마이그레이션:', { userId: communityUser.id });
           await prisma.user.update({
             where: { id: communityUser.id },
             data: { mallUserId: trimmedUsername }
@@ -1258,28 +1279,21 @@ export async function POST(req: Request) {
           communityUser.mallUserId = trimmedUsername;
         }
 
-        // 비밀번호 확인 (bcrypt 해시 또는 평문 비교)
-        let isPasswordValid = false;
+        // 비밀번호 확인 (verifyPassword로 통일 — bcrypt Lazy Migration 포함)
         const storedPassword = communityUser.password || '';
-
-        // bcrypt 해시인지 확인 ($2로 시작)
-        if (storedPassword.startsWith('$2')) {
+        const communityResult = await verifyPassword(password, storedPassword);
+        const isPasswordValid = communityResult.valid;
+        if (communityResult.valid && communityResult.needsRehash && communityUser) {
           try {
-            const bcrypt = await import('bcryptjs');
-            isPasswordValid = await bcrypt.default.compare(password, storedPassword);
-            logger.log('[Auth Login] Community bcrypt 비교 결과:', { userId: communityUser.id, isValid: isPasswordValid });
-          } catch (bcryptError) {
-            logger.warn('[Auth Login] bcrypt 비교 중 오류:', bcryptError);
-            isPasswordValid = false;
-          }
-        } else if (storedPassword.length > 0) {
-          // 평문 비밀번호인 경우 (레거시 지원)
-          isPasswordValid = storedPassword === password;
-          logger.log('[Auth Login] Community 평문 비밀번호 비교 결과:', { userId: communityUser.id, isValid: isPasswordValid });
+            await prisma.user.update({
+              where: { id: communityUser.id },
+              data: { password: await hashPassword(password) },
+            });
+          } catch { /* 재해시 실패 시 무시 — 다음 로그인에서 재시도 */ }
         }
 
         if (!isPasswordValid) {
-          logger.log('[Auth Login] Invalid password for community user:', { userId: communityUser.id, mallUserId: communityUser.mallUserId });
+          logger.info('[Auth Login] Invalid password for community user:', { userId: communityUser.id, mallUserId: communityUser.mallUserId });
           return NextResponse.json({
             ok: false,
             error: '아이디 또는 비밀번호가 올바르지 않습니다.'
@@ -1294,7 +1308,7 @@ export async function POST(req: Request) {
           const deletedSessions = await prisma.session.deleteMany({
             where: { userId },
           });
-          logger.log('[Auth Login] Community 기존 세션 정리 완료:', { deletedCount: deletedSessions.count, userId });
+          logger.info('[Auth Login] Community 기존 세션 정리 완료:', { deletedCount: deletedSessions.count, userId });
         } catch (cleanupError) {
           logger.warn('[Auth Login] Community 기존 세션 정리 실패 (무시하고 계속):', cleanupError);
         }
@@ -1334,7 +1348,7 @@ export async function POST(req: Request) {
         // 로그인 성공 로그
         authLogger.loginSuccess(userId, clientIp);
 
-        logger.log('[Auth Login] Community login success:', { userId, mallUserId: communityUser.mallUserId });
+        logger.info('[Auth Login] Community login success:', { userId, mallUserId: communityUser.mallUserId });
 
         return NextResponse.json({
           ok: true,
@@ -1366,7 +1380,7 @@ export async function POST(req: Request) {
 
       try {
         if (!name || !phone || !password) {
-          logger.log('[Admin Login] 입력값 누락:', { hasName: !!name, hasPhone: !!phone, hasPassword: !!password });
+          logger.info('[Admin Login] 입력값 누락:', { hasName: !!name, hasPhone: !!phone, hasPassword: !!password });
           return NextResponse.json({ ok: false, error: '이름, 전화번호, 비밀번호를 모두 입력해주세요.' }, { status: 400 });
         }
 
@@ -1374,36 +1388,8 @@ export async function POST(req: Request) {
         const normalizedName = name.trim();
         const normalizedPhone = phone.replace(/[-\s]/g, '');
 
-        // 허용된 관리자 목록 (2명만)
-        const ALLOWED_ADMINS = [
-          { name: '저스틴', phone: '01038609161', password: '0313' },
-          { name: '모니카', phone: '01024958013', password: '0313' },
-        ];
-
-        // 허용된 관리자인지 확인
-        const allowedAdmin = ALLOWED_ADMINS.find(
-          admin => admin.name === normalizedName && admin.phone === normalizedPhone
-        );
-
-        if (!allowedAdmin) {
-          logger.log('[Admin Login] 허용되지 않은 관리자:', { name: normalizedName, phone: normalizedPhone });
-          return NextResponse.json({
-            ok: false,
-            error: '관리자 권한이 없습니다.'
-          }, { status: 403 });
-        }
-
-        // 비밀번호 확인
-        if (password !== allowedAdmin.password) {
-          logger.log('[Admin Login] 비밀번호 불일치');
-          return NextResponse.json({
-            ok: false,
-            error: '비밀번호가 올바르지 않습니다.'
-          }, { status: 401 });
-        }
-
-        // DB에서 관리자 계정 조회 또는 생성
-        let adminUser = await prisma.user.findFirst({
+        // DB에서 관리자 계정 직접 조회 (role: 'admin' 기준)
+        const adminUser = await prisma.user.findFirst({
           where: {
             name: normalizedName,
             phone: normalizedPhone,
@@ -1418,73 +1404,26 @@ export async function POST(req: Request) {
           },
         });
 
-        // 관리자 계정이 없으면 생성
         if (!adminUser) {
-          logger.log('[Admin Login] 관리자 계정 생성:', { name: normalizedName, phone: normalizedPhone });
-          try {
-            const now = new Date();
-            adminUser = await prisma.user.create({
-              data: {
-                name: normalizedName,
-                phone: normalizedPhone,
-                password: password,
-                role: 'admin',
-                onboarded: true,
-                loginCount: 0,
-                customerSource: 'admin',
-                updatedAt: now,
-              },
-              select: {
-                id: true,
-                password: true,
-                loginCount: true,
-                name: true,
-                phone: true,
-              },
-            });
-            logger.log('[Admin Login] 관리자 계정 생성 완료:', { userId: adminUser.id });
-          } catch (createError: any) {
-            logger.error('[Admin Login] 관리자 계정 생성 실패:', createError);
-            // 중복 키 에러인 경우 다시 조회 시도
-            if (createError?.code === 'P2002') {
-              adminUser = await prisma.user.findFirst({
-                where: {
-                  phone: normalizedPhone,
-                  role: 'admin',
-                },
-                select: {
-                  id: true,
-                  password: true,
-                  loginCount: true,
-                  name: true,
-                  phone: true,
-                },
-              });
-            }
-
-            if (!adminUser) {
-              return NextResponse.json({
-                ok: false,
-                error: '관리자 계정 생성에 실패했습니다. 잠시 후 다시 시도해주세요.'
-              }, { status: 500 });
-            }
-          }
+          return NextResponse.json({ ok: false, error: '관리자 권한이 없습니다.' }, { status: 403 });
         }
 
-        // 비밀번호 확인 (DB에 저장된 비밀번호도 확인)
-        const isPasswordValid = adminUser.password === password;
-        logger.log('[Admin Login] 비밀번호 확인:', { isValid: isPasswordValid });
+        // 비밀번호 검증 (Lazy Migration: 평문이면 bcrypt 재해시)
+        const storedPw = adminUser.password ?? '';
+        const isAdminPasswordValid = isBcryptHash(storedPw)
+          ? (await verifyPassword(password, storedPw)).valid
+          : storedPw === password;
 
-        if (!isPasswordValid) {
-          // DB 비밀번호와 일치하지 않으면 업데이트
+        if (!isAdminPasswordValid) {
+          return NextResponse.json({ ok: false, error: '비밀번호가 올바르지 않습니다.' }, { status: 401 });
+        }
+
+        if (!isBcryptHash(storedPw)) {
           await prisma.user.update({
             where: { id: adminUser.id },
-            data: { password: password },
+            data: { password: await hashPassword(password) },
           });
-          logger.log('[Admin Login] 비밀번호 업데이트 완료');
         }
-
-        logger.log('[Admin Login] 성공:', { userId: adminUser.id });
 
         const userId = adminUser.id;
         const next = '/admin/dashboard';
@@ -1598,25 +1537,34 @@ export async function POST(req: Request) {
     // 동면 고객 자동 전환: 이름=연락처, 비밀번호=3800으로 로그인한 경우
     // 동면 고객(이름=연락처, 비밀번호=연락처)이 여행 계약 후 3800으로 로그인하면 활성으로 전환
     if (password === '3800' && name === phone) {
-      // 동면 고객 찾기: 이름=연락처, 비밀번호=연락처인 고객
-      const dormantUser = await prisma.user.findFirst({
+      // 동면 고객 찾기: 이름=연락처인 고객 (password 조건은 앱 레벨에서 검증 — bcrypt Lazy Migration 지원)
+      const dormantCandidate = await prisma.user.findFirst({
         where: {
           phone,
-          name: phone,  // 동면 고객은 이름=연락처
-          password: phone,  // 동면 고객은 비밀번호=연락처
+          name: phone,     // 동면 고객은 이름=연락처
           role: 'user',
+          isHibernated: true,  // 동면 상태인 계정만 매칭 (활성 고객 오매칭 방지)
         },
-        select: { id: true, onboarded: true, loginCount: true, isHibernated: true, customerStatus: true, customerSource: true },
+        select: { id: true, password: true, onboarded: true, loginCount: true, isHibernated: true, customerStatus: true, customerSource: true },
       });
 
+      // 비밀번호가 연락처인지 앱 레벨에서 검증 (bcrypt Lazy Migration 지원)
+      const dormantStored = dormantCandidate?.password ?? '';
+      const isDormantPassword = dormantCandidate
+        ? (isBcryptHash(dormantStored)
+          ? (await verifyPassword(phone, dormantStored)).valid
+          : dormantStored === phone)
+        : false;
+      const dormantUser = isDormantPassword ? dormantCandidate : null;
+
       if (dormantUser) {
-        logger.log('[Login] 동면 고객 자동 전환:', { userId: dormantUser.id, phone, name });
+        logger.info('[Login] 동면 고객 자동 전환:', { userId: dormantUser.id });
 
         // 동면에서 활성으로 전환: 비밀번호를 3800으로 업데이트, 동면 상태 해제, 활성 상태로 설정, 로그인 횟수 증가
         await prisma.user.update({
           where: { id: dormantUser.id },
           data: {
-            password: '3800',
+            password: await hashPassword(SYSTEM_PASSWORDS.GUIDE_ACTIVE), // '3800' bcrypt 해시 저장
             isHibernated: false,
             hibernatedAt: null,
             customerStatus: 'active', // 활성 상태로 설정
@@ -1665,11 +1613,11 @@ export async function POST(req: Request) {
         // 로그인 성공 로그
         authLogger.loginSuccess(userId, clientIp);
 
-        // 생애주기 관리: 백그라운드 처리 (응답 속도에 영향 없음)
-        reactivateUser(userId).catch(() => {});
-        updateLastActive(userId).catch(() => {});
+        // 생애주기 관리: 재활성화 및 활동 시각 업데이트
+        await reactivateUser(userId);
+        await updateLastActive(userId);
 
-        logger.log('[Login] 동면 고객 자동 전환 완료:', { userId, phone, name });
+        logger.info('[Login] 동면 고객 자동 전환 완료:', { userId });
 
         return NextResponse.json({
           ok: true,
@@ -1683,7 +1631,7 @@ export async function POST(req: Request) {
     // 잠금 상태 고객 자동 전환: 이름, 연락처, 3800으로 로그인한 경우
     // 잠금 상태였던 고객이 3800으로 로그인하면 자동으로 활성 상태로 전환
     if (password === '3800') {
-      logger.log('[Login] 3800 로그인 시도:', { phone, name });
+      logger.info('[Login] 3800 로그인 시도');
 
       // ✅ 전화번호 정규화 (등록 API와 동일하게)
       const normalizePhone = (phone: string) => phone.replace(/\D/g, '');
@@ -1708,85 +1656,68 @@ export async function POST(req: Request) {
         },
       });
 
-      logger.log('[Login] 3800 사용자 조회 결과:', {
+      logger.info('[Login] 3800 사용자 조회 결과:', {
         found: !!activeUser,
         userId: activeUser?.id,
-        passwordMatch: activeUser?.password === '3800',
         customerStatus: activeUser?.customerStatus,
         isLocked: activeUser?.isLocked,
       });
 
-      // 사용자가 없으면 자동 생성 (크루즈 가이드 지니 AI 요구사항)
+      // 구매 기록이 없으면 로그인 차단 (자동 생성 금지)
       if (!activeUser) {
-        logger.log('[Login] 3800 신규 사용자 자동 생성:', { phone: normalizedPhone, name });
-        try {
-          const now = new Date();
-          const newUser = await prisma.user.create({
-            data: {
-              name,
-              phone: normalizedPhone, // 정규화된 전화번호 사용
-              password: '3800',
-              onboarded: false, // 온보딩 없이 채팅창에 들어갈 수 있도록 false로 설정
-              loginCount: 1,
-              role: 'user',
-              customerStatus: 'active',
-              customerSource: 'cruise-guide',
-              updatedAt: now,
-            },
-            select: {
-              id: true,
-              password: true,
-              onboarded: true,
-              loginCount: true,
-              isLocked: true,
-              customerStatus: true,
-              customerSource: true,
-              UserTrip: { select: { id: true }, take: 1 },
-            },
-          });
-          activeUser = newUser;
-          logger.log('[Login] 3800 신규 사용자 생성 완료:', { userId: activeUser.id, phone, name });
-        } catch (createError) {
-          logger.error('[Login] 3800 신규 사용자 생성 실패:', createError);
-          return NextResponse.json({
-            ok: false,
-            error: '사용자 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
-          }, { status: 500 });
-        }
+        return NextResponse.json({
+          ok: false,
+          error: '구매 기록이 없습니다. 크루즈닷에서 상품 구매 후 이용 가능합니다.',
+        }, { status: 403 });
       } else {
         // 기존 사용자: customerSource 확인
         const userSource = activeUser.customerSource || null;
-        logger.log('[Login] 3800 기존 사용자 확인:', {
+        logger.info('[Login] 3800 기존 사용자 확인:', {
           userId: activeUser.id,
           customerSource: userSource,
-          passwordMatch: activeUser.password === '3800',
         });
 
-        // 크루즈 가이드 지니 AI에서 3800으로 로그인하는 경우
-        // customerSource가 무엇이든 상관없이 이름과 전화번호가 일치하면 로그인 허용
-        // 단, customerSource를 'cruise-guide'로 업데이트하고 비밀번호를 3800으로 설정
-        if (activeUser.password !== '3800' || userSource !== 'cruise-guide') {
-          logger.log('[Login] 3800 비밀번호 및 customerSource 자동 업데이트:', {
-            userId: activeUser.id,
-            oldPassword: activeUser.password ? '***' : 'null',
-            oldCustomerSource: userSource,
-            newCustomerSource: 'cruise-guide',
-          });
-          // 비밀번호를 3800으로 업데이트하고 customerSource를 'cruise-guide'로 설정
+        // A-3: 비밀번호 검증 — 이름+전화번호만으로 3800 로그인 불가 (timingSafeEqual 적용)
+        const originalStoredPw = activeUser.password || '';
+        const isValidGuidePassword = (await verifyPassword(SYSTEM_PASSWORDS.GUIDE_ACTIVE, originalStoredPw)).valid;
+        if (!isValidGuidePassword) {
+          return NextResponse.json({
+            ok: false,
+            error: '이름, 전화번호, 비밀번호를 확인해주세요.',
+          }, { status: 401 });
+        }
+
+        // Lazy Migration: 평문 '3800'이 저장된 경우 bcrypt 해시로 업그레이드
+        // customerSource는 비어있을 때만 설정 (guide-purchase 보호)
+        const needsPasswordUpgrade = !isBcryptHash(activeUser.password || '');
+        const needsSourceUpdate = !userSource;
+
+        if (needsPasswordUpgrade || needsSourceUpdate) {
+          const upgradeData: Record<string, unknown> = {};
+          if (needsPasswordUpgrade) {
+            upgradeData.password = await hashPassword(SYSTEM_PASSWORDS.GUIDE_ACTIVE);
+          }
+          if (needsSourceUpdate) {
+            upgradeData.customerSource = 'cruise-guide';
+          }
           await prisma.user.update({
             where: { id: activeUser.id },
-            data: {
-              password: '3800',
-              customerSource: 'cruise-guide', // 크루즈 가이드 지니 AI로 전환
-            },
+            data: upgradeData,
           });
-          // 업데이트 후 activeUser 객체도 업데이트
-          activeUser.password = '3800';
-          activeUser.customerSource = 'cruise-guide';
+          if (needsPasswordUpgrade) activeUser.password = upgradeData.password as string;
+          if (needsSourceUpdate) activeUser.customerSource = 'cruise-guide';
         }
       }
 
-      logger.log('[Login] 활성 고객 로그인:', { userId: activeUser.id, phone, name });
+      // 환불된 계정 로그인 차단
+      if (activeUser.customerStatus === 'refunded') {
+        return NextResponse.json({
+          ok: false,
+          error: '환불 처리된 계정입니다. 새로운 구매 후 이용 가능합니다.',
+        }, { status: 403 });
+      }
+
+      logger.info('[Login] 활성 고객 로그인:', { userId: activeUser.id });
 
       try {
         // 활성 상태로 전환: 잠금 상태 해제, 활성 상태로 설정, 테스트 모드 해제, 로그인 횟수 증가
@@ -1813,14 +1744,14 @@ export async function POST(req: Request) {
       }
 
       // 유료 고객(3800): REAL-CRUISE-01 상품으로 UserTrip 자동 생성/업데이트
-      logger.log('[Login] 3800: UserTrip 자동 생성 체크 시작:', { userId: activeUser.id });
+      logger.info('[Login] 3800: UserTrip 자동 생성 체크 시작:', { userId: activeUser.id });
 
       const existingUserTrip = await prisma.userTrip.findFirst({
         where: { userId: activeUser.id },
         select: { id: true, productId: true },
       });
 
-      logger.log('[Login] 3800: UserTrip 존재 여부 확인:', {
+      logger.info('[Login] 3800: UserTrip 존재 여부 확인:', {
         userId: activeUser.id,
         hasTrip: !!existingUserTrip,
         tripId: existingUserTrip?.id,
@@ -1832,7 +1763,7 @@ export async function POST(req: Request) {
         where: { productCode: 'REAL-CRUISE-01' },
       });
 
-      logger.log('[Login] 3800: REAL-CRUISE-01 상품 조회 결과:', {
+      logger.info('[Login] 3800: REAL-CRUISE-01 상품 조회 결과:', {
         found: !!realProduct,
         productId: realProduct?.id,
         productCode: realProduct?.productCode,
@@ -1842,10 +1773,10 @@ export async function POST(req: Request) {
         days: realProduct?.days,
       });
 
-      // 유료 고객(3800): 어드민 등록 UserTrip 보존 우선
-      // existingUserTrip이 없을 때만 REAL-CRUISE-01 폴백 생성 (어드민 미등록 케이스)
+      // UserTrip이 없는 경우에만 REAL-CRUISE-01 폴백으로 생성 (기존 UserTrip은 절대 삭제하지 않음)
+      // 웹훅에서 실제 구매 상품으로 생성된 UserTrip을 보호하기 위함
       if (!existingUserTrip && realProduct) {
-        logger.log('[Login] 3800: UserTrip 없음 — REAL-CRUISE-01 폴백 생성 시작');
+        logger.info('[Login] 3800: UserTrip 없음, 폴백 생성 시작');
 
         try {
           const now = new Date();
@@ -1860,7 +1791,7 @@ export async function POST(req: Request) {
           endDate.setDate(endDate.getDate() + realProduct.days - 1);
           endDate.setHours(23, 59, 59, 999);
 
-          logger.log('[Login] 3800: 날짜 계산 완료:', {
+          logger.info('[Login] 3800: 날짜 계산 완료:', {
             today: now.toISOString().split('T')[0],
             startDate: startDate.toISOString().split('T')[0],
             endDate: endDate.toISOString().split('T')[0],
@@ -1879,7 +1810,7 @@ export async function POST(req: Request) {
           const randomStr = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
           const reservationCode = `CRD-${dateStr}-${randomStr}`;
 
-          logger.log('[Login] 3800: UserTrip 생성 데이터 준비 완료:', {
+          logger.info('[Login] 3800: UserTrip 생성 데이터 준비 완료:', {
             userId: activeUser.id,
             productId: realProduct.id,
             reservationCode,
@@ -1913,7 +1844,7 @@ export async function POST(req: Request) {
             },
           });
 
-          logger.log('[Login] 3800: ✅ UserTrip 생성 성공:', {
+          logger.info('[Login] 3800: ✅ UserTrip 생성 성공:', {
             tripId: userTrip.id,
             userId: activeUser.id,
             cruiseName: `${realProduct.cruiseLine} ${realProduct.shipName}`,
@@ -1924,7 +1855,7 @@ export async function POST(req: Request) {
           });
 
           // Itinerary 레코드들 자동 생성
-          logger.log('[Login] 3800: Itinerary 생성 시작:', {
+          logger.info('[Login] 3800: Itinerary 생성 시작:', {
             itineraryPatternLength: itineraryPattern.length,
             tripId: userTrip.id,
           });
@@ -1950,7 +1881,7 @@ export async function POST(req: Request) {
             });
           }
 
-          logger.log('[Login] 3800: Itinerary 데이터 준비 완료:', {
+          logger.info('[Login] 3800: Itinerary 데이터 준비 완료:', {
             count: itineraries.length,
             tripId: userTrip.id,
           });
@@ -1959,7 +1890,7 @@ export async function POST(req: Request) {
             data: itineraries,
           });
 
-          logger.log('[Login] 3800: ✅ Itinerary 생성 완료:', {
+          logger.info('[Login] 3800: ✅ Itinerary 생성 완료:', {
             count: itineraries.length,
             tripId: userTrip.id,
           });
@@ -1987,7 +1918,21 @@ export async function POST(req: Request) {
             });
           }
 
-          logger.log('[Login] 3800: ✅ REAL-CRUISE-01 폴백 UserTrip 생성 완료:', userTrip.id);
+          await prisma.user.update({
+            where: { id: activeUser.id },
+            data: {
+              totalTripCount: { increment: 1 },
+            },
+          });
+
+          logger.info('[Login] 3800: Auto-created trip for user', activeUser.id, 'with product REAL-CRUISE-01', {
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0],
+            nights: realProduct.nights,
+            days: realProduct.days,
+            loginDate: now.toISOString().split('T')[0],
+            dday: Math.ceil((startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+          });
         } catch (tripError) {
           logger.error('[Login] 3800: Failed to auto-create UserTrip:', tripError);
           logger.error('[Login] 3800: UserTrip creation error details:', {
@@ -2000,18 +1945,19 @@ export async function POST(req: Request) {
 
           // UserTrip 생성 실패 시에도 로그인은 계속 진행하되, 에러를 명확히 기록
         }
-      } else if (existingUserTrip) {
-        // 어드민이 등록한 UserTrip 보존 — 절대 덮어쓰지 않음
-        logger.log('[Login] 3800: 어드민 등록 UserTrip 보존:', {
+      } else if (existingUserTrip && realProduct && existingUserTrip.productId === realProduct.id) {
+        logger.info('[Login] 3800: 기존 UserTrip이 REAL-CRUISE-01임, UserTrip 생성 건너뜀:', {
           userId: activeUser.id,
           tripId: existingUserTrip.id,
           productId: existingUserTrip.productId,
         });
+
       } else if (!realProduct) {
-        logger.warn('[Login] 3800: REAL-CRUISE-01 상품 없음, UserTrip 폴백 생성 건너뜀');
+        logger.error('[Login] 3800: ❌ REAL-CRUISE-01 상품을 찾을 수 없습니다!');
+        logger.warn('[Login] 3800: REAL-CRUISE-01 product not found');
       }
 
-      const next = activeUser.onboarded ? '/chat' : '/onboarding'; // 온보딩 완료 여부 기반 분기
+      const next = activeUser.onboarded ? '/chat' : '/onboarding'; // 온보딩 완료 여부로 분기
       const userId = activeUser.id;
 
       try {
@@ -2020,7 +1966,7 @@ export async function POST(req: Request) {
           const deletedSessions = await prisma.session.deleteMany({
             where: { userId },
           });
-          logger.log('[Login] 3800 기존 세션 정리 완료:', { deletedCount: deletedSessions.count, userId });
+          logger.info('[Login] 3800 기존 세션 정리 완료:', { deletedCount: deletedSessions.count, userId });
         } catch (cleanupError) {
           logger.warn('[Login] 3800 기존 세션 정리 실패 (무시하고 계속):', cleanupError);
         }
@@ -2060,11 +2006,20 @@ export async function POST(req: Request) {
         // 로그인 성공 로그
         authLogger.loginSuccess(userId, clientIp);
 
-        // 생애주기 관리: 백그라운드 처리 (응답 속도에 영향 없음)
-        reactivateUser(userId).catch((e: unknown) => logger.error('[Login] 재활성화 실패 (무시):', e));
-        updateLastActive(userId).catch((e: unknown) => logger.error('[Login] 활동 시각 업데이트 실패 (무시):', e));
+        // 생애주기 관리: 재활성화 및 활동 시각 업데이트
+        try {
+          await reactivateUser(userId);
+        } catch (reactivateError) {
+          logger.error('[Login] 재활성화 실패 (무시):', reactivateError);
+        }
 
-        logger.log('[Login] 활성 고객 로그인 완료:', { userId, phone, name });
+        try {
+          await updateLastActive(userId);
+        } catch (updateActiveError) {
+          logger.error('[Login] 활동 시각 업데이트 실패 (무시):', updateActiveError);
+        }
+
+        logger.info('[Login] 활성 고객 로그인 완료:', { userId });
 
         return NextResponse.json({
           ok: true,
@@ -2080,7 +2035,7 @@ export async function POST(req: Request) {
     // user1~user10 크루즈몰 계정 체크 (비밀번호 1101)
     const isCruiseMallUser = phone && /^user(1[0]|[1-9])$/i.test(phone.trim());
     if (isCruiseMallUser && password === '1101') {
-      logger.log('[Login] 크루즈몰 계정 로그인 (user1~user10):', { phone, name });
+      logger.info('[Login] 크루즈몰 계정 로그인 (user1~user10)');
 
       // 크루즈몰 계정 찾기 또는 생성
       let cruiseMallUser = await prisma.user.findFirst({
@@ -2107,7 +2062,7 @@ export async function POST(req: Request) {
           data: {
             phone: phone.trim(),
             name: name || phone.trim(),
-            password: '1101',
+            password: await hashPassword(SYSTEM_PASSWORDS.TRIAL), // '1101' bcrypt 해시 저장
             onboarded: false,
             loginCount: 1,
             role: 'user',
@@ -2126,15 +2081,18 @@ export async function POST(req: Request) {
             UserTrip: { select: { id: true }, take: 1 },
           },
         });
-        logger.log('[Login] 크루즈몰 계정 생성 완료:', { userId: cruiseMallUser.id, phone });
+        logger.info('[Login] 크루즈몰 계정 생성 완료:', { userId: cruiseMallUser.id });
       } else {
-        // 기존 계정: 비밀번호가 1101이 아니면 업데이트
-        if (cruiseMallUser.password !== '1101') {
+        // 기존 계정: bcrypt 해시가 아니거나 '1101'과 일치하지 않으면 재해시 후 업데이트
+        const { needsRehash: trialNeedsRehash } = await verifyPassword(SYSTEM_PASSWORDS.TRIAL, cruiseMallUser.password ?? '');
+        const isNotTrialHash = !isBcryptHash(cruiseMallUser.password ?? '') || trialNeedsRehash;
+        if (isNotTrialHash) {
+          const hashedTrial = await hashPassword(SYSTEM_PASSWORDS.TRIAL);
           await prisma.user.update({
             where: { id: cruiseMallUser.id },
-            data: { password: '1101' },
+            data: { password: hashedTrial }, // '1101' bcrypt 해시 저장
           });
-          cruiseMallUser.password = '1101';
+          cruiseMallUser.password = hashedTrial;
         }
         // 로그인 횟수 증가
         await prisma.user.update({
@@ -2151,7 +2109,7 @@ export async function POST(req: Request) {
         const deletedSessions = await prisma.session.deleteMany({
           where: { userId },
         });
-        logger.log('[Login] 크루즈몰 계정 기존 세션 정리 완료:', { deletedCount: deletedSessions.count, userId });
+        logger.info('[Login] 크루즈몰 계정 기존 세션 정리 완료:', { deletedCount: deletedSessions.count, userId });
       } catch (cleanupError) {
         logger.warn('[Login] 크루즈몰 계정 기존 세션 정리 실패 (무시하고 계속):', cleanupError);
       }
@@ -2183,8 +2141,8 @@ export async function POST(req: Request) {
       });
 
       authLogger.loginSuccess(userId, clientIp);
-      reactivateUser(userId).catch(() => {});
-      updateLastActive(userId).catch(() => {});
+      await reactivateUser(userId);
+      await updateLastActive(userId);
 
       return NextResponse.json({
         ok: true,
@@ -2193,15 +2151,12 @@ export async function POST(req: Request) {
       });
     }
 
-    // 1) 기존 고객: 이름, 전화번호, 비밀번호, role(user) 4가지를 모두 확인
-    // 같은 전화번호로 여러 계정이 있어도 정확히 매칭되는 계정만 반환됨
-    // 비밀번호가 1101(테스트 모드), 3800이 아닌 경우에만 일반 로그인 처리
-    // (user1~user10은 위에서 이미 처리됨)
+    // 1) 기존 고객: 이름, 전화번호, role(user) 로 후보 조회 후 애플리케이션 레벨 비밀번호 검증
+    // (bcrypt 도입으로 Prisma where에 password를 포함할 수 없음)
     const existing = await prisma.user.findFirst({
       where: {
         phone,        // ✅ 전화번호 확인
         name,         // ✅ 이름 확인
-        password,     // ✅ 비밀번호 확인
         role: 'user', // ✅ 일반 사용자 확인 (admin 제외)
       },
       select: {
@@ -2215,36 +2170,46 @@ export async function POST(req: Request) {
       },
     });
 
-    // 이름, 전화번호, 비밀번호가 일치하지만 role이 admin인 경우
-    // (관리자 계정이 일반 로그인으로 접근하려는 경우)
+    // 관리자 계정 확인 (비밀번호 검증 전에 먼저 체크)
     if (!existing) {
-      // 관리자 계정인지 확인
       const adminCheck = await prisma.user.findFirst({
-        where: {
-          phone,
-          name,
-          password,
-          role: 'admin',
-        },
+        where: { phone, name, role: 'admin' },
+        select: { id: true, password: true },
       });
 
       if (adminCheck) {
-        logger.log('[LOGIN] 관리자 계정으로 일반 사용자 로그인 시도:', { phone, name, userId: adminCheck.id });
-        return NextResponse.json({
-          ok: false,
-          error: '관리자 계정입니다. 관리자 로그인 페이지를 이용해주세요.'
-        }, { status: 403 });
+        const adminResult = await verifyPassword(password, adminCheck.password || '');
+        if (adminResult.valid) {
+          logger.info('[LOGIN] 관리자 계정으로 일반 사용자 로그인 시도:', { userId: adminCheck.id });
+          return NextResponse.json({
+            ok: false,
+            error: '관리자 계정입니다. 관리자 로그인 페이지를 이용해주세요.'
+          }, { status: 403 });
+        }
       }
     }
 
     let userId: number;
-    // 비밀번호 3800 = 크루즈 가이드 지니 (일반) → /chat으로 리다이렉트
-    // 비밀번호 1101 = 크루즈 가이드 지니 3일 체험 → /chat-test로 리다이렉트 (위에서 이미 처리됨)
     let next = '/chat';
 
     if (existing) {
-      // 기존 고객: 이미 4가지 조건(name, phone, password, role='user')을 모두 만족하는 계정
-      // 비밀번호는 where 조건에서 이미 확인했으므로 추가 검증 불필요
+      // 기존 고객: 비밀번호 애플리케이션 레벨 검증 (bcrypt Lazy Migration 지원)
+      const pwResult = await verifyPassword(password, existing.password || '');
+      if (!pwResult.valid) {
+        return NextResponse.json({ ok: false, error: '이름, 전화번호, 비밀번호를 확인해주세요.' }, { status: 401 });
+      }
+
+      // 평문 매칭 → 즉시 재해시 (Lazy Migration)
+      if (pwResult.needsRehash) {
+        try {
+          await prisma.user.update({
+            where: { id: existing.id },
+            data: { password: await hashPassword(password) },
+          });
+        } catch {
+          // 재해시 실패는 치명적이지 않음
+        }
+      }
 
       // @ts-ignore
       userId = existing.id as unknown as number;
@@ -2255,6 +2220,9 @@ export async function POST(req: Request) {
         data: { loginCount: { increment: 1 } },
       });
 
+      // 온보딩 완료 && 활성 상태 → /chat, 아니면 → /onboarding
+      // 관리자 패널에서 온보딩 등록되어 있고 활성 상태인 고객은 자동으로 채팅으로 이동
+      // customerStatus가 null이면 활성 상태로 간주 (하위 호환성)
       const isActive = existing.customerStatus === 'active' || existing.customerStatus === null;
 
       // ── 서비스 만료 체크 (여행 종료 +1일) ──
@@ -2272,11 +2240,9 @@ export async function POST(req: Request) {
       }
 
       // ── 온보딩 여부 기반 리다이렉트 ──
-      // 처음 로그인 (onboarded=false) → /onboarding (여행 일정 확인 + 앱 소개)
-      // 이후 로그인 (onboarded=true)  → /chat (오늘의 브리핑)
       next = existing.onboarded ? '/chat' : '/onboarding';
 
-      logger.log('[Login] 리다이렉트 결정:', {
+      logger.info('[Login] 리다이렉트 결정:', {
         userId: existing.id,
         onboarded: existing.onboarded,
         customerStatus: existing.customerStatus,
@@ -2284,23 +2250,11 @@ export async function POST(req: Request) {
         next,
       });
     } else {
-      // 2) 신규 생성 → 온보딩 필요
-      const now = new Date();
-      const created = await prisma.user.create({
-        data: {
-          phone,
-          name: name ?? null,
-          password,        // 3800 등 내부 정책값. 클라이언트에 표시 X
-          onboarded: false,
-          loginCount: 1,   // 첫 로그인
-          role: 'user',    // 명시적으로 user role 설정
-          updatedAt: now,
-        },
-        select: { id: true },
-      });
-      // @ts-ignore
-      userId = created.id as unknown as number;
-      next = '/onboarding'; // 신규 고객은 항상 온보딩 먼저
+      // A-8: 미등록 사용자 자동 생성 금지 — 구매 후 관리자가 등록한 계정만 로그인 가능
+      return NextResponse.json({
+        ok: false,
+        error: '등록된 계정을 찾을 수 없습니다. 크루즈닷에서 상품 구매 후 이용 가능합니다.',
+      }, { status: 403 });
     }
 
     // 기존 세션 정리 (동시 로그인 방지 및 세션 테이블 정리)
@@ -2308,7 +2262,7 @@ export async function POST(req: Request) {
       const deletedSessions = await prisma.session.deleteMany({
         where: { userId },
       });
-      logger.log('[Login] 일반 로그인 기존 세션 정리 완료:', { deletedCount: deletedSessions.count, userId });
+      logger.info('[Login] 일반 로그인 기존 세션 정리 완료:', { deletedCount: deletedSessions.count, userId });
     } catch (cleanupError) {
       logger.warn('[Login] 일반 로그인 기존 세션 정리 실패 (무시하고 계속):', cleanupError);
     }
@@ -2348,20 +2302,15 @@ export async function POST(req: Request) {
     // 로그인 성공 로그
     authLogger.loginSuccess(userId, clientIp);
 
-    // 생애주기 관리: 백그라운드 처리 (응답 속도에 영향 없음)
-    reactivateUser(userId).catch(() => {});
-    updateLastActive(userId).catch(() => {});
+    // 생애주기 관리: 재활성화 및 활동 시각 업데이트
+    await reactivateUser(userId);
+    await updateLastActive(userId);
 
     // 최종 안전장치: 비밀번호 기반 리다이렉트 경로 확인
     // 비밀번호 1101 = 3일 체험 → /chat-test (강제)
     // 비밀번호 3800 = 일반 구매자 → onboarded 여부에 따라 /onboarding 또는 /chat (위에서 결정됨)
     if (password === '1101') {
       next = '/chat-test';
-      logger.log('[Login] 비밀번호 1101 - /chat-test');
-    } else if (password === '3800') {
-      // onboarding 체크는 위에서 이미 결정됨 (next = '/onboarding' or '/chat')
-      // next를 그대로 유지 (override 하지 않음)
-      logger.log('[Login] 비밀번호 3800 - 리다이렉트:', next);
     }
 
     return NextResponse.json({
@@ -2380,6 +2329,7 @@ export async function POST(req: Request) {
       errorCause: e instanceof Error && 'cause' in e ? (e as any).cause : undefined,
     });
 
+    // 개발 환경에서는 더 자세한 에러 정보 제공
     return NextResponse.json(
       {
         ok: false,
